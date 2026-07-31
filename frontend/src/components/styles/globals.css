@@ -1,0 +1,11 @@
+/* ══ Responsive ══════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  table { font-size: 12px !important; }
+  th, td { padding: 8px 10px !important; white-space: nowrap; }
+  .hide-mobile { display: none !important; }
+  .form-grid-2 { grid-template-columns: 1fr !important; }
+  .form-grid-3 { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr !important; }
+}
