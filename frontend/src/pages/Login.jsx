@@ -48,7 +48,7 @@ export default function Login() {
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: 24, fontWeight: 700, color: "#0d0f14",
           }}>G</div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>GymPro</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>Arena GYM</h1>
           <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>لوحة تحكم الصالة الرياضية</p>
         </div>
 
