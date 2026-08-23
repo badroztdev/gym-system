@@ -6,6 +6,8 @@ import { Toaster } from "react-hot-toast";
 import { useAuthStore } from "@/store/authStore";
 import toast from "react-hot-toast";
 import "@/styles/globals.css";
+console.log("🔍 VITE_API_URL =", import.meta.env.VITE_API_URL);
+console.log("🔍 All env vars:", import.meta.env);
 // Firebase - تهيئة الإشعارات
 import { requestNotificationPermission, onForegroundMessage } from "@/services/firebase.js";
 import { notificationsService } from "@/services/notifications.service";
