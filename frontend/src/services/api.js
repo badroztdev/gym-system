@@ -4,7 +4,9 @@ import toast from "react-hot-toast";
 import { useAuthStore } from "@/store/authStore";
 
 const api = axios.create({
-  baseURL: "/api",
+  baseURL: import.meta.env.VITE_API_URL
+    ? `${import.meta.env.VITE_API_URL}/api`
+    : "/api",
   timeout: 15000,
   headers: { "Content-Type": "application/json" },
 });
@@ -28,7 +30,6 @@ api.interceptors.response.use(
       useAuthStore.getState().logout();
       toast.error("انتهت الجلسة، يرجى تسجيل الدخول مجدداً");
 
-      // توجيه حسب الدور السابق
       const isPortalUser = user && ["athlete", "guardian"].includes(user.role);
       const isPortalPath = window.location.pathname.startsWith("/portal");
 
