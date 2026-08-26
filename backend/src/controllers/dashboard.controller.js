@@ -3,13 +3,11 @@ import { query } from "../utils/db.js";
 import { ok, serverError } from "../utils/response.js";
 
 // ── GET /api/dashboard/overview ─────────────────────────────────
-// بطاقات الإحصائيات الرئيسية (نظرة سريعة)
 export const getOverview = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
 
     const [members, subs, revenue, sessions, attendance, staff] = await Promise.all([
-      // الأعضاء
       query(`
         SELECT
           COUNT(*) FILTER (WHERE role='athlete')                                   AS total_athletes,
@@ -17,7 +15,6 @@ export const getOverview = async (req, res) => {
           COUNT(*) FILTER (WHERE role='athlete' AND created_at >= DATE_TRUNC('month', NOW())) AS new_this_month
         FROM users WHERE gym_id=$1 AND is_active=TRUE`, [gymId]),
 
-      // الاشتراكات
       query(`
         SELECT
           COUNT(*) FILTER (WHERE s.status='active' AND s.end_date>=CURRENT_DATE)                                   AS active_count,
@@ -25,7 +22,6 @@ export const getOverview = async (req, res) => {
           COUNT(*) FILTER (WHERE s.status='active' AND s.end_date<CURRENT_DATE)                                     AS overdue_count
         FROM subscriptions s JOIN users u ON u.id=s.athlete_id WHERE u.gym_id=$1`, [gymId]),
 
-      // الإيرادات
       query(`
         SELECT
           COALESCE(SUM(p.amount) FILTER (WHERE p.paid_at >= DATE_TRUNC('month', NOW())), 0) AS this_month,
@@ -37,14 +33,12 @@ export const getOverview = async (req, res) => {
         LEFT JOIN LATERAL (SELECT SUM(amount) AS paid FROM payments WHERE subscription_id=s.id AND status='paid') pay ON TRUE
         WHERE u.gym_id=$1`, [gymId]),
 
-      // الحصص
       query(`
         SELECT
           COUNT(*) FILTER (WHERE session_date=CURRENT_DATE AND is_cancelled=FALSE)                       AS today_count,
           COUNT(*) FILTER (WHERE session_date BETWEEN CURRENT_DATE AND CURRENT_DATE+INTERVAL '7 days' AND is_cancelled=FALSE) AS week_count
         FROM sessions WHERE gym_id=$1`, [gymId]),
 
-      // الحضور (آخر 30 يوم)
       query(`
         SELECT
           COUNT(*) FILTER (WHERE a.status='present') AS present,
@@ -54,7 +48,6 @@ export const getOverview = async (req, res) => {
         JOIN sessions s ON s.id=a.session_id
         WHERE s.gym_id=$1 AND s.session_date >= CURRENT_DATE - INTERVAL '30 days'`, [gymId]),
 
-      // الفريق
       query(`
         SELECT
           COUNT(*) FILTER (WHERE role='coach')     AS coaches,
@@ -86,7 +79,7 @@ export const getRevenueChart = async (req, res) => {
                COALESCE(SUM(p.amount),0) AS value
         FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, INTERVAL '1 day') d(day)
         LEFT JOIN payments p ON p.paid_at::date = d.day AND p.status='paid'
-          AND p.subscription_id IN (SELECT id FROM subscriptions s JOIN users u ON u.id=s.athlete_id WHERE u.gym_id=$1)
+          AND p.subscription_id IN (SELECT s.id FROM subscriptions s JOIN users u ON u.id=s.athlete_id WHERE u.gym_id=$1)
         GROUP BY d.day ORDER BY d.day`, [gymId]);
       rows = r.rows;
     } else if (period === "year") {
@@ -95,7 +88,7 @@ export const getRevenueChart = async (req, res) => {
                COALESCE(SUM(p.amount),0) AS value
         FROM generate_series(DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months', DATE_TRUNC('month', CURRENT_DATE), INTERVAL '1 month') d(month)
         LEFT JOIN payments p ON DATE_TRUNC('month', p.paid_at) = d.month AND p.status='paid'
-          AND p.subscription_id IN (SELECT id FROM subscriptions s JOIN users u ON u.id=s.athlete_id WHERE u.gym_id=$1)
+          AND p.subscription_id IN (SELECT s.id FROM subscriptions s JOIN users u ON u.id=s.athlete_id WHERE u.gym_id=$1)
         GROUP BY d.month ORDER BY d.month`, [gymId]);
       rows = r.rows;
     } else { // month
@@ -104,7 +97,7 @@ export const getRevenueChart = async (req, res) => {
                COALESCE(SUM(p.amount),0) AS value
         FROM generate_series(CURRENT_DATE - INTERVAL '29 days', CURRENT_DATE, INTERVAL '1 day') d(day)
         LEFT JOIN payments p ON p.paid_at::date = d.day AND p.status='paid'
-          AND p.subscription_id IN (SELECT id FROM subscriptions s JOIN users u ON u.id=s.athlete_id WHERE u.gym_id=$1)
+          AND p.subscription_id IN (SELECT s.id FROM subscriptions s JOIN users u ON u.id=s.athlete_id WHERE u.gym_id=$1)
         GROUP BY d.day ORDER BY d.day`, [gymId]);
       rows = r.rows;
     }
@@ -176,7 +169,6 @@ export const getMembersGrowth = async (req, res) => {
 };
 
 // ── GET /api/dashboard/top-coaches ──────────────────────────────
-// أفضل المدربين حسب عدد الحصص والحضور
 export const getTopCoaches = async (req, res) => {
   try {
     const { rows } = await query(`
@@ -197,7 +189,6 @@ export const getTopCoaches = async (req, res) => {
 };
 
 // ── GET /api/dashboard/age-category-distribution ────────────────
-// توزيع الرياضيين حسب الفئة العمرية (للرسم الدائري)
 export const getAgeCategoryDistribution = async (req, res) => {
   try {
     const { rows } = await query(`
@@ -210,7 +201,6 @@ export const getAgeCategoryDistribution = async (req, res) => {
 };
 
 // ── GET /api/dashboard/recent-activity ──────────────────────────
-// آخر الأنشطة (تسجيلات، دفعات، اشتراكات جديدة)
 export const getRecentActivity = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
