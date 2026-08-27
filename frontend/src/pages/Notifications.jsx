@@ -43,8 +43,8 @@ function SendTab() {
   const members = membersData?.data || [];
 
   // جلب كل الأعضاء حسب الدور للإرسال الجماعي
-  const { data: allAthletes }  = useQuery({ queryKey: ["athletes-ids"],  queryFn: () => membersService.getAll({ role: "athlete",  limit: 500 }), enabled: target === "athletes" });
-  const { data: allGuardians } = useQuery({ queryKey: ["guardians-ids"], queryFn: () => membersService.getAll({ role: "guardian", limit: 500 }), enabled: target === "guardians" });
+  const { data: allAthletes }  = useQuery({ queryKey: ["athletes-ids"],  queryFn: () => membersService.getAll({ role: "athlete",  limit: 500 }), enabled: target === "athletes" || target === "all" });
+  const { data: allGuardians } = useQuery({ queryKey: ["guardians-ids"], queryFn: () => membersService.getAll({ role: "guardian", limit: 500 }), enabled: target === "guardians" || target === "all" });
 
   const sendMutation = useMutation({
     mutationFn: (payload) => notificationsService.sendManual(payload),
