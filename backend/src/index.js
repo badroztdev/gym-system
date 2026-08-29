@@ -19,8 +19,17 @@ app.use(compression());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // ── CORS ─────────────────────────────────────────────────────
+// يقبل قائمة نطاقات مفصولة بفواصل في CLIENT_URL، بالإضافة لنطاقات ثابتة معروفة
+const envOrigins = (process.env.CLIENT_URL || "")
+  .split(",")
+  .map(s => s.trim())
+  .filter(Boolean);
+
 const allowedOrigins = [
-  process.env.CLIENT_URL || "http://localhost:3000",
+  ...envOrigins,
+  "https://www.sgms.site",
+  "https://sgms.site",
+  "https://gym-system-two-wheat.vercel.app",
   "http://localhost:3000",
   "http://localhost:3001",
   "http://localhost:3002",
@@ -71,6 +80,5 @@ app.listen(PORT, async () => {
   }
   console.log(`🚀 الخادم يعمل على المنفذ ${PORT} — ${process.env.NODE_ENV}`);
 
-  // تشغيل المهام التلقائية
   startCronJobs();
 });
