@@ -30,22 +30,42 @@ export default function PortalScan() {
   const startCamera = async () => {
     setResult(null);
     setCameraError(false);
+
+    // ✅ الإصلاح: نُظهر عنصر <video> أولاً (setScanning قبل الحصول على الـ stream)
+    // حتى يكون videoRef.current موجوداً فعلياً في الـ DOM عند تعيين srcObject
+    setScanning(true);
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
       streamRef.current = stream;
+
+      // ننتظر لحظة قصيرة لضمان أن React رسم عنصر الفيديو في الـ DOM
+      await new Promise(resolve => requestAnimationFrame(resolve));
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
+        detectLoop();
+      } else {
+        // في حال نادر لم يُرسم العنصر بعد، حاول مرة أخرى بعد فريم إضافي
+        requestAnimationFrame(() => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play();
+            detectLoop();
+          }
+        });
       }
-      setScanning(true);
-      detectLoop();
-    } catch {
+    } catch (err) {
+      console.error("Camera error:", err);
       setCameraError(true);
+      setScanning(false);
     }
   };
 
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
     setScanning(false);
   };
 
@@ -86,21 +106,29 @@ export default function PortalScan() {
         امسح رمز QR الموجود في القاعة لتسجيل حضورك تلقائياً
       </p>
 
-      {/* منطقة الكاميرا */}
+      {/* منطقة الكاميرا — العنصر video موجود دائماً في الـ DOM (مخفياً عند عدم المسح) */}
       <div style={{
         position: "relative", width: "100%", maxWidth: 320, aspectRatio: "1",
         margin: "0 auto 20px", borderRadius: 20, overflow: "hidden",
         background: "var(--card)", border: "1px solid var(--border)",
       }}>
+        <video
+          ref={videoRef}
+          style={{
+            width: "100%", height: "100%", objectFit: "cover",
+            display: scanning ? "block" : "none",
+          }}
+          muted
+          playsInline
+          autoPlay
+        />
+
         {scanning ? (
-          <>
-            <video ref={videoRef} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted playsInline />
-            {/* إطار التوجيه */}
-            <div style={{
-              position: "absolute", inset: "15%", border: "3px solid var(--accent)",
-              borderRadius: 16, boxShadow: "0 0 0 9999px rgba(0,0,0,0.4)",
-            }} />
-          </>
+          <div style={{
+            position: "absolute", inset: "15%", border: "3px solid var(--accent)",
+            borderRadius: 16, boxShadow: "0 0 0 9999px rgba(0,0,0,0.4)",
+            pointerEvents: "none",
+          }} />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 12 }}>
             <div style={{ fontSize: 48 }}>🔲</div>
@@ -143,11 +171,11 @@ export default function PortalScan() {
         </button>
       )}
 
-      {/* بديل: إدخال يدوي إذا الكاميرا غير مدعومة */}
+      {/* بديل: إدخال يدوي إذا الكاميرا غير مدعومة أو BarcodeDetector غير متاح */}
       {cameraError && (
         <div style={{ maxWidth: 320, margin: "0 auto", textAlign: "right" }}>
           <p style={{ fontSize: 12, color: "var(--warning)", marginBottom: 10, textAlign: "center" }}>
-            ⚠️ الكاميرا غير مدعومة على هذا المتصفح. أدخل الرمز يدوياً:
+            ⚠️ تعذّر تشغيل الكاميرا أو مسح QR تلقائياً على هذا المتصفح. أدخل الرمز يدوياً:
           </p>
           <input
             value={manualCode}
