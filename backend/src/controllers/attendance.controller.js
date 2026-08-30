@@ -27,13 +27,15 @@ export const scanQR = async (req, res) => {
     if (!athleteRes.rows.length) return badRequest(res, "الرياضي غير موجود في هذه الصالة");
 
     // 3. الحصة الجارية في هذه القاعة الآن
+    // ✅ الإصلاح: نستخدم توقيت الجزائر صراحة (Africa/Algiers) بدل توقيت خادم قاعدة البيانات الافتراضي (UTC غالباً)
+    // هذا يمنع أخطاء المطابقة قرب منتصف الليل بسبب فارق التوقيت
     const sessionRes = await query(
       `SELECT s.id, s.title
        FROM sessions s
        WHERE s.room_id = $1
-         AND s.session_date = CURRENT_DATE
-         AND s.start_time <= CURRENT_TIME + INTERVAL '30 minutes'
-         AND s.end_time   >= CURRENT_TIME - INTERVAL '30 minutes'
+         AND s.session_date = (NOW() AT TIME ZONE 'Africa/Algiers')::date
+         AND s.start_time <= (NOW() AT TIME ZONE 'Africa/Algiers')::time + INTERVAL '30 minutes'
+         AND s.end_time   >= (NOW() AT TIME ZONE 'Africa/Algiers')::time - INTERVAL '30 minutes'
          AND s.is_cancelled = FALSE
        ORDER BY s.start_time
        LIMIT 1`,
@@ -74,7 +76,6 @@ export const getSessionAttendance = async (req, res) => {
   try {
     const { sessionId } = req.params;
 
-    // تحقق أن الحصة تنتمي لهذه الصالة
     const sessionCheck = await query(
       "SELECT id FROM sessions WHERE id = $1 AND gym_id = $2",
       [sessionId, req.user.gym_id]
@@ -97,7 +98,6 @@ export const getSessionAttendance = async (req, res) => {
 };
 
 // ── POST /api/attendance/manual ────────────────────────────────
-// المدرب يسجّل الحضور/الغياب يدوياً
 export const manualAttendance = async (req, res) => {
   try {
     const { sessionId, athleteId, status, notes } = req.body;
@@ -121,7 +121,6 @@ export const manualAttendance = async (req, res) => {
       [sessionId, athleteId, status, req.user.id, notes || null]
     );
 
-    // إرسال إشعار push لأولياء الأمور عند الغياب أو التأخر
     if (status === "absent" || status === "late") {
       const info = await query(
         `SELECT u.full_name AS athlete_name, s.title AS session_title
@@ -135,7 +134,7 @@ export const manualAttendance = async (req, res) => {
           athleteName:  info.rows[0].athlete_name,
           sessionTitle: info.rows[0].session_title,
           status,
-        }); // لا ننتظرها (fire & forget) حتى لا تبطئ الرد
+        });
       }
     }
 
@@ -173,7 +172,6 @@ export const getAthleteAttendance = async (req, res) => {
       params
     );
 
-    // إحصائيات الحضور
     const stats = rows.reduce((acc, r) => {
       acc[r.status] = (acc[r.status] || 0) + 1;
       return acc;

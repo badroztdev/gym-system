@@ -1,26 +1,22 @@
 // src/controllers/portal.controller.js
-// نقاط نهاية مخصصة لتطبيق الرياضي/ولي الأمر (Portal)
 import { query } from "../utils/db.js";
 import { ok, notFound, badRequest, serverError } from "../utils/response.js";
 
 // ── GET /api/portal/my-athletes ────────────────────────────────
-// يُرجع: قائمة "أبنائي" إذا كان ولي أمر، أو نفسه إذا كان رياضياً
 export const getMyAthletes = async (req, res) => {
   try {
     const user = req.user;
 
-     if (user.role === "athlete") {
-  const { rows } = await query(
-    `SELECT id, full_name, phone, avatar_url, age_category, rank, blood_group, weight_kg
-     FROM users WHERE id = $1`,
-    [user.id]
-  );
-  return ok(res, rows);
+    if (user.role === "athlete") {
+      return ok(res, [{
+        id: user.id, full_name: user.full_name, phone: user.phone,
+        avatar_url: user.avatar_url, age_category: user.age_category,
+      }]);
     }
 
     if (user.role === "guardian") {
       const { rows } = await query(
-        `SELECT u.id, u.full_name, u.phone, u.avatar_url, u.age_category, u.rank, u.blood_group, u.weight_kg
+        `SELECT u.id, u.full_name, u.phone, u.avatar_url, u.age_category, u.rank
          FROM guardian_athlete ga
          JOIN users u ON u.id = ga.athlete_id
          WHERE ga.guardian_id = $1 AND u.is_active = TRUE
@@ -34,7 +30,6 @@ export const getMyAthletes = async (req, res) => {
   } catch (err) { serverError(res, err); }
 };
 
-// ── دالة مساعدة: التحقق من صلاحية الوصول لرياضي معيّن ────────
 async function canAccessAthlete(user, athleteId) {
   if (user.role === "athlete") return user.id === athleteId;
   if (user.role === "guardian") {
@@ -48,14 +43,12 @@ async function canAccessAthlete(user, athleteId) {
 }
 
 // ── GET /api/portal/dashboard/:athleteId ───────────────────────
-// لوحة رئيسية: جدول اليوم + الاشتراك الحالي + آخر الإشعارات
 export const getDashboard = async (req, res) => {
   try {
     const { athleteId } = req.params;
     if (!(await canAccessAthlete(req.user, athleteId)))
       return badRequest(res, "ليس لديك صلاحية الوصول لهذا الرياضي");
 
-    // معلومات الرياضي
     const athleteRes = await query(
       `SELECT id, full_name, phone, avatar_url, age_category, rank,
               weight_kg, blood_group, date_of_birth, gym_id
@@ -65,7 +58,6 @@ export const getDashboard = async (req, res) => {
     if (!athleteRes.rows.length) return notFound(res, "الرياضي غير موجود");
     const athlete = athleteRes.rows[0];
 
-    // الاشتراك الحالي
     const subRes = await query(
       `SELECT s.id, s.start_date, s.end_date, s.status, s.sessions_remaining,
               sp.name AS plan_name, sp.sessions_limit, s.price,
@@ -77,7 +69,7 @@ export const getDashboard = async (req, res) => {
       [athleteId]
     );
 
-    // حصص اليوم (المسجَّل فيها أو حسب فئته العمرية)
+    // ✅ إصلاح: استخدام توقيت الجزائر بدل توقيت الخادم الافتراضي
     const todaySessionsRes = await query(
       `SELECT s.id, s.title, s.start_time, s.end_time,
               r.name AS room_name, u.full_name AS coach_name,
@@ -87,14 +79,14 @@ export const getDashboard = async (req, res) => {
        JOIN users u ON u.id = s.coach_id
        LEFT JOIN rooms r ON r.id = s.room_id
        LEFT JOIN sport_categories c ON c.id = s.category_id
-       WHERE s.gym_id = $1 AND s.session_date = CURRENT_DATE
+       WHERE s.gym_id = $1
+         AND s.session_date = (NOW() AT TIME ZONE 'Africa/Algiers')::date
          AND s.is_cancelled = FALSE
          AND (s.age_category IS NULL OR s.age_category = $3)
        ORDER BY s.start_time`,
       [athlete.gym_id, athleteId, athlete.age_category]
     );
 
-    // إحصائيات الحضور هذا الشهر
     const attStatsRes = await query(
       `SELECT
          COUNT(*) FILTER (WHERE a.status='present') AS present,
@@ -102,11 +94,10 @@ export const getDashboard = async (req, res) => {
          COUNT(*) FILTER (WHERE a.status='late')     AS late
        FROM attendance a
        JOIN sessions s ON s.id = a.session_id
-       WHERE a.athlete_id = $1 AND s.session_date >= DATE_TRUNC('month', CURRENT_DATE)`,
+       WHERE a.athlete_id = $1 AND s.session_date >= DATE_TRUNC('month', (NOW() AT TIME ZONE 'Africa/Algiers')::date)`,
       [athleteId]
     );
 
-    // آخر 5 إشعارات
     const notifRes = await query(
       `SELECT id, title, body, type, is_read, sent_at
        FROM notifications WHERE user_id = $1
@@ -125,7 +116,6 @@ export const getDashboard = async (req, res) => {
 };
 
 // ── GET /api/portal/schedule/:athleteId ────────────────────────
-// الجدول الأسبوعي حسب الفئة العمرية للرياضي
 export const getSchedule = async (req, res) => {
   try {
     const { athleteId } = req.params;
@@ -202,7 +192,6 @@ export const getSubscriptionHistory = async (req, res) => {
 };
 
 // ── POST /api/portal/scan ───────────────────────────────────────
-// نفس منطق attendance/scan لكن مخصص بالـ portal مع تحقق صلاحية إضافي
 export const scanAttendance = async (req, res) => {
   try {
     const { qrCode, athleteId } = req.body;
@@ -217,11 +206,13 @@ export const scanAttendance = async (req, res) => {
     if (!roomRes.rows.length) return badRequest(res, "رمز QR غير صالح");
     const room = roomRes.rows[0];
 
+    // ✅ إصلاح: استخدام توقيت الجزائر صراحة بدل توقيت خادم قاعدة البيانات
     const sessionRes = await query(
       `SELECT id, title FROM sessions
-       WHERE room_id = $1 AND session_date = CURRENT_DATE
-         AND start_time <= CURRENT_TIME + INTERVAL '30 minutes'
-         AND end_time   >= CURRENT_TIME - INTERVAL '30 minutes'
+       WHERE room_id = $1
+         AND session_date = (NOW() AT TIME ZONE 'Africa/Algiers')::date
+         AND start_time <= (NOW() AT TIME ZONE 'Africa/Algiers')::time + INTERVAL '30 minutes'
+         AND end_time   >= (NOW() AT TIME ZONE 'Africa/Algiers')::time - INTERVAL '30 minutes'
          AND is_cancelled = FALSE
        ORDER BY start_time LIMIT 1`,
       [room.id]
