@@ -1,5 +1,5 @@
 // src/pages/Subscriptions.jsx
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { subscriptionsService } from "@/services/subscriptions.service";
 import { plansService } from "@/services/plans.service";
@@ -23,6 +23,16 @@ const METHOD_LABELS = {
   cash: "نقدي", card: "بطاقة", bank_transfer: "تحويل بنكي", online: "عبر الإنترنت",
 };
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 768 : false);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  return isMobile;
+}
+
 // ════════════════════════════════════════════════════════════
 //  Tab 1 — الاشتراكات
 // ════════════════════════════════════════════════════════════
@@ -45,6 +55,7 @@ function paymentStatusInfo(s) {
 }
 
 function StatsRow() {
+  const isMobile = useIsMobile();
   const { data } = useQuery({ queryKey: ["subscriptions-stats"], queryFn: subscriptionsService.getStats });
   const s = data?.data || {};
   const cards = [
@@ -54,13 +65,13 @@ function StatsRow() {
     { label: "مستحقات معلّقة", value: s.total_due,      color: "var(--danger)",  suffix: " دج" },
   ];
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 10 : 12, marginBottom: isMobile ? 14 : 20 }}>
       {cards.map((c, i) => (
         <div key={i} className={`fade-up d-${i + 1}`} style={{
           background: "var(--card)", border: "1px solid var(--border)",
-          borderRadius: "var(--radius)", padding: "16px 20px",
+          borderRadius: "var(--radius)", padding: isMobile ? "12px 14px" : "16px 20px",
         }}>
-          <div className="mono" style={{ fontSize: 22, fontWeight: 700, color: c.color }}>
+          <div className="mono" style={{ fontSize: isMobile ? 16 : 22, fontWeight: 700, color: c.color, overflowWrap: "break-word" }}>
             {s.active_count === undefined ? "—" : `${Number(c.value ?? 0).toLocaleString()}${c.suffix || ""}`}
           </div>
           <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{c.label}</div>
@@ -72,6 +83,7 @@ function StatsRow() {
 
 function SubscriptionsTab() {
   const qc = useQueryClient();
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("");
@@ -116,7 +128,7 @@ function SubscriptionsTab() {
 
       {/* فلاتر */}
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-        <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
+        <div style={{ position: "relative", flex: 1, minWidth: isMobile ? "100%" : 200 }}>
           <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", fontSize: 14 }}>🔍</span>
           <input
             placeholder="بحث بالاسم أو رقم الهاتف..."
@@ -144,6 +156,59 @@ function SubscriptionsTab() {
           <div style={{ display: "flex", justifyContent: "center", padding: 48 }}><Spinner size={32} /></div>
         ) : subs.length === 0 ? (
           <Empty icon="🎫" title="لا توجد اشتراكات" description="أضف أول اشتراك للبدء" />
+        ) : isMobile ? (
+          /* ── عرض بطاقات للهاتف ─────────────────────────── */
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 12 }}>
+            {subs.map(s => {
+              const st = subStatusInfo(s);
+              const pay = paymentStatusInfo(s);
+              return (
+                <div key={s.id} className="fade-in" style={{
+                  background: "var(--surface)", border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-sm)", padding: 14,
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{s.athlete_name}</div>
+                      <div className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>{s.athlete_phone}</div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
+                      <Badge label={st.label} type={st.type} />
+                      <Badge label={pay.label} type={pay.type} />
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: 12, color: "var(--muted-lt)", marginBottom: 8 }}>{s.plan_name}</div>
+
+                  <div className="mono" style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10 }}>
+                    {s.start_date?.slice(0,10)} → {s.end_date?.slice(0,10)}
+                  </div>
+
+                  <div style={{ display: "flex", gap: 14, marginBottom: 10, fontSize: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 10, color: "var(--muted)" }}>السعر</div>
+                      <div className="mono" style={{ color: "var(--text)" }}>{Number(s.price).toFixed(0)}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: "var(--muted)" }}>مدفوع</div>
+                      <div className="mono" style={{ color: "var(--accent)" }}>{Number(s.total_paid).toFixed(0)}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: "var(--muted)" }}>متبقي</div>
+                      <div className="mono" style={{ color: Number(s.remaining) > 0 ? "var(--warning)" : "var(--muted)" }}>{Number(s.remaining).toFixed(0)}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 6, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+                    <Button variant="secondary" size="sm" onClick={() => setDetailId(s.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent2)" }}>تفاصيل</Button>
+                    {Number(s.remaining) > 0 && s.status === "active" && (
+                      <Button variant="secondary" size="sm" onClick={() => setPaymentSub(s)} style={{ flex: 1, justifyContent: "center", color: "var(--accent)" }}>دفعة</Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", direction: "rtl" }}>
@@ -213,9 +278,9 @@ function SubscriptionsTab() {
       </div>
 
       {/* زر اشتراك جديد عائم في PageHeader عبر context — هنا نضيفه كزر إضافي */}
-      <div style={{ position: "fixed", bottom: 150, left: 30, zIndex: 5 }}>
-        <Button onClick={() => setShowForm(true)} style={{ boxShadow: "var(--shadow)", padding: "12px 22px" }} icon="+">
-          اشتراك جديد
+      <div style={{ position: "fixed", bottom: isMobile ? 90 : 150, left: isMobile ? 16 : 30, zIndex: 5 }}>
+        <Button onClick={() => setShowForm(true)} style={{ boxShadow: "var(--shadow)", padding: isMobile ? "10px 16px" : "12px 22px" }} icon="+">
+          {isMobile ? "" : "اشتراك جديد"}
         </Button>
       </div>
 
@@ -246,6 +311,7 @@ function PlansTab() {
   const qc = useQueryClient();
   const { user } = useAuthStore();
   const isOwner = user?.role === "owner";
+  const isMobile = useIsMobile();
 
   const [showForm, setShowForm] = useState(false);
   const [editPlan, setEditPlan] = useState(null);
@@ -277,7 +343,7 @@ function PlansTab() {
       ) : plans.length === 0 ? (
         <Empty icon="📋" title="لا توجد خطط" description="أنشئ أول خطة اشتراك" />
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
           {plans.map(p => (
             <div key={p.id} className="fade-in" style={{
               background: "var(--card)", border: "1px solid var(--border)",
@@ -352,6 +418,7 @@ function PlansTab() {
 // ════════════════════════════════════════════════════════════
 
 function PaymentsTab() {
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [method, setMethod] = useState("");
   const [page, setPage] = useState(1);
@@ -378,14 +445,14 @@ function PaymentsTab() {
   return (
     <>
       {/* إحصائيات سريعة */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12, marginBottom: isMobile ? 14 : 20 }}>
         {[
           { label: "إيرادات اليوم", value: stats.today, color: "var(--accent)" },
           { label: "إيرادات الأسبوع", value: stats.this_week, color: "var(--accent2)" },
           { label: "إيرادات الشهر", value: stats.this_month, color: "var(--accent3)" },
         ].map((c, i) => (
-          <div key={i} className={`fade-up d-${i + 1}`} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "16px 20px" }}>
-            <div className="mono" style={{ fontSize: 22, fontWeight: 700, color: c.color }}>
+          <div key={i} className={`fade-up d-${i + 1}`} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? "12px 14px" : "16px 20px" }}>
+            <div className="mono" style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: c.color }}>
               {stats.today === undefined ? "—" : `${Number(c.value ?? 0).toLocaleString()} دج`}
             </div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{c.label}</div>
@@ -395,7 +462,7 @@ function PaymentsTab() {
 
       {/* فلاتر */}
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-        <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
+        <div style={{ position: "relative", flex: 1, minWidth: isMobile ? "100%" : 200 }}>
           <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", fontSize: 14 }}>🔍</span>
           <input
             placeholder="بحث بالاسم أو رقم الهاتف..."
@@ -420,6 +487,32 @@ function PaymentsTab() {
           <div style={{ display: "flex", justifyContent: "center", padding: 48 }}><Spinner size={32} /></div>
         ) : payments.length === 0 ? (
           <Empty icon="💳" title="لا توجد مدفوعات" />
+        ) : isMobile ? (
+          /* ── عرض بطاقات للهاتف ─────────────────────────── */
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 12 }}>
+            {payments.map(p => (
+              <div key={p.id} className="fade-in" style={{
+                background: "var(--surface)", border: "1px solid var(--border)",
+                borderRadius: "var(--radius-sm)", padding: 14,
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{p.athlete_name}</div>
+                    <div className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>{p.athlete_phone}</div>
+                  </div>
+                  <span className="mono" style={{ fontSize: 14, fontWeight: 700, color: "var(--accent)" }}>+{Number(p.amount).toFixed(0)} دج</span>
+                </div>
+                <div style={{ fontSize: 12, color: "var(--muted-lt)", marginBottom: 8 }}>{p.plan_name}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                  <Badge label={METHOD_LABELS[p.method] || p.method} type="athlete" />
+                  <div style={{ textAlign: "left" }}>
+                    <div className="mono" style={{ fontSize: 11, color: "var(--muted-lt)" }}>{(p.paid_at || p.created_at)?.slice(0,10)}</div>
+                    <div style={{ fontSize: 10, color: "var(--muted)" }}>{p.recorded_by_name || "—"}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", direction: "rtl" }}>
@@ -487,27 +580,28 @@ const optionStyle = { background: "var(--card)", color: "var(--text)" };
 
 export default function SubscriptionsPage() {
   const [tab, setTab] = useState("subscriptions");
+  const isMobile = useIsMobile();
 
   return (
     <>
-      <PageHeader title="الاشتراكات والمدفوعات" subtitle="إدارة الخطط والاشتراكات والمدفوعات">
-        <div style={{ display: "flex", gap: 4, background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: 4 }}>
+      <PageHeader title="الاشتراكات والمدفوعات" subtitle={isMobile ? "" : "إدارة الخطط والاشتراكات والمدفوعات"}>
+        <div style={{ display: "flex", gap: 4, background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: 4, flexWrap: "wrap" }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
-              padding: "7px 16px", fontSize: 12, fontWeight: 600,
+              padding: isMobile ? "7px 10px" : "7px 16px", fontSize: 12, fontWeight: 600,
               borderRadius: "var(--radius-sm)", border: "none",
               background: tab === t.id ? "var(--accent)" : "transparent",
               color: tab === t.id ? "#0d0f14" : "var(--muted)",
               cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
               fontFamily: "'Sora', sans-serif", transition: "all 0.15s",
             }}>
-              <span>{t.icon}</span>{t.label}
+              <span>{t.icon}</span>{!isMobile && t.label}
             </button>
           ))}
         </div>
       </PageHeader>
 
-      <main style={{ padding: "24px 28px", flex: 1 }}>
+      <main style={{ padding: isMobile ? "14px 12px" : "24px 28px", flex: 1 }}>
         {tab === "subscriptions" && <SubscriptionsTab />}
         {tab === "plans" && <PlansTab />}
         {tab === "payments" && <PaymentsTab />}

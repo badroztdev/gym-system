@@ -1,5 +1,5 @@
 // src/pages/Members.jsx
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { membersService } from "@/services/members.service";
 import { useAuthStore } from "@/store/authStore";
@@ -7,6 +7,16 @@ import PageHeader from "@/components/layout/PageHeader";
 import MemberForm from "@/components/members/MemberForm";
 import { Button, Badge, Spinner, Empty, Confirm, Modal } from "@/components/ui";
 import toast from "react-hot-toast";
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 768 : false);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  return isMobile;
+}
 
 // ── Status helpers ────────────────────────────────────────────
 const subStatus = (member) => {
@@ -19,6 +29,7 @@ const subStatus = (member) => {
 
 // ── Stat cards row ────────────────────────────────────────────
 function StatsRow() {
+  const isMobile = useIsMobile();
   const { data } = useQuery({ queryKey: ["members-stats"], queryFn: membersService.getStats });
   const stats = data?.data || {};
   const cards = [
@@ -28,13 +39,13 @@ function StatsRow() {
     { label: "جدد هذا الشهر",    value: stats.new_this_month, color: "var(--accent3)" },
   ];
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 10 : 12, marginBottom: isMobile ? 14 : 20 }}>
       {cards.map((c, i) => (
         <div key={i} className={`fade-up d-${i + 1}`} style={{
           background: "var(--card)", border: "1px solid var(--border)",
-          borderRadius: "var(--radius)", padding: "16px 20px",
+          borderRadius: "var(--radius)", padding: isMobile ? "12px 14px" : "16px 20px",
         }}>
-          <div style={{ fontSize: 24, fontWeight: 700, color: c.color, fontFamily: "'JetBrains Mono', monospace" }}>
+          <div style={{ fontSize: isMobile ? 18 : 24, fontWeight: 700, color: c.color, fontFamily: "'JetBrains Mono', monospace" }}>
             {stats.total === undefined ? "—" : (c.value ?? 0)}
           </div>
           <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{c.label}</div>
@@ -46,6 +57,7 @@ function StatsRow() {
 
 // ── Filters bar ───────────────────────────────────────────────
 function FiltersBar({ search, status, ageCategory, showInactive, onSearch, onStatus, onAgeCategory, onToggleInactive }) {
+  const isMobile = useIsMobile();
   const statuses = [
     { value: "",         label: "الكل" },
     { value: "active",   label: "نشط" },
@@ -56,7 +68,7 @@ function FiltersBar({ search, status, ageCategory, showInactive, onSearch, onSta
 
   return (
     <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-      <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
+      <div style={{ position: "relative", flex: 1, minWidth: isMobile ? "100%" : 200 }}>
         <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", fontSize: 14 }}>🔍</span>
         <input
           placeholder="بحث بالاسم أو رقم الهاتف..."
@@ -119,6 +131,7 @@ export default function MembersPage() {
   const qc = useQueryClient();
   const { user } = useAuthStore();
   const isOwner = user?.role === "owner";
+  const isMobile = useIsMobile();
 
   const [search,  setSearch]  = useState("");
   const [status,  setStatus]  = useState("");
@@ -192,7 +205,7 @@ export default function MembersPage() {
         }
       />
 
-      <main style={{ padding: "24px 28px", flex: 1 }}>
+      <main style={{ padding: isMobile ? "14px 12px" : "24px 28px", flex: 1 }}>
         <StatsRow />
         <FiltersBar search={search} status={status} ageCategory={ageCategory} showInactive={showInactive} onSearch={handleSearch} onStatus={handleStatus} onAgeCategory={handleAgeCategory} onToggleInactive={handleToggleInactive} />
 
@@ -204,6 +217,66 @@ export default function MembersPage() {
             </div>
           ) : members.length === 0 ? (
             <Empty icon="👥" title="لا يوجد أعضاء" description="أضف أول عضو للبدء" />
+          ) : isMobile ? (
+            /* ── عرض بطاقات للهاتف ─────────────────────────── */
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 12 }}>
+              {members.map(m => {
+                const s = subStatus(m);
+                const roleMap = { athlete: "رياضي", guardian: "ولي أمر" };
+                return (
+                  <div key={m.id} className="fade-in" style={{
+                    background: "var(--surface)", border: "1px solid var(--border)",
+                    borderRadius: "var(--radius-sm)", padding: 14,
+                    opacity: m.is_active ? 1 : 0.5,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+                        background: s.type === "active" ? "var(--accent)20" : s.type === "expiring" ? "var(--warning)20" : "var(--border)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 14, fontWeight: 700,
+                        color: s.type === "active" ? "var(--accent)" : s.type === "expiring" ? "var(--warning)" : "var(--muted)",
+                      }}>{m.full_name[0]}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.full_name}</div>
+                        <div className="mono" style={{ fontSize: 11, color: "var(--muted-lt)" }}>{m.phone}</div>
+                      </div>
+                      {m.is_active
+                        ? <Badge label="نشط" type="active" />
+                        : <Badge label="معطّل" type="expired" />}
+                    </div>
+
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                      <Badge label={roleMap[m.role] || m.role} type={m.role} />
+                      {m.age_category && <Badge label={m.age_category} type="athlete" />}
+                      {m.group_name && <Badge label={m.group_name} type="guardian" />}
+                      <Badge label={s.label} type={s.type} />
+                    </div>
+
+                    {(m.rank || m.weight_kg || m.blood_group) && (
+                      <div style={{ display: "flex", gap: 14, marginBottom: 10, fontSize: 11, color: "var(--muted-lt)" }}>
+                        {m.rank && <span>🏅 {m.rank}</span>}
+                        {m.weight_kg && <span className="mono">{m.weight_kg} كغ</span>}
+                        {m.blood_group && <span style={{ color: "var(--danger)", fontWeight: 700 }} className="mono">{m.blood_group}</span>}
+                      </div>
+                    )}
+
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+                      <Button variant="secondary" size="sm" onClick={() => openEdit(m)} style={{ flex: 1, justifyContent: "center", color: "var(--accent2)" }}>تعديل</Button>
+                      {isOwner && (
+                        <Button variant="secondary" size="sm" onClick={() => { setResetId(m.id); setCustomPass(""); setResetModal(true); }} style={{ color: "var(--accent3)" }}>🔑</Button>
+                      )}
+                      {isOwner && m.is_active && (
+                        <Button variant="secondary" size="sm" onClick={() => setDeleteId(m.id)} style={{ color: "var(--danger)" }}>حذف</Button>
+                      )}
+                      {isOwner && !m.is_active && (
+                        <Button variant="secondary" size="sm" onClick={() => reactivateMutation.mutate(m.id)} style={{ color: "var(--accent)" }}>تفعيل</Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", direction: "rtl" }}>
