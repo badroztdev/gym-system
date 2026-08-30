@@ -1,5 +1,5 @@
 // src/pages/Dashboard.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -18,11 +18,11 @@ const PERIODS = [
 const PIE_COLORS = ["#6ee7b7","#818cf8","#fb923c","#f87171","#fbbf24","#0ea5e9","#a78bfa"];
 
 // ══ بطاقة إحصائية ═════════════════════════════════════════════
-function StatCard({ icon, label, value, sub, color, delay }) {
+function StatCard({ icon, label, value, sub, color, delay, isMobile }) {
   return (
     <div className={`fade-up d-${delay}`} style={{
       background: "var(--card)", border: "1px solid var(--border)",
-      borderRadius: "var(--radius)", padding: "18px 20px",
+      borderRadius: "var(--radius)", padding: "14px 16px",
       position: "relative", overflow: "hidden",
     }}>
       <div style={{ position: "absolute", top: -24, left: -24, width: 80, height: 80, borderRadius: "50%", background: color + "12" }} />
@@ -32,7 +32,7 @@ function StatCard({ icon, label, value, sub, color, delay }) {
           display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17,
         }}>{icon}</div>
       </div>
-      <div className="mono" style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>{value}</div>
+      <div className="mono" style={{ fontSize: isMobile ? 18 : 24, fontWeight: 700, color: "var(--text)", overflowWrap: "break-word" }}>{value}</div>
       <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{label}</div>
       {sub && <div style={{ fontSize: 11, color, marginTop: 4, fontWeight: 600 }}>{sub}</div>}
     </div>
@@ -60,6 +60,13 @@ export default function DashboardPage() {
   const [revenuePeriod, setRevenuePeriod]     = useState("week");
   const [attendancePeriod, setAttendancePeriod] = useState("week");
   const [growthPeriod, setGrowthPeriod]       = useState("month");
+
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 768 : false);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
 
   const { data: overviewData, isLoading: loadingOverview } = useQuery({
     queryKey: ["dashboard-overview"], queryFn: dashboardService.getOverview,
@@ -111,26 +118,26 @@ export default function DashboardPage() {
     <>
       <PageHeader title="لوحة التحكم" subtitle="نظرة شاملة على أداء الصالة" />
 
-      <main style={{ padding: "24px 28px", flex: 1 }}>
+      <main style={{ padding: isMobile ? "14px 12px" : "24px 28px", flex: 1 }}>
 
         {/* ══ الصف 1 — الأعضاء والاشتراكات ══ */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 14 }} className="stats-grid">
-          <StatCard icon="👥" label="إجمالي الرياضيين" value={o.members?.total_athletes || 0} sub={`+${o.members?.new_this_month || 0} هذا الشهر`} color="var(--accent2)" delay={1} />
-          <StatCard icon="🎫" label="اشتراكات نشطة" value={o.subscriptions?.active_count || 0} sub={`${o.subscriptions?.expiring_count || 0} تنتهي قريباً`} color="var(--accent)" delay={2} />
-          <StatCard icon="💰" label="إيرادات الشهر" value={`${Number(o.revenue?.this_month || 0).toLocaleString()} دج`} sub={`اليوم: ${Number(o.revenue?.today || 0).toLocaleString()} دج`} color="var(--accent3)" delay={3} />
-          <StatCard icon="⚠️" label="مستحقات معلّقة" value={`${Number(o.revenue?.total_due || 0).toLocaleString()} دج`} sub={`${o.subscriptions?.overdue_count || 0} اشتراك متأخر`} color="var(--danger)" delay={4} />
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 10 : 14, marginBottom: isMobile ? 10 : 14 }} className="stats-grid">
+          <StatCard icon="👥" label="إجمالي الرياضيين" value={o.members?.total_athletes || 0} sub={`+${o.members?.new_this_month || 0} هذا الشهر`} color="var(--accent2)" delay={1} isMobile={isMobile} />
+          <StatCard icon="🎫" label="اشتراكات نشطة" value={o.subscriptions?.active_count || 0} sub={`${o.subscriptions?.expiring_count || 0} تنتهي قريباً`} color="var(--accent)" delay={2} isMobile={isMobile} />
+          <StatCard icon="💰" label="إيرادات الشهر" value={`${Number(o.revenue?.this_month || 0).toLocaleString()} دج`} sub={`اليوم: ${Number(o.revenue?.today || 0).toLocaleString()} دج`} color="var(--accent3)" delay={3} isMobile={isMobile} />
+          <StatCard icon="⚠️" label="مستحقات معلّقة" value={`${Number(o.revenue?.total_due || 0).toLocaleString()} دج`} sub={`${o.subscriptions?.overdue_count || 0} اشتراك متأخر`} color="var(--danger)" delay={4} isMobile={isMobile} />
         </div>
 
         {/* ══ الصف 2 — الحصص والحضور والفريق ══ */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }} className="stats-grid">
-          <StatCard icon="📅" label="حصص اليوم" value={o.sessions?.today_count || 0} sub={`${o.sessions?.week_count || 0} هذا الأسبوع`} color="var(--accent2)" delay={1} />
-          <StatCard icon="✅" label="حضور (30 يوم)" value={o.attendance?.present || 0} sub={`${o.attendance?.absent || 0} غياب`} color="var(--accent)" delay={2} />
-          <StatCard icon="⏰" label="تأخير (30 يوم)" value={o.attendance?.late || 0} color="var(--warning)" delay={3} />
-          <StatCard icon="🧑‍🏫" label="الفريق" value={(Number(o.staff?.coaches||0) + Number(o.staff?.assistants||0))} sub={`${o.staff?.coaches || 0} مدرب، ${o.staff?.assistants || 0} مساعد`} color="var(--accent3)" delay={4} />
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 10 : 14, marginBottom: isMobile ? 18 : 24 }} className="stats-grid">
+          <StatCard icon="📅" label="حصص اليوم" value={o.sessions?.today_count || 0} sub={`${o.sessions?.week_count || 0} هذا الأسبوع`} color="var(--accent2)" delay={1} isMobile={isMobile} />
+          <StatCard icon="✅" label="حضور (30 يوم)" value={o.attendance?.present || 0} sub={`${o.attendance?.absent || 0} غياب`} color="var(--accent)" delay={2} isMobile={isMobile} />
+          <StatCard icon="⏰" label="تأخير (30 يوم)" value={o.attendance?.late || 0} color="var(--warning)" delay={3} isMobile={isMobile} />
+          <StatCard icon="🧑‍🏫" label="الفريق" value={(Number(o.staff?.coaches||0) + Number(o.staff?.assistants||0))} sub={`${o.staff?.coaches || 0} مدرب، ${o.staff?.assistants || 0} مساعد`} color="var(--accent3)" delay={4} isMobile={isMobile} />
         </div>
 
         {/* ══ رسم الإيرادات ══ */}
-        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 20, marginBottom: 16 }}>
+        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? 14 : 20, marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>💰 الإيرادات</div>
             <PeriodSelector value={revenuePeriod} onChange={setRevenuePeriod} />
@@ -147,7 +154,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ══ رسم الحضور ══ */}
-        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 20, marginBottom: 16 }}>
+        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? 14 : 20, marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>✅ الحضور والغياب</div>
             <PeriodSelector value={attendancePeriod} onChange={setAttendancePeriod} />
@@ -167,10 +174,10 @@ export default function DashboardPage() {
         </div>
 
         {/* ══ صف: نمو الأعضاء + توزيع الفئات ══ */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 16, marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.5fr 1fr", gap: 16, marginBottom: 16 }}>
 
           {/* نمو الأعضاء */}
-          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 20 }}>
+          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? 14 : 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>📈 نمو الأعضاء الجدد</div>
               <PeriodSelector value={growthPeriod} onChange={setGrowthPeriod} />
@@ -187,7 +194,7 @@ export default function DashboardPage() {
           </div>
 
           {/* توزيع الفئات العمرية */}
-          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 20 }}>
+          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? 14 : 20 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 16 }}>🏷️ توزيع الفئات العمرية</div>
             {ageDist.length === 0 ? (
               <div style={{ textAlign: "center", padding: 40, color: "var(--muted)", fontSize: 12 }}>لا توجد بيانات</div>
@@ -206,10 +213,10 @@ export default function DashboardPage() {
         </div>
 
         {/* ══ صف: أفضل المدربين + آخر الأنشطة ══ */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
 
           {/* أفضل المدربين */}
-          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 20 }}>
+          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? 14 : 20 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 14 }}>🏆 أفضل المدربين (30 يوم)</div>
             {topCoaches.length === 0 ? (
               <div style={{ textAlign: "center", padding: 24, color: "var(--muted)", fontSize: 12 }}>لا توجد بيانات كافية</div>
@@ -237,7 +244,7 @@ export default function DashboardPage() {
           </div>
 
           {/* آخر الأنشطة */}
-          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 20 }}>
+          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? 14 : 20 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 14 }}>🕐 آخر الأنشطة</div>
             {activity.length === 0 ? (
               <div style={{ textAlign: "center", padding: 24, color: "var(--muted)", fontSize: 12 }}>لا توجد أنشطة حديثة</div>
