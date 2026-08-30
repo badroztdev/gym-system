@@ -4,14 +4,12 @@ import { ok, created, notFound, badRequest, serverError } from "../utils/respons
 import { notifyAbsence } from "./notifications.controller.js";
 
 // ── POST /api/attendance/scan ──────────────────────────────────
-// الرياضي يمسح QR القاعة → يُسجَّل حضوره في الحصة الجارية
 export const scanQR = async (req, res) => {
   try {
     const { qrCode, athleteId } = req.body;
     if (!qrCode)    return badRequest(res, "رمز QR مطلوب");
     if (!athleteId) return badRequest(res, "معرّف الرياضي مطلوب");
 
-    // 1. تحقق من القاعة
     const roomRes = await query(
       "SELECT id, gym_id, name FROM rooms WHERE qr_code = $1 AND is_active = TRUE",
       [qrCode]
@@ -19,16 +17,12 @@ export const scanQR = async (req, res) => {
     if (!roomRes.rows.length) return badRequest(res, "رمز QR غير صالح أو القاعة معطّلة");
     const room = roomRes.rows[0];
 
-    // 2. تحقق من الرياضي
     const athleteRes = await query(
       "SELECT id, full_name FROM users WHERE id = $1 AND gym_id = $2 AND is_active = TRUE",
       [athleteId, room.gym_id]
     );
     if (!athleteRes.rows.length) return badRequest(res, "الرياضي غير موجود في هذه الصالة");
 
-    // 3. الحصة الجارية في هذه القاعة الآن
-    // ✅ الإصلاح: نستخدم توقيت الجزائر صراحة (Africa/Algiers) بدل توقيت خادم قاعدة البيانات الافتراضي (UTC غالباً)
-    // هذا يمنع أخطاء المطابقة قرب منتصف الليل بسبب فارق التوقيت
     const sessionRes = await query(
       `SELECT s.id, s.title
        FROM sessions s
@@ -47,7 +41,6 @@ export const scanQR = async (req, res) => {
     }
     const session = sessionRes.rows[0];
 
-    // 4. تسجيل الحضور (أو تحديثه)
     const { rows } = await query(
       `INSERT INTO attendance (session_id, athlete_id, status, scanned_at, room_id, scan_method)
        VALUES ($1, $2, 'present', NOW(), $3, 'qr_room')
@@ -72,27 +65,50 @@ export const scanQR = async (req, res) => {
 };
 
 // ── GET /api/attendance/session/:sessionId ─────────────────────
+// ✅ الإصلاح الجوهري: نعرض كل الرياضيين المؤهلين للحصة (حسب فئتها العمرية)
+// حتى لو لم يُسجَّل حضورهم بعد — بدل الاعتماد فقط على سجلات attendance الموجودة
 export const getSessionAttendance = async (req, res) => {
   try {
     const { sessionId } = req.params;
 
     const sessionCheck = await query(
-      "SELECT id FROM sessions WHERE id = $1 AND gym_id = $2",
+      "SELECT id, gym_id, age_category FROM sessions WHERE id = $1 AND gym_id = $2",
       [sessionId, req.user.gym_id]
     );
     if (!sessionCheck.rows.length) return notFound(res, "الحصة غير موجودة");
+    const session = sessionCheck.rows[0];
+
+    // كل الرياضيين النشطين المؤهلين لهذه الحصة (بنفس فئتها العمرية، أو الجميع إذا لم تُحدَّد فئة)
+    // مع حالة حضورهم إن وُجدت (LEFT JOIN)، وافتراضياً 'لم يُسجَّل بعد' إن لم توجد
+    const conditions = ["u.gym_id = $1", "u.role = 'athlete'", "u.is_active = TRUE"];
+    const params = [session.gym_id];
+    let p = 2;
+
+    if (session.age_category) {
+      conditions.push(`u.age_category = $${p}`);
+      params.push(session.age_category);
+      p++;
+    }
+
+    params.push(sessionId); // آخر معامل لربط attendance بالحصة الحالية تحديداً
 
     const { rows } = await query(
       `SELECT
-         a.id, a.status, a.scanned_at, a.scan_method,
          u.id AS athlete_id, u.full_name AS athlete_name,
-         u.phone AS athlete_phone, u.age_category
-       FROM attendance a
-       JOIN users u ON u.id = a.athlete_id
-       WHERE a.session_id = $1
-       ORDER BY a.status DESC, u.full_name`,
-      [sessionId]
+         u.phone AS athlete_phone, u.age_category,
+         a.id AS attendance_id, a.status, a.scanned_at, a.scan_method
+       FROM users u
+       LEFT JOIN attendance a ON a.athlete_id = u.id AND a.session_id = $${p}
+       WHERE ${conditions.join(" AND ")}
+       ORDER BY
+         CASE WHEN a.status = 'present' THEN 0
+              WHEN a.status = 'late'    THEN 1
+              WHEN a.status IS NULL     THEN 2
+              ELSE 3 END,
+         u.full_name`,
+      params
     );
+
     return ok(res, rows);
   } catch (err) { serverError(res, err); }
 };

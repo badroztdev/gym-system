@@ -485,6 +485,8 @@ function AttendanceTab() {
     late:    { color: "var(--warning)", label: "متأخر" },
     excused: { color: "var(--muted)",   label: "بعذر"  },
   };
+  // حالة افتراضية لمن لم يُسجَّل حضوره/غيابه بعد (status = null من الـ backend)
+  const NOT_RECORDED = { color: "var(--muted-lt)", label: "لم يُسجَّل" };
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 16, alignItems: "flex-start" }}>
@@ -545,7 +547,7 @@ function AttendanceTab() {
               <div style={{ display: "flex", justifyContent: "center", padding: 32 }}><Spinner size={24} /></div>
             ) : attendanceList.length === 0 ? (
               <div style={{ padding: 32, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
-                لا يوجد سجل حضور لهذه الحصة بعد
+                لا يوجد رياضيون مؤهلون لهذه الحصة (تحقق من الفئة العمرية المحدَّدة للحصة)
               </div>
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse", direction: "rtl" }}>
@@ -558,9 +560,9 @@ function AttendanceTab() {
                 </thead>
                 <tbody>
                   {attendanceList.map(a => {
-                    const st = STATUS_COLORS[a.status] || STATUS_COLORS.absent;
+                    const st = a.status ? (STATUS_COLORS[a.status] || NOT_RECORDED) : NOT_RECORDED;
                     return (
-                      <tr key={a.id} style={{ borderTop: "1px solid var(--border)" }}>
+                      <tr key={a.athlete_id} style={{ borderTop: "1px solid var(--border)" }}>
                         <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{a.athlete_name}</td>
                         <td className="mono" style={{ padding: "10px 14px", fontSize: 11, color: "var(--muted)" }}>{a.athlete_phone}</td>
                         <td style={{ padding: "10px 14px", fontSize: 11, color: "var(--muted)" }}>{a.age_category || "—"}</td>
