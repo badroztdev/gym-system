@@ -11,6 +11,16 @@ import { membersService }   from "@/services/members.service";
 import { useAuthStore }     from "@/store/authStore";
 import toast from "react-hot-toast";
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 768 : false);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  return isMobile;
+}
+
 // قراءة QR code بالكاميرا (مكتبة مضمّنة في المتصفح عبر BarcodeDetector)
 // أو مجرد حقل نص للإدخال اليدوي كخيار بديل
 
@@ -73,7 +83,7 @@ function ScheduleTab() {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 768 : false);
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", h);
@@ -287,6 +297,7 @@ function RoomsTab() {
   const qc = useQueryClient();
   const { user } = useAuthStore();
   const isOwner = user?.role === "owner";
+  const isMobile = useIsMobile();
 
   const [showForm, setShowForm] = useState(false);
   const [editRoom, setEditRoom] = useState(null);
@@ -320,7 +331,7 @@ function RoomsTab() {
       ) : rooms.length === 0 ? (
         <Empty icon="🏛️" title="لا توجد قاعات" description="أضف أول قاعة للبدء" />
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
           {rooms.map(r => (
             <div key={r.id} style={{
               background: "var(--card)", border: "1px solid var(--border)",
@@ -444,6 +455,7 @@ function RoomForm({ open, onClose, room, onSuccess }) {
 //  Tab 3 — الحضور
 // ════════════════════════════════════════════════════════════
 function AttendanceTab() {
+  const isMobile = useIsMobile();
   const [selectedSession, setSelectedSession] = useState(null);
   const [qrInput, setQrInput] = useState("");
   const [scanning, setScanning] = useState(false);
@@ -490,9 +502,12 @@ function AttendanceTab() {
   const NOT_RECORDED = { color: "var(--muted-lt)", label: "لم يُسجَّل" };
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 16, alignItems: "flex-start" }}>
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "280px 1fr", gap: 16, alignItems: "flex-start" }}>
       {/* قائمة حصص اليوم */}
-      <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
+      <div style={{
+        background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden",
+        maxHeight: isMobile ? 260 : "none", overflowY: isMobile ? "auto" : "visible",
+      }}>
         <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
           حصص اليوم
         </div>
@@ -529,14 +544,14 @@ function AttendanceTab() {
         ) : (
           <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
             {/* رأس */}
-            <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", flexWrap: "wrap", gap: 8 }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>{selectedSession.title}</div>
                 <div className="mono" style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
                   {selectedSession.start_time?.slice(0,5)} — {selectedSession.room_name}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 12, fontSize: 12 }}>
+              <div style={{ display: "flex", gap: 12, fontSize: 12, flexWrap: "wrap" }}>
                 <span style={{ color: "var(--accent)" }}>✅ {present} حاضر</span>
                 <span style={{ color: "var(--danger)" }}>❌ {absent} غائب</span>
                 <span style={{ color: "var(--warning)" }}>⏰ {late} متأخر</span>
@@ -549,6 +564,49 @@ function AttendanceTab() {
             ) : attendanceList.length === 0 ? (
               <div style={{ padding: 32, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
                 لا يوجد رياضيون مؤهلون لهذه الحصة (تحقق من الفئة العمرية المحدَّدة للحصة)
+              </div>
+            ) : isMobile ? (
+              /* ── عرض بطاقات للهاتف ─────────────────────────── */
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12 }}>
+                {attendanceList.map(a => {
+                  const st = a.status ? (STATUS_COLORS[a.status] || NOT_RECORDED) : NOT_RECORDED;
+                  return (
+                    <div key={a.athlete_id} style={{
+                      background: "var(--surface)", border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-sm)", padding: 12,
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{a.athlete_name}</div>
+                          <div className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>{a.athlete_phone}</div>
+                        </div>
+                        <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 12, background: st.color + "20", color: st.color, fontWeight: 600 }}>{st.label}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                          {a.scan_method === "qr_room" ? "🔲 QR" : a.scanned_at ? "✍️ يدوي" : ""}
+                          {a.scanned_at && (
+                            <span className="mono" style={{ marginRight: 6 }}>
+                              {new Date(a.scanned_at).toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          )}
+                        </span>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          {["present","late","absent","excused"].map(s => (
+                            <button key={s} onClick={() => handleManualStatus(a.athlete_id, s)} style={{
+                              padding: "4px 8px", fontSize: 11, borderRadius: 5,
+                              border: `1px solid ${STATUS_COLORS[s]?.color}40`,
+                              background: a.status === s ? STATUS_COLORS[s]?.color + "30" : "transparent",
+                              color: STATUS_COLORS[s]?.color, cursor: "pointer",
+                            }} title={STATUS_COLORS[s]?.label}>
+                              {STATUS_COLORS[s]?.label[0]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse", direction: "rtl" }}>
@@ -608,27 +666,28 @@ function AttendanceTab() {
 // ════════════════════════════════════════════════════════════
 export default function SessionsPage() {
   const [tab, setTab] = useState("schedule");
+  const isMobile = useIsMobile();
 
   return (
     <>
-      <PageHeader title="الحصص والجداول" subtitle="إدارة الجداول والقاعات ونظام الحضور">
+      <PageHeader title="الحصص والجداول" subtitle={isMobile ? "" : "إدارة الجداول والقاعات ونظام الحضور"}>
         <div style={{ display: "flex", gap: 4, background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: 4 }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
-              padding: "7px 16px", fontSize: 12, fontWeight: 600,
+              padding: isMobile ? "7px 10px" : "7px 16px", fontSize: 12, fontWeight: 600,
               borderRadius: "var(--radius-sm)", border: "none",
               background: tab === t.id ? "var(--accent)" : "transparent",
               color: tab === t.id ? "#0d0f14" : "var(--muted)",
               cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
               fontFamily: "'Sora', sans-serif", transition: "all 0.15s",
             }}>
-              <span>{t.icon}</span>{t.label}
+              <span>{t.icon}</span>{!isMobile && t.label}
             </button>
           ))}
         </div>
       </PageHeader>
 
-      <main style={{ padding: "24px 28px", flex: 1 }}>
+      <main style={{ padding: isMobile ? "14px 12px" : "24px 28px", flex: 1 }}>
         {tab === "schedule"   && <ScheduleTab />}
         {tab === "rooms"      && <RoomsTab />}
         {tab === "attendance" && <AttendanceTab />}
