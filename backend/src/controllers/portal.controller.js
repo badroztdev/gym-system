@@ -8,15 +8,17 @@ export const getMyAthletes = async (req, res) => {
     const user = req.user;
 
     if (user.role === "athlete") {
-      return ok(res, [{
-        id: user.id, full_name: user.full_name, phone: user.phone,
-        avatar_url: user.avatar_url, age_category: user.age_category,
-      }]);
+      const { rows } = await query(
+        `SELECT id, full_name, phone, avatar_url, age_category, rank, weight_kg, blood_group
+         FROM users WHERE id = $1`,
+        [user.id]
+      );
+      return ok(res, rows);
     }
 
     if (user.role === "guardian") {
       const { rows } = await query(
-        `SELECT u.id, u.full_name, u.phone, u.avatar_url, u.age_category, u.rank
+        `SELECT u.id, u.full_name, u.phone, u.avatar_url, u.age_category, u.rank, u.weight_kg, u.blood_group
          FROM guardian_athlete ga
          JOIN users u ON u.id = ga.athlete_id
          WHERE ga.guardian_id = $1 AND u.is_active = TRUE
@@ -82,7 +84,7 @@ export const getDashboard = async (req, res) => {
        WHERE s.gym_id = $1
          AND s.session_date = (NOW() AT TIME ZONE 'Africa/Algiers')::date
          AND s.is_cancelled = FALSE
-         AND (s.age_category IS NULL OR array_length(s.age_category,1) IS NULL OR $3 = ANY(s.age_category))
+         AND (s.age_category IS NULL OR array_length(s.age_category,1) IS NULL OR $3::text = ANY(s.age_category))
        ORDER BY s.start_time`,
       [athlete.gym_id, athleteId, athlete.age_category]
     );
@@ -139,7 +141,7 @@ export const getSchedule = async (req, res) => {
        LEFT JOIN sport_categories c ON c.id = s.category_id
        WHERE s.gym_id = $1 AND s.is_cancelled = FALSE
          AND s.session_date BETWEEN $2 AND $3
-         AND (s.age_category IS NULL OR array_length(s.age_category,1) IS NULL OR $5 = ANY(s.age_category))
+         AND (s.age_category IS NULL OR array_length(s.age_category,1) IS NULL OR $5::text = ANY(s.age_category))
        ORDER BY s.session_date, s.start_time`,
       [gym_id, dateFrom, dateTo, athleteId, age_category]
     );
