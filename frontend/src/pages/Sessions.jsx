@@ -113,13 +113,14 @@ function ScheduleTab() {
               color: s.category_color || "var(--accent2)",
             }}>{s.category_name}</span>
           )}
-          {s.age_category && (
-            <span style={{
-              fontSize: compact ? 9 : 10, fontWeight: 600,
-              padding: "1px 6px", borderRadius: 10,
-              background: "var(--accent3)20", color: "var(--accent3)",
-            }}>{s.age_category}</span>
-          )}
+          {(Array.isArray(s.age_category) ? s.age_category : (s.age_category ? [s.age_category] : []))
+            .map(cat => (
+              <span key={cat} style={{
+                fontSize: compact ? 9 : 10, fontWeight: 600,
+                padding: "1px 6px", borderRadius: 10,
+                background: "var(--accent3)20", color: "var(--accent3)",
+              }}>{cat}</span>
+            ))}
         </div>
         {/* العنوان */}
         <div style={{

@@ -97,11 +97,12 @@ export const createSession = async (req, res) => {
   try {
     const {
       title, description, sessionDate, startTime, endTime,
-      capacity, coachId, roomId, categoryId, ageCategory,
+      capacity, coachId, roomId, categoryId, ageCategories,
       isRecurring, recurrenceDays, recurrenceEnd,
     } = req.body;
 
     const gymId = req.user.gym_id;
+    const ageCats = Array.isArray(ageCategories) && ageCategories.length ? ageCategories : null;
 
     const coach = await query(
       "SELECT id FROM users WHERE id = $1 AND gym_id = $2 AND role IN ('coach','assistant','owner')",
@@ -117,7 +118,7 @@ export const createSession = async (req, res) => {
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,FALSE,$11)
          RETURNING *`,
         [gymId, coachId, categoryId || null, roomId || null, title, description || null,
-         sessionDate, startTime, endTime, capacity || 20, ageCategory || null]
+         sessionDate, startTime, endTime, capacity || 20, ageCats]
       );
       return created(res, rows[0]);
     }
@@ -140,7 +141,7 @@ export const createSession = async (req, res) => {
            RETURNING id, session_date, title`,
           [gymId, coachId, categoryId || null, roomId || null, title, description || null,
            d, startTime, endTime, capacity || 20,
-           recurrenceDays, recurrenceEnd, ageCategory || null]
+           recurrenceDays, recurrenceEnd, ageCats]
         );
         results.push(rows[0]);
       }
@@ -159,9 +160,14 @@ export const updateSession = async (req, res) => {
   try {
     const {
       title, description, sessionDate, startTime, endTime,
-      capacity, coachId, roomId, categoryId, ageCategory,
+      capacity, coachId, roomId, categoryId, ageCategories,
       isCancelled, cancelReason
     } = req.body;
+
+    // undefined = لم يُرسَل من الفورم (لا تغيير) | [] أو غير مُرسَل بقيمة = يمسح الفئات (كل الأعمار)
+    const ageCats = ageCategories === undefined
+      ? null
+      : (Array.isArray(ageCategories) && ageCategories.length ? ageCategories : []);
 
     const { rows } = await query(
       `UPDATE sessions SET
@@ -174,7 +180,7 @@ export const updateSession = async (req, res) => {
          coach_id     = COALESCE($7,  coach_id),
          room_id      = COALESCE($8,  room_id),
          category_id  = COALESCE($9,  category_id),
-         age_category = COALESCE($10, age_category),
+         age_category = CASE WHEN $10::text[] IS NULL THEN age_category ELSE $10::text[] END,
          is_cancelled = COALESCE($11, is_cancelled),
          cancel_reason= COALESCE($12, cancel_reason),
          updated_at   = NOW()
@@ -190,7 +196,7 @@ export const updateSession = async (req, res) => {
         coachId     || null,
         roomId      || null,
         categoryId  || null,
-        ageCategory || null,
+        ageCats,
         isCancelled ?? null,
         cancelReason || null,
         req.params.id, req.user.gym_id,

@@ -57,7 +57,6 @@ function TimeSelect({ label, value, onChange, error }) {
 }
 
 const AGE_CATEGORIES = [
-  { value: "",        label: "-- كل الفئات --" },
   { value: "مدارس",  label: "مدارس" },
   { value: "براعم",  label: "براعم" },
   { value: "أصاغر",  label: "أصاغر" },
@@ -73,7 +72,7 @@ const EMPTY = {
   title: "", description: "", sessionDate: today(),
   startTime: "08:00", endTime: "09:00",
   capacity: "20", coachId: "", roomId: "", categoryId: "",
-  ageCategory: "",
+  ageCategories: [],
   isRecurring: false, recurrenceDays: [], recurrenceEnd: "",
 };
 
@@ -121,7 +120,9 @@ export default function SessionForm({ open, onClose, session, onSuccess }) {
         coachId:     session.coach_id     || "",
         roomId:      session.room_id      || "",
         categoryId:  session.category_id  || "",
-        ageCategory: session.age_category || "",
+        ageCategories: Array.isArray(session.age_category)
+          ? session.age_category
+          : (session.age_category ? [session.age_category] : []),
         isRecurring: false,
         recurrenceDays: [],
         recurrenceEnd: "",
@@ -138,6 +139,12 @@ export default function SessionForm({ open, onClose, session, onSuccess }) {
     recurrenceDays: p.recurrenceDays.includes(d)
       ? p.recurrenceDays.filter(x => x !== d)
       : [...p.recurrenceDays, d],
+  }));
+  const toggleAgeCategory = (v) => setForm(p => ({
+    ...p,
+    ageCategories: p.ageCategories.includes(v)
+      ? p.ageCategories.filter(x => x !== v)
+      : [...p.ageCategories, v],
   }));
 
   const validate = () => {
@@ -209,12 +216,25 @@ export default function SessionForm({ open, onClose, session, onSuccess }) {
           <Select label="الفئة الرياضية" options={categoryOptions} value={form.categoryId} onChange={set("categoryId")} />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Select label="الفئة العمرية" options={AGE_CATEGORIES} value={form.ageCategory} onChange={set("ageCategory")} />
-          <Select label="القاعة" options={roomOptions} value={form.roomId} onChange={set("roomId")} />
+        <div>
+          <label style={{ fontSize: 12, color: "var(--muted-lt)", fontWeight: 500, display: "block", marginBottom: 8 }}>
+            الفئة العمرية <span style={{ color: "var(--muted)", fontWeight: 400 }}>(اختر واحدة أو أكثر — اتركها فارغة لكل الفئات)</span>
+          </label>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {AGE_CATEGORIES.map(c => (
+              <button key={c.value} type="button" onClick={() => toggleAgeCategory(c.value)} style={{
+                padding: "6px 12px", fontSize: 12, borderRadius: "var(--radius-sm)",
+                border: "1px solid " + (form.ageCategories.includes(c.value) ? "var(--accent)" : "var(--border)"),
+                background: form.ageCategories.includes(c.value) ? "var(--accent)20" : "var(--card)",
+                color: form.ageCategories.includes(c.value) ? "var(--accent)" : "var(--muted)",
+                cursor: "pointer", fontFamily: "'Sora', sans-serif",
+              }}>{c.label}</button>
+            ))}
+          </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Select label="القاعة" options={roomOptions} value={form.roomId} onChange={set("roomId")} />
           <Input label="الطاقة الاستيعابية" type="number" min="1" value={form.capacity} onChange={set("capacity")} />
         </div>
 
