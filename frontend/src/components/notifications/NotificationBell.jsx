@@ -82,11 +82,25 @@ export default function NotificationBell() {
         )}
       </button>
 
+      {/* خلفية شفافة (تُغلق القائمة عند اللمس خارجها — مهم على الهاتف) */}
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 99, background: "rgba(0,0,0,0.35)" }}
+        />
+      )}
+
       {/* Dropdown */}
       {open && (
         <div style={{
-          position: "absolute", top: "calc(100% + 8px)", left: 0,
-          width: 320, maxHeight: 420, overflowY: "auto",
+          position: "fixed",
+          top: 62,
+          left: 12,
+          right: 12,
+          margin: "0 auto",
+          maxWidth: 360,
+          maxHeight: "calc(100vh - 100px)",
+          overflowY: "auto",
           background: "var(--card)", border: "1px solid var(--border)",
           borderRadius: "var(--radius)", boxShadow: "var(--shadow)",
           zIndex: 100, animation: "fadeUp 0.2s ease",
