@@ -1,5 +1,5 @@
 // src/controllers/members.controller.js
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import { query, transaction } from "../utils/db.js";
 import {
   ok, created, noContent,

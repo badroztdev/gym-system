@@ -1,5 +1,5 @@
 // src/controllers/auth.controller.js
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { query } from "../utils/db.js";
 import { ok, unauthorized, serverError } from "../utils/response.js";
@@ -9,26 +9,11 @@ const signToken = (userId) =>
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   });
 
-// ✅ تنظيف وتوحيد رقم الهاتف: يشيل المسافات الزايدة (من autocomplete/autocorrect
-// فبعض الهواتف) ويحوّل الأرقام العربية-الهندية (٠١٢٣٤٥٦٧٨٩) لأرقام لاتينية عادية،
-// لأن بعض لوحات المفاتيح تكتبها تلقائياً وتبقى تبان متطابقة للعين لكن ماتطابقش نصياً
-function normalizePhone(raw) {
-  if (!raw) return raw;
-  const arabicDigits = "٠١٢٣٤٥٦٧٨٩";
-  return String(raw)
-    .trim()
-    .replace(/[٠-٩]/g, (d) => String(arabicDigits.indexOf(d)))
-    .replace(/\s+/g, ""); // يشيل أي مسافات فالنص كامل (مو غير الأطراف)
-}
-
 // POST /api/auth/login
 export const login = async (req, res) => {
   try {
-    const { phone: rawPhone, password: rawPassword } = req.body;
-    const phone = normalizePhone(rawPhone);
-    const password = rawPassword ? String(rawPassword).trim() : rawPassword;
+    const { phone, password } = req.body;
 
-    // ✅ الإصلاح: نقبل جميع الأدوار (owner, coach, assistant, athlete, guardian)
     const { rows } = await query(
       `SELECT u.*, g.name AS gym_name
        FROM users u
@@ -49,7 +34,6 @@ export const login = async (req, res) => {
     if (!valid)
       return unauthorized(res, "رقم الهاتف أو كلمة المرور غير صحيحة");
 
-    // تحديث آخر تسجيل دخول
     await query("UPDATE users SET last_login_at = NOW() WHERE id = $1", [user.id]);
 
     const token = signToken(user.id);

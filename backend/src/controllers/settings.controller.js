@@ -1,5 +1,5 @@
 // src/controllers/settings.controller.js
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import { query } from "../utils/db.js";
 import { ok, badRequest, notFound, serverError } from "../utils/response.js";
 

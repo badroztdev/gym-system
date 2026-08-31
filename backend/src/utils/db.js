@@ -5,25 +5,27 @@ dotenv.config();
 
 const { Pool } = pg;
 
-// Railway (وأي استضافة سحابية) يوفّر DATABASE_URL تلقائياً — نستخدمه أولاً إن وُجد
+// ✅ تحصين: رُفع max من 20 إلى 40 اتصالاً متزامناً
+// السبب: كل طلب تسجيل دخول يستهلك اتصالاً واحداً لبضعة أجزاء من الثانية.
+// مع 35+ رياضياً يحاولون الدخول معاً، كان الحد القديم (20) يُستنفَد بسرعة،
+// فتنتظر الطلبات الزائدة في طابور حتى يتحرر اتصال، مسبِّبة بطئاً أو انتهاء مهلة (timeout)
 const pool = process.env.DATABASE_URL
   ? new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }, // مطلوب على Railway
-      max: 20,
+      ssl: { rejectUnauthorized: false },
+      max: 40,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
+      connectionTimeoutMillis: 10000, // رُفعت من 5000 إلى 10000 لإعطاء مهلة أطول تحت الحِمل
     })
   : new Pool({
-      // إعدادات محلية (جهازك الشخصي فقط)
       host:     process.env.DB_HOST     || "localhost",
       port:     Number(process.env.DB_PORT) || 5432,
       database: process.env.DB_NAME     || "gym_pro",
       user:     process.env.DB_USER     || "postgres",
       password: process.env.DB_PASSWORD || "",
-      max: 20,
+      max: 40,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 5000,
     });
 
 pool.on("error", (err) => {

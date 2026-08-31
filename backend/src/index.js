@@ -19,7 +19,6 @@ app.use(compression());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // ── CORS ─────────────────────────────────────────────────────
-// يقبل قائمة نطاقات مفصولة بفواصل في CLIENT_URL، بالإضافة لنطاقات ثابتة معروفة
 const envOrigins = (process.env.CLIENT_URL || "")
   .split(",")
   .map(s => s.trim())
@@ -47,13 +46,21 @@ app.use(cors({
 }));
 
 // ── Rate limiting ─────────────────────────────────────────────
+// ✅ تحصين: رُفع الحد من 10 إلى 60 محاولة كل 15 دقيقة لكل IP
+// السبب: كل رياضيي الصالة المتصلين بنفس شبكة Wi-Fi يشتركون في نفس عنوان IP الظاهر للخادم،
+// لذا كان الحد القديم (10) يُستهلك بسرعة عند دخول عدة رياضيين متتاليين من نفس الشبكة،
+// ما يمنع من تبقّى من تسجيل الدخول ولو كانت بياناتهم صحيحة 100%
 app.use("/api/auth/login", rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { success: false, message: "محاولات كثيرة، يرجى الانتظار" },
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "محاولات كثيرة، يرجى الانتظار دقيقة والمحاولة مجدداً" },
 }));
 
-app.use(rateLimit({ windowMs: 60 * 1000, max: 200 }));
+// ✅ تحصين: رُفع الحد العام أيضاً من 200 إلى 400 طلب/دقيقة لكل IP
+// لدعم عشرات المستخدمين على نفس شبكة الصالة يستخدمون التطبيق في نفس الوقت
+app.use(rateLimit({ windowMs: 60 * 1000, max: 400 }));
 
 // ── Body parser ───────────────────────────────────────────────
 app.use(express.json({ limit: "10mb" }));
