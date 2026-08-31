@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
+import { Analytics } from "@vercel/analytics/react";
 import { useAuthStore } from "@/store/authStore";
 import toast from "react-hot-toast";
 import "@/styles/globals.css";
@@ -193,6 +194,7 @@ export default function App() {
           },
         }}
       />
+      <Analytics />
     </QueryClientProvider>
   );
 }
