@@ -227,11 +227,22 @@ export const updateMember = async (req, res) => {
       guardianId,   // اختياري — ربط/فك ربط الرياضي بولي أمر
     } = req.body;
 
-    // 🔍 DEBUG — سطور تتبع مؤقتة لتشخيص مشكلة عدم حفظ التعديل
-    console.log("──────── PATCH /members/:id ────────");
-    console.log("params.id :", req.params.id);
-    console.log("gym_id    :", req.user.gym_id);
-    console.log("body      :", req.body);
+    // ✅ تحقق مسبق: هل رقم الهاتف الجديد مستخدم من طرف عضو آخر في نفس الصالة؟
+    // هذا يمنع خطأ 500 مبهم ويعطي رسالة عربية واضحة بدلاً منه
+    if (phone) {
+      const dup = await query(
+        "SELECT id, full_name, role FROM users WHERE gym_id = $1 AND phone = $2 AND id != $3",
+        [req.user.gym_id, phone, req.params.id]
+      );
+      if (dup.rows.length) {
+        const ROLE_LABELS = { owner: "المالك", coach: "مدرب", assistant: "مساعد مدرب", athlete: "رياضي", guardian: "ولي أمر" };
+        const other = dup.rows[0];
+        return badRequest(
+          res,
+          `رقم الهاتف مستخدم بالفعل من طرف "${other.full_name}" (${ROLE_LABELS[other.role] || other.role})`
+        );
+      }
+    }
 
     const params = [
       fullName     || null,
@@ -247,7 +258,6 @@ export const updateMember = async (req, res) => {
       groupName    || null,
       req.params.id, req.user.gym_id,
     ];
-    console.log("SQL params:", params);
 
     const { rows } = await query(
       `UPDATE users SET
@@ -268,8 +278,6 @@ export const updateMember = async (req, res) => {
                  is_active, age_category, rank, weight_kg, blood_group, group_name`,
       params
     );
-
-    console.log("rows returned:", rows);
 
     if (!rows.length) return notFound(res, "العضو غير موجود");
 
