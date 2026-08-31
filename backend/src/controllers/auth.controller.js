@@ -9,10 +9,24 @@ const signToken = (userId) =>
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   });
 
+// ✅ تنظيف وتوحيد رقم الهاتف: يشيل المسافات الزايدة (من autocomplete/autocorrect
+// فبعض الهواتف) ويحوّل الأرقام العربية-الهندية (٠١٢٣٤٥٦٧٨٩) لأرقام لاتينية عادية،
+// لأن بعض لوحات المفاتيح تكتبها تلقائياً وتبقى تبان متطابقة للعين لكن ماتطابقش نصياً
+function normalizePhone(raw) {
+  if (!raw) return raw;
+  const arabicDigits = "٠١٢٣٤٥٦٧٨٩";
+  return String(raw)
+    .trim()
+    .replace(/[٠-٩]/g, (d) => String(arabicDigits.indexOf(d)))
+    .replace(/\s+/g, ""); // يشيل أي مسافات فالنص كامل (مو غير الأطراف)
+}
+
 // POST /api/auth/login
 export const login = async (req, res) => {
   try {
-    const { phone, password } = req.body;
+    const { phone: rawPhone, password: rawPassword } = req.body;
+    const phone = normalizePhone(rawPhone);
+    const password = rawPassword ? String(rawPassword).trim() : rawPassword;
 
     // ✅ الإصلاح: نقبل جميع الأدوار (owner, coach, assistant, athlete, guardian)
     const { rows } = await query(
