@@ -1,5 +1,5 @@
 // src/pages/Notifications.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useQuery as useQ } from "@tanstack/react-query";
 import PageHeader from "@/components/layout/PageHeader";
@@ -27,9 +27,23 @@ const TYPE_INFO = {
   general:             { icon: "🔔", color: "var(--muted)" },
 };
 
+// كشف حجم الشاشة (نفس النمط المستخدم في بقية الصفحات)
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return isMobile;
+}
+
 // ══ تبويب الإرسال ════════════════════════════════════════════
 function SendTab() {
   const qc = useQueryClient();
+  const isMobile = useIsMobile();
   const [target, setTarget]       = useState("all");   // all | athletes | guardians | specific
   const [selectedIds, setSelected] = useState([]);
   const [form, setForm]            = useState({ title: "", body: "", type: "general" });
@@ -85,10 +99,14 @@ function SendTab() {
   ];
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+      gap: isMobile ? 14 : 20,
+    }}>
 
       {/* نموذج الإرسال */}
-      <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? 16 : 20, display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>📤 إنشاء إشعار</div>
 
         <Select label="المستلمون" options={TARGET_OPTIONS} value={target} onChange={e => { setTarget(e.target.value); setSelected([]); }} />
@@ -294,7 +312,7 @@ function AutoNotifCard({ icon, title, desc, color, onSend }) {
     try { await onSend(); } catch { toast.error("فشل الإرسال"); } finally { setLoading(false); }
   };
   return (
-    <div style={{ background: "var(--card)", border: `1px solid ${color}30`, borderRadius: "var(--radius)", padding: 18 }}>
+    <div style={{ background: "var(--card)", border: `1px solid ${color}30`, borderRadius: "var(--radius)", padding: "16px 18px" }}>
       <div style={{ fontSize: 24, marginBottom: 8 }}>{icon}</div>
       <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>{title}</div>
       <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6, marginBottom: 14 }}>{desc}</div>
@@ -348,25 +366,33 @@ function HistoryTab() {
 // ══ الصفحة الرئيسية ══════════════════════════════════════════
 export default function NotificationsPage() {
   const [tab, setTab] = useState("send");
+  const isMobile = useIsMobile();
 
   return (
     <>
       <PageHeader title="الإشعارات" subtitle="إرسال وإدارة إشعارات الرياضيين وأولياء الأمور">
-        <div style={{ display: "flex", gap: 4, background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: 4 }}>
+        <div style={{
+          display: "flex", gap: 4, background: "var(--surface)",
+          borderRadius: "var(--radius-sm)", padding: 4,
+          width: isMobile ? "100%" : "auto",
+        }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
-              padding: "7px 16px", fontSize: 12, fontWeight: 600,
+              padding: isMobile ? "8px 10px" : "7px 16px",
+              fontSize: 12, fontWeight: 600,
               borderRadius: "var(--radius-sm)", border: "none",
               background: tab === t.id ? "var(--accent)" : "transparent",
               color: tab === t.id ? "#0d0f14" : "var(--muted)",
               cursor: "pointer", fontFamily: "'Sora', sans-serif",
+              flex: isMobile ? 1 : "none",
+              whiteSpace: "nowrap",
             }}>
               {t.icon} {t.label}
             </button>
           ))}
         </div>
       </PageHeader>
-      <main style={{ padding: "24px 28px" }}>
+      <main style={{ padding: isMobile ? "14px 12px" : "24px 28px" }}>
         {tab === "send"    && <SendTab />}
         {tab === "history" && <HistoryTab />}
       </main>
