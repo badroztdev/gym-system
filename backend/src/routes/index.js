@@ -21,7 +21,6 @@ import { getGymSettings, updateGymSettings, updateGymPreferences, getMyProfile, 
 import { getOverview, getRevenueChart, getAttendanceChart, getMembersGrowth, getTopCoaches, getAgeCategoryDistribution, getRecentActivity } from "../controllers/dashboard.controller.js";
 import { registerGym, checkSlugAvailability } from "../controllers/onboarding.controller.js";
 import { getAllGyms, getPlatformOverview, updateGymStatus, updateGymPlan, getGymDetail } from "../controllers/superadmin.controller.js";
-import { checkGymStatus } from "../middleware/gymStatus.js";
 
 const router = Router();
 
