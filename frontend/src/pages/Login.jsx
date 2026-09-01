@@ -20,7 +20,8 @@ export default function Login() {
       const { data } = await api.post("/auth/login", form);
       setAuth(data.data.user, data.data.token);
       toast.success(`أهلاً ${data.data.user.fullName} 👋`);
-      navigate("/dashboard");
+      // ✅ توجيه حسب الدور: super_admin → لوحة إدارة المنصة، غيره → لوحة التحكم العادية
+      navigate(data.data.user.role === "super_admin" ? "/superadmin" : "/dashboard");
     } catch (err) {
       setError(err.response?.data?.message || "فشل تسجيل الدخول");
     } finally {
