@@ -1,6 +1,6 @@
 // src/pages/SuperAdmin.jsx
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { superadminService } from "@/services/superadmin.service";
 import { useAuthStore } from "@/store/authStore";
@@ -122,7 +122,9 @@ function GymDetailModal({ gymId, onClose }) {
 }
 
 export default function SuperAdminPage() {
-  const user = useAuthStore(s => s.user);
+  const user     = useAuthStore(s => s.user);
+  const logout   = useAuthStore(s => s.logout);
+  const navigate = useNavigate();
 
   // حماية إضافية على مستوى الواجهة (الحماية الفعلية موجودة أصلاً في الـ backend)
   if (user?.role !== "super_admin") {
@@ -142,11 +144,36 @@ export default function SuperAdminPage() {
   });
   const gyms = gymsData?.data || [];
 
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "28px", direction: "rtl" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>🛠️ لوحة إدارة المنصة</h1>
-        <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 24 }}>إدارة كل الصالات الرياضية المسجَّلة على SGMS</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>🛠️ لوحة إدارة المنصة</h1>
+            <p style={{ fontSize: 13, color: "var(--muted)" }}>إدارة كل الصالات الرياضية المسجَّلة على SGMS</p>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ textAlign: "left" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{user?.fullName}</div>
+              <div style={{ fontSize: 11, color: "var(--muted)" }}>مدير المنصة</div>
+            </div>
+            <button onClick={handleLogout} style={{
+              padding: "8px 16px", fontSize: 12, fontWeight: 600,
+              background: "var(--danger)10", border: "1px solid var(--danger)30",
+              borderRadius: "var(--radius-sm)", color: "var(--danger)",
+              cursor: "pointer", fontFamily: "'Sora', sans-serif",
+              whiteSpace: "nowrap",
+            }}>
+              تسجيل الخروج
+            </button>
+          </div>
+        </div>
+        <div style={{ marginBottom: 24 }} />
 
         {/* إحصائيات المنصة */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>

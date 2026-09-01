@@ -135,6 +135,14 @@ const qc = new QueryClient({
   },
 });
 
+// يوجّه المستخدم تلقائياً حسب دوره بعد تسجيل الدخول
+// super_admin → لوحة إدارة المنصة، أي دور آخر → لوحة التحكم العادية
+function HomeRedirect() {
+  const user = useAuthStore(s => s.user);
+  if (user?.role === "super_admin") return <Navigate to="/superadmin" replace />;
+  return <Navigate to="/dashboard" replace />;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={qc}>
@@ -155,7 +163,7 @@ export default function App() {
               <Layout />
             </ProtectedRoute>
           }>
-            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route index element={<HomeRedirect />} />
             <Route path="dashboard"     element={<Dashboard />} />
             <Route path="members"       element={<Members />} />
             <Route path="sessions"      element={<Sessions />} />
