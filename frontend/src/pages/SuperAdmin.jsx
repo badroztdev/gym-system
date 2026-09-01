@@ -1,5 +1,5 @@
 // src/pages/SuperAdmin.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { superadminService } from "@/services/superadmin.service";
@@ -226,6 +226,144 @@ function ChangePasswordModal({ open, onClose }) {
   );
 }
 
+function NotifyOwnersModal({ open, onClose, gyms, preSelectedGymId }) {
+  const [target, setTarget] = useState("selected"); // "selected" | "all"
+  const [selectedIds, setSelectedIds] = useState(preSelectedGymId ? [preSelectedGymId] : []);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+
+  // إعادة تهيئة الاختيار عند فتح النافذة بصالة محدَّدة مسبقاً
+  useEffect(() => {
+    if (open) setSelectedIds(preSelectedGymId ? [preSelectedGymId] : []);
+  }, [open, preSelectedGymId]);
+
+  const mutation = useMutation({
+    mutationFn: superadminService.sendNotification,
+    onSuccess: (res) => {
+      toast.success(res.data?.message || "تم الإرسال بنجاح ✅");
+      setTitle(""); setBody(""); setSelectedIds([]);
+      onClose();
+    },
+  });
+
+  const toggleGym = (id) => setSelectedIds(prev =>
+    prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+  );
+
+  const handleSend = () => {
+    if (!title.trim() || !body.trim()) {
+      toast.error("العنوان والنص مطلوبان");
+      return;
+    }
+    if (target === "selected" && !selectedIds.length) {
+      toast.error("اختر صالة واحدة على الأقل");
+      return;
+    }
+    mutation.mutate({
+      title, body,
+      sendToAll: target === "all",
+      gymIds: target === "selected" ? selectedIds : undefined,
+    });
+  };
+
+  if (!open) return null;
+
+  return (
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.7)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: "100%", maxWidth: 460, maxHeight: "85vh", overflowY: "auto",
+        background: "var(--card)", border: "1px solid var(--border)",
+        borderRadius: 18, padding: 24,
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>📤 إرسال إشعار لملّاك الصالات</div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 18, cursor: "pointer" }}>✕</button>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", gap: 4, background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: 4 }}>
+            <button onClick={() => setTarget("selected")} style={{
+              flex: 1, padding: "7px", fontSize: 12, fontWeight: 600, borderRadius: 6, border: "none",
+              background: target === "selected" ? "var(--accent)" : "transparent",
+              color: target === "selected" ? "#0d0f14" : "var(--muted)",
+              cursor: "pointer", fontFamily: "'Sora', sans-serif",
+            }}>صالات محدَّدة</button>
+            <button onClick={() => setTarget("all")} style={{
+              flex: 1, padding: "7px", fontSize: 12, fontWeight: 600, borderRadius: 6, border: "none",
+              background: target === "all" ? "var(--accent)" : "transparent",
+              color: target === "all" ? "#0d0f14" : "var(--muted)",
+              cursor: "pointer", fontFamily: "'Sora', sans-serif",
+            }}>🌐 كل الصالات</button>
+          </div>
+
+          {target === "selected" && (
+            <div style={{ maxHeight: 160, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+              {gyms.map(g => (
+                <button key={g.id} onClick={() => toggleGym(g.id)} style={{
+                  display: "flex", alignItems: "center", gap: 8, padding: "8px 10px",
+                  background: selectedIds.includes(g.id) ? "var(--accent)15" : "var(--surface)",
+                  border: `1px solid ${selectedIds.includes(g.id) ? "var(--accent)40" : "var(--border)"}`,
+                  borderRadius: "var(--radius-sm)", cursor: "pointer", textAlign: "right",
+                }}>
+                  <span style={{ fontSize: 14 }}>{selectedIds.includes(g.id) ? "✓" : "○"}</span>
+                  <span style={{ fontSize: 12, color: "var(--text)", flex: 1 }}>{g.name}</span>
+                  <span className="mono" style={{ fontSize: 10, color: "var(--muted)" }}>{g.owner_phone}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div>
+            <label style={{ fontSize: 12, color: "var(--muted-lt)", fontWeight: 500, display: "block", marginBottom: 6 }}>العنوان</label>
+            <input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="مثال: تحديث جديد على المنصة"
+              style={{
+                width: "100%", padding: "10px 14px", background: "var(--surface)",
+                border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
+                color: "var(--text)", fontSize: 13, outline: "none", direction: "rtl",
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: "var(--muted-lt)", fontWeight: 500, display: "block", marginBottom: 6 }}>نص الإشعار</label>
+            <textarea
+              value={body}
+              onChange={e => setBody(e.target.value)}
+              rows={3}
+              placeholder="اكتب نص الإشعار هنا..."
+              style={{
+                width: "100%", padding: "10px 14px", background: "var(--surface)",
+                border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
+                color: "var(--text)", fontSize: 13, outline: "none", direction: "rtl",
+                resize: "vertical", fontFamily: "'Sora', sans-serif",
+              }}
+            />
+          </div>
+
+          <button
+            onClick={handleSend}
+            disabled={mutation.isPending}
+            style={{
+              padding: "12px", background: "var(--accent)", border: "none",
+              borderRadius: "var(--radius-sm)", color: "#0d0f14", fontSize: 14,
+              fontWeight: 700, cursor: mutation.isPending ? "not-allowed" : "pointer",
+              opacity: mutation.isPending ? 0.7 : 1, fontFamily: "'Sora', sans-serif", marginTop: 4,
+            }}
+          >
+            {mutation.isPending ? "جاري الإرسال..." : "📤 إرسال الإشعار"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SuperAdminPage() {
   const user     = useAuthStore(s => s.user);
   const logout   = useAuthStore(s => s.logout);
@@ -240,6 +378,8 @@ export default function SuperAdminPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [selectedGymId, setSelectedGymId] = useState(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showNotifyModal, setShowNotifyModal] = useState(false);
+  const [notifyPreselectGymId, setNotifyPreselectGymId] = useState(null);
 
   const { data: overviewData } = useQuery({ queryKey: ["superadmin-overview"], queryFn: superadminService.getOverview });
   const overview = overviewData?.data || {};
@@ -268,6 +408,15 @@ export default function SuperAdminPage() {
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{user?.fullName}</div>
               <div style={{ fontSize: 11, color: "var(--muted)" }}>مدير المنصة</div>
             </div>
+            <button onClick={() => { setNotifyPreselectGymId(null); setShowNotifyModal(true); }} style={{
+              padding: "8px 16px", fontSize: 12, fontWeight: 600,
+              background: "var(--accent)15", border: "1px solid var(--accent)40",
+              borderRadius: "var(--radius-sm)", color: "var(--accent)",
+              cursor: "pointer", fontFamily: "'Sora', sans-serif",
+              whiteSpace: "nowrap",
+            }}>
+              📤 إرسال إشعار
+            </button>
             <button onClick={() => setShowPasswordModal(true)} style={{
               padding: "8px 16px", fontSize: 12, fontWeight: 600,
               background: "var(--card)", border: "1px solid var(--border)",
@@ -334,7 +483,7 @@ export default function SuperAdminPage() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--surface)" }}>
-                    {["الصالة", "المالك", "الحالة", "رياضيون", "فريق", "أُنشئت", "—"].map(h => (
+                    {["الصالة", "المالك", "الحالة", "رياضيون", "فريق", "أُنشئت", "تذكير"].map(h => (
                       <th key={h} style={{ padding: "10px 14px", fontSize: 11, color: "var(--muted)", textAlign: "right" }}>{h}</th>
                     ))}
                   </tr>
@@ -372,7 +521,13 @@ export default function SuperAdminPage() {
                             {new Date(g.created_at).toLocaleDateString("ar-DZ")}
                           </span>
                         </td>
-                        <td style={{ padding: "12px 14px", fontSize: 11, color: "var(--accent2)" }}>عرض ←</td>
+                        <td style={{ padding: "12px 14px" }} onClick={e => e.stopPropagation()}>
+                          <button onClick={() => { setNotifyPreselectGymId(g.id); setShowNotifyModal(true); }} style={{
+                            fontSize: 11, padding: "5px 10px", background: "var(--accent)10",
+                            border: "1px solid var(--accent)30", borderRadius: "var(--radius-sm)",
+                            color: "var(--accent)", cursor: "pointer", fontFamily: "'Sora', sans-serif",
+                          }}>📤 إشعار</button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -385,6 +540,12 @@ export default function SuperAdminPage() {
 
       <GymDetailModal gymId={selectedGymId} onClose={() => setSelectedGymId(null)} />
       <ChangePasswordModal open={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
+      <NotifyOwnersModal
+        open={showNotifyModal}
+        onClose={() => setShowNotifyModal(false)}
+        gyms={gyms}
+        preSelectedGymId={notifyPreselectGymId}
+      />
     </div>
   );
 }

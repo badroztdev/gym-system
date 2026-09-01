@@ -2,6 +2,7 @@
 // لوحة تحكم المطوّر — إدارة كل الصالات المسجَّلة على المنصة
 import { query } from "../utils/db.js";
 import { ok, notFound, badRequest, serverError, paginate } from "../utils/response.js";
+import { sendMulticast } from "../services/fcm.service.js";
 
 // ── GET /api/superadmin/gyms ──────────────────────────────────
 export const getAllGyms = async (req, res) => {
@@ -166,6 +167,59 @@ export const getGymDetail = async (req, res) => {
       owner: owner.rows[0] || null,
       activity: activity.rows,
       counts: counts.rows[0],
+    });
+  } catch (err) { serverError(res, err); }
+};
+
+// ── POST /api/superadmin/notify ────────────────────────────────
+// يرسل إشعاراً من المطوّر لملّاك صالة/صالات محدَّدة (أو الجميع)
+export const sendNotificationToOwners = async (req, res) => {
+  try {
+    const { gymIds, title, body, sendToAll } = req.body;
+    if (!title?.trim() || !body?.trim())
+      return badRequest(res, "العنوان والنص مطلوبان");
+
+    // حدّد الصالات المستهدفة
+    let targetGymIds = gymIds;
+    if (sendToAll) {
+      const all = await query("SELECT id FROM gyms");
+      targetGymIds = all.rows.map(r => r.id);
+    }
+    if (!targetGymIds?.length)
+      return badRequest(res, "يرجى تحديد صالة واحدة على الأقل");
+
+    // جلب حسابات الملّاك لهذه الصالات
+    const owners = await query(
+      `SELECT id, gym_id, full_name FROM users
+       WHERE gym_id = ANY($1::uuid[]) AND role = 'owner'`,
+      [targetGymIds]
+    );
+    if (!owners.rows.length)
+      return badRequest(res, "لم يُعثر على أي مالك للصالات المحددة");
+
+    // احفظ الإشعار في قاعدة البيانات لكل مالك
+    for (const owner of owners.rows) {
+      await query(
+        `INSERT INTO notifications (user_id, title, body, type, metadata)
+         VALUES ($1, $2, $3, 'general', $4)`,
+        [owner.id, title, body, JSON.stringify({ fromSuperAdmin: true })]
+      );
+    }
+
+    // أرسل Push عبر Firebase لمن لديه توكن مسجَّل
+    const tokensRes = await query(
+      `SELECT token FROM user_fcm_tokens
+       WHERE user_id = ANY($1::uuid[]) AND is_active = TRUE`,
+      [owners.rows.map(o => o.id)]
+    );
+    const result = tokensRes.rows.length
+      ? await sendMulticast({ tokens: tokensRes.rows.map(r => r.token), title, body })
+      : { sent: 0 };
+
+    return ok(res, {
+      saved: owners.rows.length,
+      pushed: result.sent || 0,
+      message: `تم إرسال الإشعار لـ ${owners.rows.length} مالك صالة`,
     });
   } catch (err) { serverError(res, err); }
 };

@@ -66,6 +66,75 @@ async function expireSubscriptions() {
   }
 }
 
+// ── دالة إشعار انتهاء اشتراك الصالة نفسها (SaaS) ──────────────
+// مختلفة تماماً عن notifyExpiringSubscriptions أعلاه (التي تخص اشتراكات الرياضيين
+// داخل كل صالة). هذه تخص اشتراك الصالة في منصة SGMS نفسها (تجريبي/شهري/سنوي)
+async function notifyExpiringGymSubscriptions() {
+  try {
+    console.log("🔔 [Cron] Checking expiring gym (SaaS) subscriptions...");
+
+    // صالات تنتهي فترتها التجريبية خلال 3 أيام
+    const trialGyms = await query(`
+      SELECT id, name, trial_ends_at,
+             (trial_ends_at::date - CURRENT_DATE) AS days_left
+      FROM gyms
+      WHERE subscription_status = 'trial'
+        AND trial_ends_at BETWEEN NOW() AND NOW() + INTERVAL '3 days'
+    `);
+
+    // صالات نشطة (مدفوعة) تنتهي خلال 3 أيام
+    const activeGyms = await query(`
+      SELECT id, name, subscription_ends_at,
+             (subscription_ends_at::date - CURRENT_DATE) AS days_left
+      FROM gyms
+      WHERE subscription_status = 'active'
+        AND subscription_ends_at IS NOT NULL
+        AND subscription_ends_at BETWEEN NOW() AND NOW() + INTERVAL '3 days'
+    `);
+
+    const allExpiring = [
+      ...trialGyms.rows.map(g => ({ ...g, kind: "trial" })),
+      ...activeGyms.rows.map(g => ({ ...g, kind: "active" })),
+    ];
+
+    let notified = 0;
+    for (const gym of allExpiring) {
+      const title = gym.kind === "trial"
+        ? "ينتهي اشتراكك التجريبي قريباً ⚠️"
+        : "ينتهي اشتراكك قريباً ⚠️";
+      const body = gym.kind === "trial"
+        ? `فترتك التجريبية في "${gym.name}" تنتهي خلال ${gym.days_left} أيام. اشترك الآن لمتابعة الاستخدام`
+        : `اشتراك صالة "${gym.name}" ينتهي خلال ${gym.days_left} أيام. يرجى التجديد لتجنب انقطاع الخدمة`;
+
+      const owner = await query(
+        "SELECT id FROM users WHERE gym_id = $1 AND role = 'owner' LIMIT 1",
+        [gym.id]
+      );
+      if (!owner.rows.length) continue;
+      const ownerId = owner.rows[0].id;
+
+      await query(
+        `INSERT INTO notifications (user_id, title, body, type, metadata)
+         VALUES ($1, $2, $3, 'subscription_expiry', $4)`,
+        [ownerId, title, body, JSON.stringify({ gymId: gym.id, kind: gym.kind, daysLeft: gym.days_left })]
+      );
+
+      const tokens = await query(
+        "SELECT token FROM user_fcm_tokens WHERE user_id = $1 AND is_active = TRUE",
+        [ownerId]
+      );
+      if (tokens.rows.length) {
+        await sendMulticast({ tokens: tokens.rows.map(r => r.token), title, body });
+      }
+      notified++;
+    }
+
+    console.log(`✅ [Cron] Notified ${notified} gym owners about expiring platform subscriptions`);
+  } catch (err) {
+    console.error("❌ [Cron] notifyExpiringGymSubscriptions error:", err.message);
+  }
+}
+
 // ── تشغيل المهام كل 24 ساعة ───────────────────────────────────
 export function startCronJobs() {
   const INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 ساعة
@@ -73,11 +142,13 @@ export function startCronJobs() {
   // تشغيل فوري عند بدء الخادم
   expireSubscriptions();
   notifyExpiringSubscriptions();
+  notifyExpiringGymSubscriptions();
 
   // جدولة يومية
   setInterval(async () => {
     await expireSubscriptions();
     await notifyExpiringSubscriptions();
+    await notifyExpiringGymSubscriptions();
   }, INTERVAL_MS);
 
   console.log("✅ [Cron] Daily jobs scheduled (every 24h)");

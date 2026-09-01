@@ -7,4 +7,5 @@ export const superadminService = {
   getGymDetail:     (id)        => api.get(`/superadmin/gyms/${id}`).then(r => r.data),
   updateGymStatus:  (id, data)  => api.patch(`/superadmin/gyms/${id}/status`, data).then(r => r.data),
   updateGymPlan:    (id, data)  => api.patch(`/superadmin/gyms/${id}/plan`, data).then(r => r.data),
+  sendNotification: (data)      => api.post("/superadmin/notify", data).then(r => r.data),
 };

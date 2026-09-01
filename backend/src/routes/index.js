@@ -20,7 +20,7 @@ import { getAthleteProgress, createProgress, updateProgress, deleteProgress, cha
 import { getGymSettings, updateGymSettings, updateGymPreferences, getMyProfile, updateMyProfile, changeMyPassword } from "../controllers/settings.controller.js";
 import { getOverview, getRevenueChart, getAttendanceChart, getMembersGrowth, getTopCoaches, getAgeCategoryDistribution, getRecentActivity } from "../controllers/dashboard.controller.js";
 import { registerGym, checkSlugAvailability } from "../controllers/onboarding.controller.js";
-import { getAllGyms, getPlatformOverview, updateGymStatus, updateGymPlan, getGymDetail } from "../controllers/superadmin.controller.js";
+import { getAllGyms, getPlatformOverview, updateGymStatus, updateGymPlan, getGymDetail, sendNotificationToOwners } from "../controllers/superadmin.controller.js";
 
 const router = Router();
 
@@ -212,7 +212,7 @@ router.get("/dashboard/recent-activity",            authenticate, staffOnly, get
 
 // ── Onboarding (تسجيل صالة جديدة ذاتياً) ────────────────────────
 router.post("/onboarding/register", [
-  body("gymName").notEmpty().withMessage("اسم الصالة مطلوب"),
+  body("gymName").notEmpty().withMessage("اسم الصالة باللغة الاتينية"),
   body("ownerName").notEmpty().withMessage("اسم المالك مطلوب"),
   body("ownerPhone").notEmpty().withMessage("رقم الهاتف مطلوب"),
   body("password").isLength({ min: 6 }).withMessage("كلمة المرور يجب أن تكون 6 أحرف على الأقل"),
@@ -229,5 +229,10 @@ router.patch("/superadmin/gyms/:id/status",    authenticate, superAdminOnly, [
   validate,
 ], updateGymStatus);
 router.patch("/superadmin/gyms/:id/plan",      authenticate, superAdminOnly, updateGymPlan);
+router.post ("/superadmin/notify",             authenticate, superAdminOnly, [
+  body("title").notEmpty().withMessage("العنوان مطلوب"),
+  body("body").notEmpty().withMessage("نص الإشعار مطلوب"),
+  validate,
+], sendNotificationToOwners);
 
 export default router;
