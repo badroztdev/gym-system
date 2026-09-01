@@ -19,8 +19,14 @@ import { getMyAthletes, getDashboard, getSchedule, getAttendanceHistory, getSubs
 import { getAthleteProgress, createProgress, updateProgress, deleteProgress, changeRank, getMetricTemplates, createMetricTemplate, getProgressList } from "../controllers/progress.controller.js";
 import { getGymSettings, updateGymSettings, updateGymPreferences, getMyProfile, updateMyProfile, changeMyPassword } from "../controllers/settings.controller.js";
 import { getOverview, getRevenueChart, getAttendanceChart, getMembersGrowth, getTopCoaches, getAgeCategoryDistribution, getRecentActivity } from "../controllers/dashboard.controller.js";
+import { registerGym, checkSlugAvailability } from "../controllers/onboarding.controller.js";
+import { getAllGyms, getPlatformOverview, updateGymStatus, updateGymPlan, getGymDetail } from "../controllers/superadmin.controller.js";
+import { checkGymStatus } from "../middleware/gymStatus.js";
 
 const router = Router();
+
+// حارس صلاحية خاص بالمطوّر فقط (Super Admin)
+const superAdminOnly = authorize("super_admin");
 
 // ── Health ────────────────────────────────────────────────────
 router.get("/health", (_req, res) => res.json({ status: "ok", ts: new Date() }));
@@ -204,5 +210,25 @@ router.get("/dashboard/members-growth",             authenticate, staffOnly, get
 router.get("/dashboard/top-coaches",                authenticate, staffOnly, getTopCoaches);
 router.get("/dashboard/age-category-distribution",  authenticate, staffOnly, getAgeCategoryDistribution);
 router.get("/dashboard/recent-activity",            authenticate, staffOnly, getRecentActivity);
+
+// ── Onboarding (تسجيل صالة جديدة ذاتياً) ────────────────────────
+router.post("/onboarding/register", [
+  body("gymName").notEmpty().withMessage("اسم الصالة مطلوب"),
+  body("ownerName").notEmpty().withMessage("اسم المالك مطلوب"),
+  body("ownerPhone").notEmpty().withMessage("رقم الهاتف مطلوب"),
+  body("password").isLength({ min: 6 }).withMessage("كلمة المرور يجب أن تكون 6 أحرف على الأقل"),
+  validate,
+], registerGym);
+router.get("/onboarding/check-slug", checkSlugAvailability);
+
+// ── Super Admin (لوحة إدارة المنصة — للمطوّر فقط) ────────────────
+router.get  ("/superadmin/overview",           authenticate, superAdminOnly, getPlatformOverview);
+router.get  ("/superadmin/gyms",               authenticate, superAdminOnly, getAllGyms);
+router.get  ("/superadmin/gyms/:id",           authenticate, superAdminOnly, getGymDetail);
+router.patch("/superadmin/gyms/:id/status",    authenticate, superAdminOnly, [
+  body("status").isIn(["trial","active","suspended","cancelled"]).withMessage("حالة غير صحيحة"),
+  validate,
+], updateGymStatus);
+router.patch("/superadmin/gyms/:id/plan",      authenticate, superAdminOnly, updateGymPlan);
 
 export default router;

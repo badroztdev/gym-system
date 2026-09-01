@@ -27,6 +27,8 @@ import Layout from "@/components/layout/Layout";
 
 // Pages (لوحة التحكم)
 import Login         from "@/pages/Login";
+import SignUp        from "@/pages/SignUp";
+import SuperAdmin    from "@/pages/SuperAdmin";
 import Members       from "@/pages/Members";
 import Subscriptions from "@/pages/Subscriptions";
 import Sessions      from "@/pages/Sessions";
@@ -140,6 +142,12 @@ export default function App() {
         <Routes>
           {/* Public */}
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/superadmin" element={
+            <ProtectedRoute>
+              <SuperAdmin />
+            </ProtectedRoute>
+          } />
 
           {/* Protected dashboard */}
           <Route path="/" element={

@@ -13,15 +13,40 @@ export const authenticate = async (req, res, next) => {
     const token = header.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    // ✅ SaaS: نجلب أيضاً حالة اشتراك الصالة في نفس الاستعلام (JOIN واحد فقط،
+    // بدون أي تكلفة أداء إضافية) لتفادي إضافة أي middleware جديد لكل مسار
     const { rows } = await query(
-      "SELECT id, gym_id, full_name, email, phone, role, is_active FROM users WHERE id = $1",
+      `SELECT u.id, u.gym_id, u.full_name, u.email, u.phone, u.role, u.is_active,
+              g.subscription_status, g.trial_ends_at, g.subscription_ends_at
+       FROM users u
+       LEFT JOIN gyms g ON g.id = u.gym_id
+       WHERE u.id = $1`,
       [decoded.userId]
     );
 
     if (!rows.length || !rows[0].is_active)
       return unauthorized(res, "الحساب غير موجود أو معطّل");
 
-    req.user = rows[0];
+    const user = rows[0];
+
+    // ✅ SaaS: تحقق من حالة اشتراك الصالة (يُتجاوز تلقائياً لحساب super_admin
+    // لأنه لا ينتمي لصالة عادية، وgym_id سيكون NULL له فلن يدخل هذا الشرط)
+    if (user.role !== "super_admin" && user.gym_id) {
+      if (user.subscription_status === "suspended") {
+        return forbidden(res, "تم تعليق اشتراك الصالة. يرجى التواصل مع الدعم لتفعيله مجدداً");
+      }
+      if (user.subscription_status === "cancelled") {
+        return forbidden(res, "تم إلغاء اشتراك الصالة");
+      }
+      if (user.subscription_status === "trial" && user.trial_ends_at && new Date(user.trial_ends_at) < new Date()) {
+        return forbidden(res, "انتهت الفترة التجريبية المجانية. يرجى الاشتراك لمتابعة الاستخدام");
+      }
+      if (user.subscription_status === "active" && user.subscription_ends_at && new Date(user.subscription_ends_at) < new Date()) {
+        return forbidden(res, "انتهى اشتراك الصالة. يرجى التجديد لمتابعة الاستخدام");
+      }
+    }
+
+    req.user = user;
     next();
   } catch (err) {
     if (err.name === "TokenExpiredError")
