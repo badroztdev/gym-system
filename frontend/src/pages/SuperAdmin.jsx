@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { superadminService } from "@/services/superadmin.service";
+import { settingsService } from "@/services/settings.service";
 import { useAuthStore } from "@/store/authStore";
 import toast from "react-hot-toast";
 
@@ -121,6 +122,110 @@ function GymDetailModal({ gymId, onClose }) {
   );
 }
 
+function ChangePasswordModal({ open, onClose }) {
+  const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+
+  const mutation = useMutation({
+    mutationFn: settingsService.changePassword,
+    onSuccess: (res) => {
+      toast.success(res.data?.message || "تم تغيير كلمة المرور بنجاح ✅");
+      setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      onClose();
+    },
+  });
+
+  const handleSubmit = () => {
+    if (!form.currentPassword || !form.newPassword) {
+      toast.error("يرجى تعبئة جميع الحقول");
+      return;
+    }
+    if (form.newPassword.length < 6) {
+      toast.error("كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل");
+      return;
+    }
+    if (form.newPassword !== form.confirmPassword) {
+      toast.error("كلمتا المرور الجديدتان غير متطابقتين");
+      return;
+    }
+    mutation.mutate({ currentPassword: form.currentPassword, newPassword: form.newPassword });
+  };
+
+  if (!open) return null;
+
+  return (
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.7)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: "100%", maxWidth: 380,
+        background: "var(--card)", border: "1px solid var(--border)",
+        borderRadius: 18, padding: 24,
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>🔒 تغيير كلمة المرور</div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 18, cursor: "pointer" }}>✕</button>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div>
+            <label style={{ fontSize: 12, color: "var(--muted-lt)", fontWeight: 500, display: "block", marginBottom: 6 }}>كلمة المرور الحالية</label>
+            <input
+              type="password"
+              value={form.currentPassword}
+              onChange={e => setForm(f => ({ ...f, currentPassword: e.target.value }))}
+              style={{
+                width: "100%", padding: "10px 14px", background: "var(--surface)",
+                border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
+                color: "var(--text)", fontSize: 14, outline: "none", textAlign: "right",
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: "var(--muted-lt)", fontWeight: 500, display: "block", marginBottom: 6 }}>كلمة المرور الجديدة</label>
+            <input
+              type="password"
+              value={form.newPassword}
+              onChange={e => setForm(f => ({ ...f, newPassword: e.target.value }))}
+              style={{
+                width: "100%", padding: "10px 14px", background: "var(--surface)",
+                border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
+                color: "var(--text)", fontSize: 14, outline: "none", textAlign: "right",
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: "var(--muted-lt)", fontWeight: 500, display: "block", marginBottom: 6 }}>تأكيد كلمة المرور الجديدة</label>
+            <input
+              type="password"
+              value={form.confirmPassword}
+              onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))}
+              style={{
+                width: "100%", padding: "10px 14px", background: "var(--surface)",
+                border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
+                color: "var(--text)", fontSize: 14, outline: "none", textAlign: "right",
+              }}
+            />
+          </div>
+
+          <button
+            onClick={handleSubmit}
+            disabled={mutation.isPending}
+            style={{
+              padding: "12px", background: "var(--accent)", border: "none",
+              borderRadius: "var(--radius-sm)", color: "#0d0f14", fontSize: 14,
+              fontWeight: 700, cursor: mutation.isPending ? "not-allowed" : "pointer",
+              opacity: mutation.isPending ? 0.7 : 1, fontFamily: "'Sora', sans-serif", marginTop: 4,
+            }}
+          >
+            {mutation.isPending ? "جاري التغيير..." : "تغيير كلمة المرور"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SuperAdminPage() {
   const user     = useAuthStore(s => s.user);
   const logout   = useAuthStore(s => s.logout);
@@ -134,6 +239,7 @@ export default function SuperAdminPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [selectedGymId, setSelectedGymId] = useState(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   const { data: overviewData } = useQuery({ queryKey: ["superadmin-overview"], queryFn: superadminService.getOverview });
   const overview = overviewData?.data || {};
@@ -162,6 +268,15 @@ export default function SuperAdminPage() {
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{user?.fullName}</div>
               <div style={{ fontSize: 11, color: "var(--muted)" }}>مدير المنصة</div>
             </div>
+            <button onClick={() => setShowPasswordModal(true)} style={{
+              padding: "8px 16px", fontSize: 12, fontWeight: 600,
+              background: "var(--card)", border: "1px solid var(--border)",
+              borderRadius: "var(--radius-sm)", color: "var(--text)",
+              cursor: "pointer", fontFamily: "'Sora', sans-serif",
+              whiteSpace: "nowrap",
+            }}>
+              🔒 كلمة المرور
+            </button>
             <button onClick={handleLogout} style={{
               padding: "8px 16px", fontSize: 12, fontWeight: 600,
               background: "var(--danger)10", border: "1px solid var(--danger)30",
@@ -269,6 +384,7 @@ export default function SuperAdminPage() {
       </div>
 
       <GymDetailModal gymId={selectedGymId} onClose={() => setSelectedGymId(null)} />
+      <ChangePasswordModal open={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
     </div>
   );
 }
