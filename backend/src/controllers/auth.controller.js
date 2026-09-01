@@ -1,5 +1,5 @@
 // src/controllers/auth.controller.js
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { query } from "../utils/db.js";
 import { ok, unauthorized, serverError } from "../utils/response.js";
