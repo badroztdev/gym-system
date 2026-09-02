@@ -69,7 +69,7 @@ export default function Layout() {
           }}>G</div>
           {(!collapsed || isMobile) && (
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>SGMS</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>GymPro</div>
               <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 2 }}>{user?.gymName || "الصالة"}</div>
             </div>
           )}
@@ -194,9 +194,12 @@ export default function Layout() {
         paddingBottom: isMobile ? 72 : 0,
         position: "relative",
       }}>
-        {/* جرس الإشعارات — يظهر فوق كل صفحة في الحاسوب */}
+        {/* شريط علوي رفيع يحمل الجرس فقط — بتدفق طبيعي فلا يتصادم مع أزرار الصفحة */}
         {!isMobile && (
-          <div style={{ position: "absolute", top: 16, left: 24, zIndex: 20 }}>
+          <div style={{
+            display: "flex", justifyContent: "flex-start",
+            padding: "10px 24px 0", background: "var(--bg)",
+          }}>
             <NotificationBell />
           </div>
         )}
@@ -216,7 +219,7 @@ export default function Layout() {
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 15, fontWeight: 700, color: "#0d0f14",
               }}>G</div>
-              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>SGMS</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>GymPro</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <NotificationBell />

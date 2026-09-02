@@ -11,22 +11,36 @@ const TYPE_COLORS = {
   general:              { bg: "var(--border)",     color: "var(--muted)",   icon: "🔔" },
 };
 
+// كشف حجم الشاشة (يُحدَّث تلقائياً عند تدوير الهاتف أو تغيير الحجم)
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 640 : false
+  );
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return isMobile;
+}
+
 export default function NotificationBell() {
   const [open, setOpen]   = useState(false);
-  const ref               = useRef(null);
-  const qc                = useQueryClient();
-  const prevUnreadRef      = useRef(null); // لمعرفة إذا زاد عدد الإشعارات غير المقروءة
+  const ref                = useRef(null);
+  const btnRef              = useRef(null);
+  const qc                 = useQueryClient();
+  const prevUnreadRef       = useRef(null);
+  const isMobile            = useIsMobile();
 
   const { data } = useQuery({
     queryKey: ["notifications"],
     queryFn:  notificationsService.getAll,
-    refetchInterval: 30000, // كل 30 ثانية
+    refetchInterval: 30000,
   });
 
   const notifications = data?.data || [];
   const unread        = data?.meta?.unread || 0;
 
-  // ── تشغيل صوت عند وصول إشعار جديد (اكتُشف عبر الـ polling) ──
   useEffect(() => {
     if (prevUnreadRef.current !== null && unread > prevUnreadRef.current) {
       try {
@@ -38,7 +52,6 @@ export default function NotificationBell() {
     prevUnreadRef.current = unread;
   }, [unread]);
 
-  // إغلاق عند الضغط خارج الـ dropdown
   useEffect(() => {
     const handler = (e) => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
@@ -57,10 +70,36 @@ export default function NotificationBell() {
     qc.invalidateQueries({ queryKey: ["notifications"] });
   };
 
+  // ── على الهاتف: نافذة سفلية (Bottom Sheet) تملأ عرض الشاشة بالكامل ──
+  // ── على الحاسوب: قائمة منسدلة (Dropdown) بجانب زر الجرس مباشرة ──
+  const panelStyle = isMobile
+    ? {
+        position: "fixed",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        top: "auto",
+        maxHeight: "75vh",
+        width: "100%",
+        maxWidth: "100%",
+        borderRadius: "20px 20px 0 0",
+        margin: 0,
+      }
+    : {
+        position: "absolute",
+        top: "calc(100% + 8px)",
+        left: 0,
+        width: 340,
+        maxWidth: "calc(100vw - 32px)",
+        maxHeight: 420,
+        borderRadius: "var(--radius)",
+      };
+
   return (
     <div ref={ref} style={{ position: "relative" }}>
       {/* زر الجرس */}
       <button
+        ref={btnRef}
         onClick={() => setOpen(v => !v)}
         style={{
           width: 38, height: 38, borderRadius: 10,
@@ -68,7 +107,7 @@ export default function NotificationBell() {
           border: `1px solid ${open ? "var(--accent)40" : "var(--border)"}`,
           display: "flex", alignItems: "center", justifyContent: "center",
           cursor: "pointer", fontSize: 17, position: "relative",
-          transition: "all 0.15s",
+          transition: "all 0.15s", flexShrink: 0,
         }}
       >
         🔔
@@ -82,34 +121,38 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* خلفية شفافة (تُغلق القائمة عند اللمس خارجها — مهم على الهاتف) */}
+      {/* خلفية شفافة تُغلق القائمة عند اللمس خارجها */}
       {open && (
         <div
           onClick={() => setOpen(false)}
-          style={{ position: "fixed", inset: 0, zIndex: 99, background: "rgba(0,0,0,0.35)" }}
+          style={{ position: "fixed", inset: 0, zIndex: 99, background: "rgba(0,0,0,0.4)" }}
         />
       )}
 
-      {/* Dropdown */}
+      {/* القائمة — تتكيف تلقائياً بين Bottom Sheet (هاتف) و Dropdown (حاسوب) */}
       {open && (
         <div style={{
-          position: "fixed",
-          top: 62,
-          left: 12,
-          right: 12,
-          margin: "0 auto",
-          maxWidth: 360,
-          maxHeight: "calc(100vh - 100px)",
+          ...panelStyle,
           overflowY: "auto",
-          background: "var(--card)", border: "1px solid var(--border)",
-          borderRadius: "var(--radius)", boxShadow: "var(--shadow)",
-          zIndex: 100, animation: "fadeUp 0.2s ease",
+          background: "var(--card)",
+          border: "1px solid var(--border)",
+          boxShadow: "var(--shadow)",
+          zIndex: 100,
+          animation: isMobile ? "slideUp 0.25s ease" : "fadeUp 0.2s ease",
           direction: "rtl",
         }}>
+          {/* مقبض السحب — يظهر فقط على الهاتف */}
+          {isMobile && (
+            <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 4px" }}>
+              <div style={{ width: 40, height: 4, borderRadius: 4, background: "var(--border)" }} />
+            </div>
+          )}
+
           {/* رأس */}
           <div style={{
             padding: "12px 16px", borderBottom: "1px solid var(--border)",
             display: "flex", justifyContent: "space-between", alignItems: "center",
+            position: "sticky", top: 0, background: "var(--card)", zIndex: 1,
           }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
               الإشعارات {unread > 0 && <span style={{ color: "var(--danger)", fontSize: 11 }}>({unread} جديد)</span>}
@@ -165,6 +208,13 @@ export default function NotificationBell() {
           )}
         </div>
       )}
+
+      <style>{`
+        @keyframes slideUp {
+          from { transform: translateY(100%); }
+          to   { transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
