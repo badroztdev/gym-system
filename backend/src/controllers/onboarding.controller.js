@@ -3,7 +3,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { transaction, query } from "../utils/db.js";
-import { ok, created, badRequest, serverError } from "../utils/response.js";
+import { ok, created, notFound, badRequest, serverError } from "../utils/response.js";
 
 const signToken = (userId) =>
   jwt.sign({ userId }, process.env.JWT_SECRET, {
@@ -139,5 +139,22 @@ export const checkSlugAvailability = async (req, res) => {
       slug,
       available: !exists.rows.length,
     });
+  } catch (err) { serverError(res, err); }
+};
+
+// ── GET /api/onboarding/gym/:slug ─────────────────────────────
+// يجلب معلومات صالة موجودة (الاسم، الشعار) من رابطها الفريد
+// تُستخدم لعرض هوية الصالة في صفحة تسجيل الدخول المخصَّصة sgms.site/{slug}/login
+export const getGymBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { rows } = await query(
+      `SELECT id, name, slug, logo_url, subscription_status
+       FROM gyms WHERE slug = $1`,
+      [slug]
+    );
+    if (!rows.length) return notFound(res, "الصالة غير موجودة");
+
+    return ok(res, rows[0]);
   } catch (err) { serverError(res, err); }
 };
