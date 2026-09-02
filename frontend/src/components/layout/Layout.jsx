@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams, Outlet } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 const NAV = [
   { path: "/dashboard",     label: "لوحة التحكم",   icon: "⊞" },
@@ -68,7 +69,7 @@ export default function Layout() {
           }}>G</div>
           {(!collapsed || isMobile) && (
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>GymPro</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>SGMS</div>
               <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 2 }}>{user?.gymName || "الصالة"}</div>
             </div>
           )}
@@ -208,9 +209,10 @@ export default function Layout() {
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 15, fontWeight: 700, color: "#0d0f14",
               }}>G</div>
-              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>GymPro</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>SGMS</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <NotificationBell />
               <button onClick={() => setSidebarOpen(true)} style={{
                 background: "var(--card)", border: "1px solid var(--border)",
                 borderRadius: "var(--radius-sm)", padding: "7px 12px",
