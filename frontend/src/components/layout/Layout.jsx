@@ -216,7 +216,7 @@ export default function Layout() {
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 15, fontWeight: 700, color: "#0d0f14",
               }}>G</div>
-              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>GymPro</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>SGMS</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <NotificationBell />
