@@ -1,6 +1,6 @@
 // src/portal/components/PortalLayout.jsx
 import { useState, useEffect } from "react";
-import { useLocation, useNavigate, Outlet } from "react-router-dom";
+import { useLocation, useNavigate, useParams, Outlet } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/authStore";
 import { usePortalStore } from "@/portal/store/portalStore";
@@ -8,16 +8,17 @@ import { portalService } from "@/portal/services/portal.service";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
 const NAV = [
-  { path: "/portal/home",       label: "الرئيسية", icon: "🏠" },
-  { path: "/portal/schedule",   label: "الجدول",   icon: "📅" },
-  { path: "/portal/scan",       label: "الحضور",   icon: "🔲" },
-  { path: "/portal/progress",   label: "تقدّمي",   icon: "📈" },
-  { path: "/portal/profile",    label: "ملفي",     icon: "👤" },
+  { path: "home",       label: "الرئيسية", icon: "🏠" },
+  { path: "schedule",   label: "الجدول",   icon: "📅" },
+  { path: "scan",       label: "الحضور",   icon: "🔲" },
+  { path: "progress",   label: "تقدّمي",   icon: "📈" },
+  { path: "profile",    label: "ملفي",     icon: "👤" },
 ];
 
 export default function PortalLayout() {
   const location = useLocation();
   const navigate  = useNavigate();
+  const { gymSlug } = useParams();
   const { user, logout } = useAuthStore();
   const { selectedAthleteId, setSelectedAthlete } = usePortalStore();
   const [showSwitcher, setShowSwitcher] = useState(false);
@@ -37,7 +38,8 @@ export default function PortalLayout() {
   }, [athletes, selectedAthleteId]);
 
   const currentAthlete = athletes.find(a => a.id === selectedAthleteId) || athletes[0];
-  const activePath = "/" + location.pathname.split("/").slice(0,3).join("/").replace(/^\/portal\//, "portal/");
+  // البنية الآن: /portal/{gymSlug}/{page} → الصفحة هي الجزء الرابع
+  const activePage = location.pathname.split("/")[3] || "home";
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", direction: "rtl", display: "flex", flexDirection: "column" }}>
@@ -79,15 +81,7 @@ export default function PortalLayout() {
             background: "var(--danger)10", border: "1px solid var(--danger)30",
             color: "var(--danger)", cursor: "pointer", fontSize: 15,
             display: "flex", alignItems: "center", justifyContent: "center",
-          }}>   <svg
-        width="18" height="18" viewBox="0 0 24 24" fill="none"
-        stroke="var(--danger)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-        style={{ transform: "scaleX(-1)" }}   // ⬅️ عكس الاتجاه ليناسب RTL
-      >
-        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-        <polyline points="16 17 21 12 16 7" />
-        <line x1="21" y1="12" x2="9" y2="12" />
-      </svg></button>
+          }}>⏻</button>
         </div>
       </header>
 
@@ -104,9 +98,9 @@ export default function PortalLayout() {
         padding: "8px 0 12px",
       }}>
         {NAV.map(item => {
-          const active = location.pathname.startsWith(item.path);
+          const active = activePage === item.path;
           return (
-            <button key={item.path} onClick={() => navigate(item.path)} style={{
+            <button key={item.path} onClick={() => navigate(`/portal/${gymSlug}/${item.path}`)} style={{
               display: "flex", flexDirection: "column", alignItems: "center",
               gap: 3, background: "none", border: "none",
               color: active ? "var(--accent)" : "var(--muted)",

@@ -114,7 +114,9 @@ function SuperAdminGuard({ children }) {
 }
 
 // حارس مخصص لمسارات الـ Portal — يقبل فقط athlete/guardian
+// ✅ نفس نمط GymGuard: يتحقق أن :gymSlug في الرابط يطابق صالة المستخدم فعلاً
 function ProtectedPortalRoute({ children }) {
+  const { gymSlug } = useParams();
   const token = useAuthStore(s => s.token);
   const user  = useAuthStore(s => s.user);
 
@@ -122,6 +124,8 @@ function ProtectedPortalRoute({ children }) {
 
   if (!token) return <Navigate to="/portal/login" replace />;
   if (!["athlete", "guardian"].includes(user?.role)) return <Navigate to="/portal/login" replace />;
+  if (!user?.gymSlug) return <Navigate to="/portal/login" replace />;
+  if (user.gymSlug !== gymSlug) return <Navigate to={`/portal/${user.gymSlug}/home`} replace />;
   return children;
 }
 
@@ -183,14 +187,15 @@ export default function App() {
             <Route path="settings"      element={<Settings />} />
           </Route>
 
-          {/* ══ Portal — الرياضي / ولي الأمر (يبقى عاماً حالياً) ══ */}
+          {/* ══ Portal — الرياضي / ولي الأمر ══════════════════════ */}
+          {/* تسجيل الدخول موحَّد لكل الصالات، وبعده يُوجَّه لرابط الصالة الخاص */}
           <Route path="/portal/login" element={<PortalLogin />} />
-          <Route path="/portal" element={
+          <Route path="/portal/:gymSlug" element={
             <ProtectedPortalRoute>
               <PortalLayout />
             </ProtectedPortalRoute>
           }>
-            <Route index             element={<Navigate to="/portal/home" replace />} />
+            <Route index             element={<Navigate to="home" replace />} />
             <Route path="home"       element={<PortalHome />} />
             <Route path="schedule"   element={<PortalSchedule />} />
             <Route path="scan"       element={<PortalScan />} />
