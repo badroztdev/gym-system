@@ -84,8 +84,8 @@ export const getSessionAttendance = async (req, res) => {
     const params = [session.gym_id];
     let p = 2;
 
-    if (session.age_category) {
-      conditions.push(`u.age_category = $${p}`);
+    if (Array.isArray(session.age_category) && session.age_category.length) {
+      conditions.push(`u.age_category::text = ANY($${p}::text[])`);
       params.push(session.age_category);
       p++;
     }
