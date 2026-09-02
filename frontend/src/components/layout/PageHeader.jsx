@@ -1,7 +1,20 @@
 // src/components/layout/PageHeader.jsx
+import { useState, useEffect } from "react";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return isMobile;
+}
+
 export default function PageHeader({ title, subtitle, actions, children }) {
+  const isMobile = useIsMobile();
+
   return (
     <header style={{
       padding: "14px 16px",
@@ -22,9 +35,9 @@ export default function PageHeader({ title, subtitle, actions, children }) {
         }}>{title}</h1>
         {subtitle && <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>{subtitle}</p>}
       </div>
-      {/* ✅ الجرس يظهر أولاً (أقصى يسار الصف) ثم أزرار الصفحة بجانبه — نفس الصف دائماً */}
+      {/* ✅ الجرس يظهر هنا فقط على الحاسوب — على الهاتف يظهر بجانب زر ☰ في Layout.jsx بدلاً منه */}
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <NotificationBell />
+        {!isMobile && <NotificationBell />}
         {actions}
         {children}
       </div>
