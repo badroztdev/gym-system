@@ -23,6 +23,7 @@ function playNotificationSound() {
 import Layout from "@/components/layout/Layout";
 
 // Pages (لوحة التحكم)
+import Landing       from "@/pages/Landing";
 import Login         from "@/pages/Login";
 import SignUp        from "@/pages/SignUp";
 import SuperAdmin    from "@/pages/SuperAdmin";
@@ -141,14 +142,16 @@ const qc = new QueryClient({
 });
 
 // يوجّه من "/" حسب حالة تسجيل الدخول
+// ✅ الجذر "/": غير المسجَّلين يرون الصفحة الرئيسية التسويقية،
+// المسجَّلون يُوجَّهون تلقائياً للوحتهم الصحيحة حسب دورهم
 function RootRedirect() {
   const token = useAuthStore(s => s.token);
   const user  = useAuthStore(s => s.user);
 
-  if (!token) return <Navigate to="/login" replace />;
+  if (!token) return <Landing />;
   if (user?.role === "super_admin") return <Navigate to="/superadmin" replace />;
   if (user?.gymSlug) return <Navigate to={`/${user.gymSlug}/dashboard`} replace />;
-  return <Navigate to="/login" replace />;
+  return <Landing />;
 }
 
 export default function App() {
