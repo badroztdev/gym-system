@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams, Outlet } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
-import NotificationBell from "@/components/notifications/NotificationBell";
 
 const NAV = [
   { path: "/dashboard",     label: "لوحة التحكم",   icon: "⊞" },
@@ -194,17 +193,7 @@ export default function Layout() {
         paddingBottom: isMobile ? 72 : 0,
         position: "relative",
       }}>
-        {/* شريط علوي رفيع يحمل الجرس فقط — بتدفق طبيعي فلا يتصادم مع أزرار الصفحة */}
-        {!isMobile && (
-          <div style={{
-            display: "flex", justifyContent: "flex-start",
-            padding: "10px 24px 0", background: "var(--bg)",
-          }}>
-            <NotificationBell />
-          </div>
-        )}
-
-        {/* Mobile top bar */}
+{/* Mobile top bar */}
         {isMobile && (
           <div style={{
             padding: "11px 16px",
@@ -222,7 +211,6 @@ export default function Layout() {
               <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>GymPro</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <NotificationBell />
               <button onClick={() => setSidebarOpen(true)} style={{
                 background: "var(--card)", border: "1px solid var(--border)",
                 borderRadius: "var(--radius-sm)", padding: "7px 12px",

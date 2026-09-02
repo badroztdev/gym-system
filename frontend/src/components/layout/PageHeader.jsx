@@ -1,4 +1,6 @@
 // src/components/layout/PageHeader.jsx
+import NotificationBell from "@/components/notifications/NotificationBell";
+
 export default function PageHeader({ title, subtitle, actions, children }) {
   return (
     <header style={{
@@ -20,7 +22,9 @@ export default function PageHeader({ title, subtitle, actions, children }) {
         }}>{title}</h1>
         {subtitle && <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>{subtitle}</p>}
       </div>
+      {/* ✅ الجرس يظهر أولاً (أقصى يسار الصف) ثم أزرار الصفحة بجانبه — نفس الصف دائماً */}
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <NotificationBell />
         {actions}
         {children}
       </div>

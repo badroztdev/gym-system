@@ -75,14 +75,14 @@ export default function NotificationBell() {
   const panelStyle = isMobile
     ? {
         position: "fixed",
-        left: 0,
-        right: 0,
-        bottom: 0,
-        top: "auto",
-        maxHeight: "75vh",
-        width: "100%",
-        maxWidth: "100%",
-        borderRadius: "20px 20px 0 0",
+        top: 66,
+        left: "50%",
+        transform: "translateX(-50%)",
+        bottom: "auto",
+        maxHeight: "70vh",
+        width: "92vw",
+        maxWidth: 400,
+        borderRadius: "var(--radius)",
         margin: 0,
       }
     : {
@@ -138,16 +138,9 @@ export default function NotificationBell() {
           border: "1px solid var(--border)",
           boxShadow: "var(--shadow)",
           zIndex: 100,
-          animation: isMobile ? "slideUp 0.25s ease" : "fadeUp 0.2s ease",
+          animation: isMobile ? "slideDown 0.2s ease" : "fadeUp 0.2s ease",
           direction: "rtl",
         }}>
-          {/* مقبض السحب — يظهر فقط على الهاتف */}
-          {isMobile && (
-            <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 4px" }}>
-              <div style={{ width: 40, height: 4, borderRadius: 4, background: "var(--border)" }} />
-            </div>
-          )}
-
           {/* رأس */}
           <div style={{
             padding: "12px 16px", borderBottom: "1px solid var(--border)",
@@ -210,9 +203,9 @@ export default function NotificationBell() {
       )}
 
       <style>{`
-        @keyframes slideUp {
-          from { transform: translateY(100%); }
-          to   { transform: translateY(0); }
+        @keyframes slideDown {
+          from { transform: translate(-50%, -16px); opacity: 0; }
+          to   { transform: translate(-50%, 0);      opacity: 1; }
         }
       `}</style>
     </div>
