@@ -75,12 +75,12 @@ export default function NotificationBell() {
   const panelStyle = isMobile
     ? {
         position: "fixed",
-        top: 66,
+        top: "50%",
         left: "50%",
-        transform: "translateX(-50%)",
+        transform: "translate(-50%, -50%)",
         bottom: "auto",
-        maxHeight: "70vh",
-        width: "92vw",
+        maxHeight: "75vh",
+        width: "88vw",
         maxWidth: 400,
         borderRadius: "var(--radius)",
         margin: 0,
@@ -138,7 +138,7 @@ export default function NotificationBell() {
           border: "1px solid var(--border)",
           boxShadow: "var(--shadow)",
           zIndex: 100,
-          animation: isMobile ? "slideDown 0.2s ease" : "fadeUp 0.2s ease",
+          animation: isMobile ? "popCenter 0.2s ease" : "fadeUp 0.2s ease",
           direction: "rtl",
         }}>
           {/* رأس */}
@@ -203,9 +203,9 @@ export default function NotificationBell() {
       )}
 
       <style>{`
-        @keyframes slideDown {
-          from { transform: translate(-50%, -16px); opacity: 0; }
-          to   { transform: translate(-50%, 0);      opacity: 1; }
+        @keyframes popCenter {
+          from { transform: translate(-50%, -50%) scale(0.94); opacity: 0; }
+          to   { transform: translate(-50%, -50%) scale(1);    opacity: 1; }
         }
       `}</style>
     </div>
