@@ -84,8 +84,8 @@ export const getSessionAttendance = async (req, res) => {
     const params = [session.gym_id];
     let p = 2;
 
-    if (Array.isArray(session.age_category) && session.age_category.length) {
-      conditions.push(`u.age_category::text = ANY($${p}::text[])`);
+    if (session.age_category) {
+      conditions.push(`u.age_category = $${p}`);
       params.push(session.age_category);
       p++;
     }
@@ -194,5 +194,163 @@ export const getAthleteAttendance = async (req, res) => {
     }, {});
 
     return ok(res, { records: rows, stats });
+  } catch (err) { serverError(res, err); }
+};
+
+// ── GET /api/attendance/overview ────────────────────────────────
+// إحصائيات عامة شاملة لكل الحصص في الصالة (آخر 30 يوماً افتراضياً)
+export const getAttendanceOverview = async (req, res) => {
+  try {
+    const gymId = req.user.gym_id;
+    const { dateFrom, dateTo } = req.query;
+
+    const from = dateFrom || null;
+    const to   = dateTo   || null;
+
+    const stats = await query(
+      `SELECT
+         COUNT(*) FILTER (WHERE a.status='present') AS present,
+         COUNT(*) FILTER (WHERE a.status='absent')  AS absent,
+         COUNT(*) FILTER (WHERE a.status='late')    AS late,
+         COUNT(*) FILTER (WHERE a.status='excused') AS excused,
+         COUNT(DISTINCT a.athlete_id)                AS unique_athletes,
+         COUNT(DISTINCT s.id)                        AS total_sessions
+       FROM attendance a
+       JOIN sessions s ON s.id = a.session_id
+       WHERE s.gym_id = $1
+         AND s.session_date >= COALESCE($2::date, CURRENT_DATE - INTERVAL '30 days')
+         AND s.session_date <= COALESCE($3::date, CURRENT_DATE)`,
+      [gymId, from, to]
+    );
+
+    const row = stats.rows[0];
+    const totalRecords = Number(row.present) + Number(row.absent) + Number(row.late) + Number(row.excused);
+    const attendanceRate = totalRecords > 0
+      ? Math.round((Number(row.present) / totalRecords) * 100)
+      : 0;
+
+    return ok(res, { ...row, attendanceRate });
+  } catch (err) { serverError(res, err); }
+};
+
+// ── GET /api/attendance/trend?period=week|month|year ────────────
+// اتجاه الحضور عبر الزمن (نفس منطق dashboard.controller لكن مخصَّص لصفحة الحضور)
+export const getAttendanceTrend = async (req, res) => {
+  try {
+    const { period = "month" } = req.query;
+    const gymId = req.user.gym_id;
+
+    let interval, dateFormat, truncUnit;
+    if (period === "week")  { interval = "6 days";   dateFormat = "YYYY-MM-DD"; truncUnit = "day"; }
+    if (period === "month") { interval = "29 days";  dateFormat = "YYYY-MM-DD"; truncUnit = "day"; }
+    if (period === "year")  { interval = "11 months";dateFormat = "YYYY-MM";    truncUnit = "month"; }
+
+    const stepInterval = truncUnit === "month" ? "1 month" : "1 day";
+
+    const { rows } = await query(`
+      SELECT TO_CHAR(d.unit, '${dateFormat}') AS label,
+             COUNT(a.id) FILTER (WHERE a.status='present') AS present,
+             COUNT(a.id) FILTER (WHERE a.status='absent')  AS absent,
+             COUNT(a.id) FILTER (WHERE a.status='late')    AS late
+      FROM generate_series(
+        DATE_TRUNC('${truncUnit}', CURRENT_DATE) - INTERVAL '${interval}',
+        DATE_TRUNC('${truncUnit}', CURRENT_DATE),
+        INTERVAL '${stepInterval}'
+      ) d(unit)
+      LEFT JOIN sessions s ON DATE_TRUNC('${truncUnit}', s.session_date) = d.unit AND s.gym_id = $1
+      LEFT JOIN attendance a ON a.session_id = s.id
+      GROUP BY d.unit ORDER BY d.unit
+    `, [gymId]);
+
+    return ok(res, rows);
+  } catch (err) { serverError(res, err); }
+};
+
+// ── GET /api/attendance/leaderboard ──────────────────────────────
+// ترتيب الرياضيين حسب نسبة الحضور (آخر 30 يوماً)
+export const getAttendanceLeaderboard = async (req, res) => {
+  try {
+    const gymId = req.user.gym_id;
+    const { order = "best" } = req.query; // best | worst
+
+    const { rows } = await query(`
+      SELECT
+        u.id, u.full_name, u.age_category, u.group_name,
+        COUNT(a.id) FILTER (WHERE a.status='present') AS present,
+        COUNT(a.id) FILTER (WHERE a.status='absent')  AS absent,
+        COUNT(a.id) FILTER (WHERE a.status='late')    AS late,
+        COUNT(a.id)                                    AS total,
+        CASE WHEN COUNT(a.id) > 0
+          THEN ROUND(COUNT(a.id) FILTER (WHERE a.status='present')::numeric / COUNT(a.id) * 100)
+          ELSE 0
+        END AS rate
+      FROM users u
+      JOIN attendance a ON a.athlete_id = u.id
+      JOIN sessions s ON s.id = a.session_id
+      WHERE u.gym_id = $1 AND u.role='athlete' AND u.is_active=TRUE
+        AND s.session_date >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY u.id, u.full_name, u.age_category, u.group_name
+      HAVING COUNT(a.id) >= 1
+      ORDER BY rate ${order === "worst" ? "ASC" : "DESC"}, total DESC
+      LIMIT 10
+    `, [gymId]);
+
+    return ok(res, rows);
+  } catch (err) { serverError(res, err); }
+};
+
+// ── GET /api/attendance/by-category ──────────────────────────────
+// توزيع نسب الحضور حسب الفئة العمرية
+export const getAttendanceByCategory = async (req, res) => {
+  try {
+    const gymId = req.user.gym_id;
+
+    const { rows } = await query(`
+      SELECT
+        COALESCE(u.age_category::text, 'غير محدد') AS category,
+        COUNT(a.id) FILTER (WHERE a.status='present') AS present,
+        COUNT(a.id) AS total,
+        CASE WHEN COUNT(a.id) > 0
+          THEN ROUND(COUNT(a.id) FILTER (WHERE a.status='present')::numeric / COUNT(a.id) * 100)
+          ELSE 0
+        END AS rate
+      FROM attendance a
+      JOIN sessions s ON s.id = a.session_id
+      JOIN users u ON u.id = a.athlete_id
+      WHERE s.gym_id = $1
+        AND s.session_date >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY u.age_category
+      ORDER BY rate DESC
+    `, [gymId]);
+
+    return ok(res, rows);
+  } catch (err) { serverError(res, err); }
+};
+
+// ── GET /api/attendance/recent-sessions ──────────────────────────
+// آخر الحصص مع ملخص حضورها (للجدول السفلي في الصفحة)
+export const getRecentSessionsAttendance = async (req, res) => {
+  try {
+    const gymId = req.user.gym_id;
+
+    const { rows } = await query(`
+      SELECT
+        s.id, s.title, TO_CHAR(s.session_date,'YYYY-MM-DD') AS session_date,
+        s.start_time, r.name AS room_name,
+        COUNT(a.id) FILTER (WHERE a.status='present') AS present,
+        COUNT(a.id) FILTER (WHERE a.status='absent')  AS absent,
+        COUNT(a.id) FILTER (WHERE a.status='late')    AS late,
+        COUNT(a.id)                                    AS total
+      FROM sessions s
+      LEFT JOIN rooms r ON r.id = s.room_id
+      LEFT JOIN attendance a ON a.session_id = s.id
+      WHERE s.gym_id = $1 AND s.is_cancelled = FALSE
+        AND s.session_date <= CURRENT_DATE
+      GROUP BY s.id, s.title, s.session_date, s.start_time, r.name
+      ORDER BY s.session_date DESC, s.start_time DESC
+      LIMIT 15
+    `, [gymId]);
+
+    return ok(res, rows);
   } catch (err) { serverError(res, err); }
 };

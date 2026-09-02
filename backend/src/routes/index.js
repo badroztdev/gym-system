@@ -13,13 +13,13 @@ import { getSubscriptions, getSubscription, createSubscription, updateSubscripti
 import { getPayments, createPayment, deletePayment, getPaymentsStats } from "../controllers/payments.controller.js";
 import { getRooms, createRoom, updateRoom, deleteRoom, regenerateQR } from "../controllers/rooms.controller.js";
 import { getSessions, getSession, createSession, updateSession, cancelSession, getTodaySessions } from "../controllers/sessions.controller.js";
-import { scanQR, getSessionAttendance, manualAttendance, getAthleteAttendance } from "../controllers/attendance.controller.js";
+import { scanQR, getSessionAttendance, manualAttendance, getAthleteAttendance, getAttendanceOverview, getAttendanceTrend, getAttendanceLeaderboard, getAttendanceByCategory, getRecentSessionsAttendance } from "../controllers/attendance.controller.js";
 import { saveToken, getNotifications, markRead, sendManual, notifyExpiringSubscriptions } from "../controllers/notifications.controller.js";
 import { getMyAthletes, getDashboard, getSchedule, getAttendanceHistory, getSubscriptionHistory, scanAttendance } from "../controllers/portal.controller.js";
 import { getAthleteProgress, createProgress, updateProgress, deleteProgress, changeRank, getMetricTemplates, createMetricTemplate, getProgressList } from "../controllers/progress.controller.js";
 import { getGymSettings, updateGymSettings, updateGymPreferences, getMyProfile, updateMyProfile, changeMyPassword } from "../controllers/settings.controller.js";
 import { getOverview, getRevenueChart, getAttendanceChart, getMembersGrowth, getTopCoaches, getAgeCategoryDistribution, getRecentActivity } from "../controllers/dashboard.controller.js";
-import { registerGym, checkSlugAvailability } from "../controllers/onboarding.controller.js";
+import { registerGym, checkSlugAvailability, getGymBySlug } from "../controllers/onboarding.controller.js";
 import { getAllGyms, getPlatformOverview, updateGymStatus, updateGymPlan, getGymDetail, sendNotificationToOwners } from "../controllers/superadmin.controller.js";
 
 const router = Router();
@@ -145,6 +145,11 @@ router.post("/attendance/manual",                 authenticate, staffOnly,   [
   validate,
 ], manualAttendance);
 router.get ("/attendance/athlete/:athleteId",     authenticate, staffOnly,   getAthleteAttendance);
+router.get ("/attendance/overview",               authenticate, staffOnly,   getAttendanceOverview);
+router.get ("/attendance/trend",                  authenticate, staffOnly,   getAttendanceTrend);
+router.get ("/attendance/leaderboard",             authenticate, staffOnly,   getAttendanceLeaderboard);
+router.get ("/attendance/by-category",             authenticate, staffOnly,   getAttendanceByCategory);
+router.get ("/attendance/recent-sessions",         authenticate, staffOnly,   getRecentSessionsAttendance);
 
 // ── Notifications ─────────────────────────────────────────────
 router.post ("/notifications/token",            authenticate, saveToken);
@@ -212,13 +217,14 @@ router.get("/dashboard/recent-activity",            authenticate, staffOnly, get
 
 // ── Onboarding (تسجيل صالة جديدة ذاتياً) ────────────────────────
 router.post("/onboarding/register", [
-  body("gymName").notEmpty().withMessage("اسم الصالة باللغة الاتينية"),
+  body("gymName").notEmpty().withMessage("اسم الصالة مطلوب"),
   body("ownerName").notEmpty().withMessage("اسم المالك مطلوب"),
   body("ownerPhone").notEmpty().withMessage("رقم الهاتف مطلوب"),
   body("password").isLength({ min: 6 }).withMessage("كلمة المرور يجب أن تكون 6 أحرف على الأقل"),
   validate,
 ], registerGym);
 router.get("/onboarding/check-slug", checkSlugAvailability);
+router.get("/onboarding/gym/:slug", getGymBySlug);
 
 // ── Super Admin (لوحة إدارة المنصة — للمطوّر فقط) ────────────────
 router.get  ("/superadmin/overview",           authenticate, superAdminOnly, getPlatformOverview);

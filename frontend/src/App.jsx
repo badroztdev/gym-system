@@ -34,6 +34,7 @@ import Notifications from "@/pages/Notifications";
 import Progress      from "@/pages/Progress";
 import Settings      from "@/pages/Settings";
 import Dashboard     from "@/pages/Dashboard";
+import Attendance    from "@/pages/Attendance";
 
 // Portal (الرياضي / ولي الأمر)
 import PortalLayout   from "@/portal/components/PortalLayout";
@@ -180,7 +181,7 @@ export default function App() {
             <Route path="members"       element={<Members />} />
             <Route path="sessions"      element={<Sessions />} />
             <Route path="subscriptions" element={<Subscriptions />} />
-            <Route path="attendance"    element={<Placeholder title="الحضور والغياب" />} />
+            <Route path="attendance"    element={<Attendance />} />
             <Route path="progress"      element={<Progress />} />
             <Route path="team"          element={<Team />} />
             <Route path="notifications" element={<Notifications />} />
