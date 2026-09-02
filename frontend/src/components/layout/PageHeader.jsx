@@ -1,6 +1,4 @@
 // src/components/layout/PageHeader.jsx
-import NotificationBell from "@/components/notifications/NotificationBell";
-
 export default function PageHeader({ title, subtitle, actions, children }) {
   return (
     <header style={{
@@ -25,7 +23,6 @@ export default function PageHeader({ title, subtitle, actions, children }) {
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         {actions}
         {children}
-        <NotificationBell />
       </div>
     </header>
   );

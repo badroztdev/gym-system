@@ -69,7 +69,7 @@ export default function Layout() {
           }}>G</div>
           {(!collapsed || isMobile) && (
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>GymPro</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>SGMS</div>
               <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 2 }}>{user?.gymName || "الصالة"}</div>
             </div>
           )}
