@@ -1,6 +1,6 @@
 // src/components/layout/Layout.jsx
 import { useState, useEffect } from "react";
-import { useLocation, useNavigate, Outlet } from "react-router-dom";
+import { useLocation, useNavigate, useParams, Outlet } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
@@ -9,6 +9,7 @@ const NAV = [
   { path: "/members",       label: "الأعضاء",        icon: "👥" },
   { path: "/sessions",      label: "الحصص",          icon: "📅" },
   { path: "/subscriptions", label: "الاشتراكات",     icon: "🎫" },
+  { path: "/attendance",    label: "الحضور",         icon: "✅" },
   { path: "/progress",      label: "التقدم",         icon: "📈" },
   { path: "/team",          label: "الفريق",         icon: "🧑‍🏫" },
   { path: "/notifications", label: "الإشعارات",      icon: "🔔" },
@@ -31,16 +32,19 @@ export default function Layout() {
   const { user, logout }              = useAuthStore();
   const location                      = useLocation();
   const navigate                      = useNavigate();
+  const { gymSlug }                   = useParams();
   const isMobile                      = useIsMobile();
 
-  const activePath = "/" + location.pathname.split("/")[1];
+  // ✅ الجزء الثالث من الرابط هو اسم الصفحة الفعلي الآن (بعد /{gymSlug}/)
+  // مثال: /s-elhidhab/members → activePath = "/members"
+  const activePath = "/" + location.pathname.split("/")[2];
 
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);
   }, [location.pathname, isMobile]);
 
   const handleNav = (path) => {
-    navigate(path);
+    navigate(`/${gymSlug}${path}`);
     if (isMobile) setSidebarOpen(false);
   };
 
@@ -190,8 +194,12 @@ export default function Layout() {
         paddingBottom: isMobile ? 72 : 0,
         position: "relative",
       }}>
-        {/* ملاحظة: جرس الإشعارات لنسخة الحاسوب أصبح جزءاً من PageHeader نفسه
-            (تم دمجه هناك ليتماشى مع تخطيط كل صفحة بدل التعليق فوقها) */}
+        {/* جرس الإشعارات — يظهر فوق كل صفحة في الحاسوب */}
+        {!isMobile && (
+          <div style={{ position: "absolute", top: 16, left: 24, zIndex: 20 }}>
+            <NotificationBell />
+          </div>
+        )}
 
         {/* Mobile top bar */}
         {isMobile && (

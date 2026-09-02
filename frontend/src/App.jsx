@@ -1,6 +1,6 @@
 // src/App.jsx
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import { useAuthStore } from "@/store/authStore";
@@ -11,14 +11,11 @@ import "@/styles/globals.css";
 import { requestNotificationPermission, onForegroundMessage } from "@/services/firebase.js";
 import { notificationsService } from "@/services/notifications.service";
 
-// ── تشغيل صوت التنبيه عند استقبال إشعار ─────────────────────
 function playNotificationSound() {
   try {
     const audio = new Audio("/notification.wav");
     audio.volume = 0.6;
-    audio.play().catch(() => {
-      // بعض المتصفحات تمنع التشغيل التلقائي قبل أي تفاعل من المستخدم — نتجاهل الخطأ بصمت
-    });
+    audio.play().catch(() => {});
   } catch { /* تجاهل */ }
 }
 
@@ -47,7 +44,6 @@ import PortalScan     from "@/portal/pages/PortalScan";
 import PortalProfile  from "@/portal/pages/PortalProfile";
 import PortalProgress from "@/portal/pages/PortalProgress";
 
-// Lazy placeholders for future pages
 const Placeholder = ({ title }) => (
   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 12, minHeight: 400, color: "var(--muted)" }}>
     <div style={{ fontSize: 40 }}>🚧</div>
@@ -56,15 +52,10 @@ const Placeholder = ({ title }) => (
   </div>
 );
 
-// Protected route wrapper
-function ProtectedRoute({ children }) {
-  const token = useAuthStore(s => s.token);
-  const user  = useAuthStore(s => s.user);
-
+// ── تهيئة إشعارات Firebase (مشتركة بين لوحة التحكم والبوابة) ──
+function useFcmSetup(token, user) {
   useEffect(() => {
     if (!token || !user) return;
-
-    // طلب إذن الإشعارات وحفظ الـ token — مع تأخير بسيط
     const timer = setTimeout(async () => {
       try {
         if (!("Notification" in window)) return;
@@ -73,12 +64,9 @@ function ProtectedRoute({ children }) {
           await notificationsService.saveToken(fcmToken);
           console.log("✅ FCM token saved");
         }
-      } catch (e) {
-        console.warn("FCM init failed:", e.message);
-      }
-    }, 2000); // انتظر ثانيتين بعد تسجيل الدخول
+      } catch (e) { console.warn("FCM init failed:", e.message); }
+    }, 2000);
 
-    // الاستماع للإشعارات عندما التطبيق مفتوح
     const unsub = onForegroundMessage((payload) => {
       const { title, body } = payload.notification || {};
       if (title) {
@@ -92,8 +80,36 @@ function ProtectedRoute({ children }) {
       if (typeof unsub === "function") unsub();
     };
   }, [token, user?.id]);
+}
+
+// ✅ حارس أمان الصالة: يتحقق أن :gymSlug في الرابط يطابق فعلاً صالة المستخدم
+// المسجَّل دخوله. يمنع محاولة مستخدم صالة A من كتابة رابط صالة B يدوياً
+function GymGuard({ children }) {
+  const { gymSlug } = useParams();
+  const token = useAuthStore(s => s.token);
+  const user  = useAuthStore(s => s.user);
+
+  useFcmSetup(token, user);
 
   if (!token) return <Navigate to="/login" replace />;
+  if (user?.role === "super_admin") return <Navigate to="/superadmin" replace />;
+  if (!user?.gymSlug) return <Navigate to="/login" replace />;
+  if (user.gymSlug !== gymSlug) return <Navigate to={`/${user.gymSlug}/dashboard`} replace />;
+
+  return children;
+}
+
+// حارس لوحة إدارة المنصة (super_admin فقط)
+function SuperAdminGuard({ children }) {
+  const token = useAuthStore(s => s.token);
+  const user  = useAuthStore(s => s.user);
+
+  useFcmSetup(token, user);
+
+  if (!token) return <Navigate to="/login" replace />;
+  if (user?.role !== "super_admin") {
+    return <Navigate to={user?.gymSlug ? `/${user.gymSlug}/dashboard` : "/login"} replace />;
+  }
   return children;
 }
 
@@ -102,23 +118,7 @@ function ProtectedPortalRoute({ children }) {
   const token = useAuthStore(s => s.token);
   const user  = useAuthStore(s => s.user);
 
-  useEffect(() => {
-    if (!token || !user) return;
-    (async () => {
-      try {
-        const fcmToken = await requestNotificationPermission();
-        if (fcmToken) await notificationsService.saveToken(fcmToken);
-      } catch (e) { console.warn("FCM init failed:", e.message); }
-    })();
-    const unsub = onForegroundMessage((payload) => {
-      const { title, body } = payload.notification || {};
-      if (title) {
-        playNotificationSound();
-        toast(`🔔 ${title}: ${body || ""}`, { duration: 6000 });
-      }
-    });
-    return () => { if (typeof unsub === "function") unsub(); };
-  }, [token, user?.id]);
+  useFcmSetup(token, user);
 
   if (!token) return <Navigate to="/portal/login" replace />;
   if (!["athlete", "guardian"].includes(user?.role)) return <Navigate to="/portal/login" replace />;
@@ -128,19 +128,22 @@ function ProtectedPortalRoute({ children }) {
 const qc = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30 * 1000,     // 30 seconds
+      staleTime: 30 * 1000,
       retry: 1,
       refetchOnWindowFocus: false,
     },
   },
 });
 
-// يوجّه المستخدم تلقائياً حسب دوره بعد تسجيل الدخول
-// super_admin → لوحة إدارة المنصة، أي دور آخر → لوحة التحكم العادية
-function HomeRedirect() {
-  const user = useAuthStore(s => s.user);
+// يوجّه من "/" حسب حالة تسجيل الدخول
+function RootRedirect() {
+  const token = useAuthStore(s => s.token);
+  const user  = useAuthStore(s => s.user);
+
+  if (!token) return <Navigate to="/login" replace />;
   if (user?.role === "super_admin") return <Navigate to="/superadmin" replace />;
-  return <Navigate to="/dashboard" replace />;
+  if (user?.gymSlug) return <Navigate to={`/${user.gymSlug}/dashboard`} replace />;
+  return <Navigate to="/login" replace />;
 }
 
 export default function App() {
@@ -149,26 +152,30 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           {/* Public */}
-          <Route path="/login" element={<Login />} />
+          <Route path="/login"  element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
+
+          {/* الجذر — يوجّه تلقائياً حسب حالة تسجيل الدخول */}
+          <Route path="/" element={<RootRedirect />} />
+
+          {/* لوحة إدارة المنصة (super_admin فقط) */}
           <Route path="/superadmin" element={
-            <ProtectedRoute>
+            <SuperAdminGuard>
               <SuperAdmin />
-            </ProtectedRoute>
+            </SuperAdminGuard>
           } />
 
-          {/* Protected dashboard */}
-          <Route path="/" element={
-            <ProtectedRoute>
+          {/* ✅ لوحة تحكم كل صالة تحت رابطها الخاص: /{gymSlug}/... */}
+          <Route path="/:gymSlug" element={
+            <GymGuard>
               <Layout />
-            </ProtectedRoute>
+            </GymGuard>
           }>
-            <Route index element={<HomeRedirect />} />
+            <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard"     element={<Dashboard />} />
             <Route path="members"       element={<Members />} />
             <Route path="sessions"      element={<Sessions />} />
             <Route path="subscriptions" element={<Subscriptions />} />
-            <Route path="payments"      element={<Navigate to="/subscriptions" replace />} />
             <Route path="attendance"    element={<Placeholder title="الحضور والغياب" />} />
             <Route path="progress"      element={<Progress />} />
             <Route path="team"          element={<Team />} />
@@ -176,7 +183,7 @@ export default function App() {
             <Route path="settings"      element={<Settings />} />
           </Route>
 
-          {/* ══ Portal — الرياضي / ولي الأمر ══════════════════ */}
+          {/* ══ Portal — الرياضي / ولي الأمر (يبقى عاماً حالياً) ══ */}
           <Route path="/portal/login" element={<PortalLogin />} />
           <Route path="/portal" element={
             <ProtectedPortalRoute>
