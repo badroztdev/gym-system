@@ -3,11 +3,79 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GymPro — لوحة التحكم</title>
+
+   <!-- ============================================================
+     SEO — أضف هذه الوسوم داخل <head> في index.html
+     ضعها بعد <meta charset="UTF-8" /> مباشرة، قبل أي شيء آخر
+============================================================ -->
+
+<!-- عنوان الموقع (يظهر في تبويب المتصفح ونتائج البحث) -->
+<title>SGMS | نظام إدارة الصالات الرياضية — Système de Gestion de Salle de Sport — Gym Management System</title>
+
+<!-- الوصف (يظهر تحت العنوان في نتائج جوجل، بحد أقصى فعّال 160 حرفاً) -->
+<meta name="description" content="SGMS هو نظام SaaS متكامل لإدارة الصالات الرياضية في الجزائر: إدارة الأعضاء، الحصص، الحضور عبر QR، الاشتراكات، والإشعارات. جرّبه مجاناً 14 يوماً. Système complet de gestion de salle de sport en Algérie." />
+
+<!-- كلمات مفتاحية (تأثيرها محدود اليوم لكن لا ضرر من إضافتها) -->
+<meta name="keywords" content="نظام إدارة صالة رياضية, برنامج تسيير صالة رياضية, إدارة نادي رياضي, gestion salle de sport, logiciel salle de sport Algérie, gym management system, gym software Algeria, SGMS" />
+
+<!-- اللغة والاتجاه -->
+<meta name="language" content="ar, fr, en" />
+<html lang="ar" dir="rtl">
+
+<!-- المؤلف -->
+<meta name="author" content="SGMS" />
+
+<!-- Robots: اسمح بالفهرسة الكاملة -->
+<meta name="robots" content="index, follow" />
+
+<!-- الرابط الأساسي (Canonical) -->
+<link rel="canonical" href="https://www.sgms.site/" />
+
+<!-- ============================================================
+     Open Graph — لتحسين شكل الرابط عند مشاركته في فيسبوك/واتساب/انستغرام
+============================================================ -->
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://www.sgms.site/" />
+<meta property="og:title" content="SGMS | نظام إدارة الصالات الرياضية الذكي" />
+<meta property="og:description" content="أدر صالتك الرياضية باحترافية: الأعضاء، الحصص، الحضور، الاشتراكات، والإشعارات في نظام واحد. تجربة مجانية 14 يوماً." />
+<meta property="og:image" content="https://www.sgms.site/og-image.png" />
+<meta property="og:locale" content="ar_DZ" />
+<meta property="og:site_name" content="SGMS" />
+
+<!-- ============================================================
+     Twitter Card
+============================================================ -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="SGMS | نظام إدارة الصالات الرياضية الذكي" />
+<meta name="twitter:description" content="أدر صالتك الرياضية باحترافية من مكان واحد. تجربة مجانية 14 يوماً." />
+<meta name="twitter:image" content="https://www.sgms.site/og-image.png" />
+
+<!-- ============================================================
+     Structured Data (JSON-LD) — يساعد جوجل على فهم طبيعة الموقع
+     ويحسّن ظهوره كـ "نتيجة غنية" (Rich Result)
+============================================================ -->
+
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "SGMS",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "description": "نظام SaaS لإدارة الصالات الرياضية: الأعضاء، الحصص، الحضور، الاشتراكات، والإشعارات.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "DZD",
+    "description": "تجربة مجانية 14 يوماً"
+  },
+  "url": "https://www.sgms.site/"
+}
+</script>
   </body>
 </html>

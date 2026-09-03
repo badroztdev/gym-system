@@ -1,0 +1,28 @@
+# robots.txt — SGMS
+# يسمح لكل محركات البحث بفهرسة الصفحات العامة فقط
+# ويمنعها من فهرسة لوحات التحكم الخاصة (بيانات المستخدمين)
+
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /signup
+Allow: /portal/login
+
+# منع فهرسة لوحات التحكم الخاصة بكل صالة (بيانات حساسة، لا فائدة من فهرستها)
+Disallow: /*/dashboard
+Disallow: /*/members
+Disallow: /*/sessions
+Disallow: /*/subscriptions
+Disallow: /*/attendance
+Disallow: /*/progress
+Disallow: /*/team
+Disallow: /*/notifications
+Disallow: /*/settings
+Disallow: /superadmin
+Disallow: /portal/*/home
+Disallow: /portal/*/schedule
+Disallow: /portal/*/scan
+Disallow: /portal/*/progress
+Disallow: /portal/*/profile
+
+Sitemap: https://www.sgms.site/sitemap.xml
