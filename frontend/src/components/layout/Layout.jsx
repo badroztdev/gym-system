@@ -61,12 +61,14 @@ export default function Layout() {
         gap: 10, flexShrink: 0,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-            background: "linear-gradient(135deg, var(--accent), var(--accent2))",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 17, fontWeight: 700, color: "#0d0f14",
-          }}>G</div>
+           <img
+            src="/logo.png"
+            alt="SGMS"
+            style={{
+              width: 56, height: 56, borderRadius: 14, margin: "0 auto 12px",
+              display: "block", objectFit: "cover",
+            }}
+          />
           {(!collapsed || isMobile) && (
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>SGMS</div>
