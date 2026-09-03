@@ -7,6 +7,23 @@ import toast from "react-hot-toast";
 
 const ROLE_LABELS = { athlete: "رياضي", guardian: "ولي أمر" };
 
+// ── لوحتا الألوان — محصورتان بالكامل داخل هذه الصفحة فقط ──────
+// (نفس النمط المستخدم في Landing.jsx، لا تؤثران على البوابة بعد تسجيل الدخول)
+const DARK_THEME = {
+  "--bg": "#0d0f14", "--surface": "#12151c", "--card": "#161a23",
+  "--border": "#232734", "--text": "#f4f5f7", "--muted": "#7b8494", "--muted-lt": "#a2aab8",
+  "--accent": "#6ee7b7", "--accent2": "#818cf8", "--accent3": "#fb923c",
+  "--danger": "#f87171", "--warning": "#fbbf24",
+  "--radius": "14px", "--radius-sm": "10px",
+};
+const LIGHT_THEME = {
+  "--bg": "#f7f7fa", "--surface": "#ffffff", "--card": "#ffffff",
+  "--border": "#e3e4e9", "--text": "#14161c", "--muted": "#6b7280", "--muted-lt": "#4b5563",
+  "--accent": "#10b981", "--accent2": "#6366f1", "--accent3": "#f97316",
+  "--danger": "#ef4444", "--warning": "#f59e0b",
+  "--radius": "14px", "--radius-sm": "10px",
+};
+
 export default function PortalLogin() {
   const navigate = useNavigate();
   const setAuth  = useAuthStore(s => s.setAuth);
@@ -14,6 +31,8 @@ export default function PortalLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [options, setOptions] = useState(null); // حالة نادرة: أكثر من حساب مطابق
+  const [dark, setDark] = useState(true);
+  const theme = dark ? DARK_THEME : LIGHT_THEME;
 
   const finishLogin = (data) => {
     if (!["athlete", "guardian"].includes(data.user.role)) {
@@ -57,9 +76,24 @@ export default function PortalLogin() {
 
   return (
     <div style={{
+      ...theme,
       minHeight: "100vh", display: "flex", alignItems: "center",
       justifyContent: "center", background: "var(--bg)", padding: 16,
+      position: "relative", transition: "background 0.2s ease",
     }}>
+      {/* زر تبديل الوضع الفاتح/الداكن */}
+      <button
+        onClick={() => setDark(v => !v)}
+        aria-label="تبديل الوضع"
+        style={{
+          position: "absolute", top: 16, left: 16,
+          width: 38, height: 38, display: "flex",
+          alignItems: "center", justifyContent: "center",
+          background: "var(--card)", border: "1px solid var(--border)",
+          borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 16,
+        }}
+      >{dark ? "☀️" : "🌙"}</button>
+
       <div className="fade-up" style={{
         width: "100%", maxWidth: 380,
         background: "var(--card)", border: "1px solid var(--border)",
