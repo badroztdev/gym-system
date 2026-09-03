@@ -6,6 +6,7 @@ import { useAuthStore } from "@/store/authStore";
 import { usePortalStore } from "@/portal/store/portalStore";
 import { portalService } from "@/portal/services/portal.service";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import { PORTAL_DARK_THEME, PORTAL_LIGHT_THEME } from "@/portal/portalTheme";
 
 const NAV = [
   { path: "home",       label: "الرئيسية", icon: "🏠" },
@@ -20,7 +21,8 @@ export default function PortalLayout() {
   const navigate  = useNavigate();
   const { gymSlug } = useParams();
   const { user, logout } = useAuthStore();
-  const { selectedAthleteId, setSelectedAthlete } = usePortalStore();
+  const { selectedAthleteId, setSelectedAthlete, dark, toggleDark } = usePortalStore();
+  const theme = dark ? PORTAL_DARK_THEME : PORTAL_LIGHT_THEME;
   const [showSwitcher, setShowSwitcher] = useState(false);
 
   const { data } = useQuery({
@@ -42,7 +44,7 @@ export default function PortalLayout() {
   const activePage = location.pathname.split("/")[3] || "home";
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", direction: "rtl", display: "flex", flexDirection: "column" }}>
+    <div style={{ ...theme, minHeight: "100vh", background: "var(--bg)", direction: "rtl", display: "flex", flexDirection: "column", transition: "background 0.2s ease" }}>
 
       {/* ── Top bar ──────────────────────────────────────────── */}
       <header style={{
@@ -75,6 +77,12 @@ export default function PortalLayout() {
         )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={toggleDark} aria-label="تبديل الوضع" style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: "var(--card)", border: "1px solid var(--border)",
+            cursor: "pointer", fontSize: 15,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>{dark ? "☀️" : "🌙"}</button>
           <NotificationBell />
           <button onClick={() => { logout(); navigate("/portal/login"); }} style={{
             width: 36, height: 36, borderRadius: 10,
