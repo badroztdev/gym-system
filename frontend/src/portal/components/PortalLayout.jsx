@@ -87,9 +87,14 @@ export default function PortalLayout() {
           <button onClick={() => { logout(); navigate("/portal/login"); }} style={{
             width: 36, height: 36, borderRadius: 10,
             background: "var(--danger)10", border: "1px solid var(--danger)30",
-            color: "var(--danger)", cursor: "pointer", fontSize: 15,
+            color: "var(--danger)", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
-          }}>⏻</button>
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+              <line x1="12" y1="2" x2="12" y2="12" />
+            </svg>
+          </button>
         </div>
       </header>
 
