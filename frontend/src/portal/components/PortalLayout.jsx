@@ -73,7 +73,7 @@ export default function PortalLayout() {
             {athletes.length > 1 && <span style={{ fontSize: 10, color: "var(--muted)" }}>▼</span>}
           </button>
         ) : (
-          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}><img src="/favicon.png" alt="SGMS" style={{ width: 30, height: 30 }} /> SGMS</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}><img src="/favicon.png" alt="SGMS" style={{ width: 30, height: 30 }} /></div>
         )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
