@@ -90,13 +90,13 @@ export default function Landing() {
         gap: 8,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-          <div style={{
-            width: isMobile ? 28 : 34, height: isMobile ? 28 : 34, borderRadius: 9,
-            background: "linear-gradient(135deg, var(--accent), var(--accent2))",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: isMobile ? 13 : 16, fontWeight: 700, color: "#0d0f14",
-            flexShrink: 0,
-          }}>G</div>
+          <img
+            src="/logo.png" alt="SGMS"
+            style={{
+              width: isMobile ? 28 : 34, height: isMobile ? 28 : 34,
+              borderRadius: 9, objectFit: "cover", flexShrink: 0, display: "block",
+            }}
+          />
           {!isMobile && <span style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>SGMS</span>}
         </div>
 

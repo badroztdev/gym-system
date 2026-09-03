@@ -86,12 +86,13 @@ export default function PortalLogin() {
         boxShadow: "var(--shadow)",
       }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: 18, margin: "0 auto 14px",
-            background: "linear-gradient(135deg, var(--accent), var(--accent2))",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 30,
-          }}>🏋️</div>
+          <img
+            src="/logo.png" alt="SGMS"
+            style={{
+              width: 64, height: 64, borderRadius: 18, margin: "0 auto 14px",
+              display: "block", objectFit: "cover",
+            }}
+          />
           <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>بوابة الرياضي</h1>
           <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>تابع جدولك واشتراكك بسهولة</p>
         </div>
