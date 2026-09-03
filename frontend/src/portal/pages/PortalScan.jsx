@@ -2,13 +2,16 @@
 import { useState, useRef, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
+import jsQR from "jsqr";
 import { portalService } from "@/portal/services/portal.service";
 import toast from "react-hot-toast";
 
 export default function PortalScan() {
   const { athlete } = useOutletContext();
   const videoRef   = useRef(null);
+  const canvasRef  = useRef(null); // ✅ جديد — قماش مخفي لتحليل الإطارات (مطلوب لـ jsQR)
   const streamRef  = useRef(null);
+  const rafRef     = useRef(null); // ✅ جديد — لضمان إيقاف حلقة المسح بشكل نظيف تماماً
   const [scanning, setScanning] = useState(false);
   const [manualCode, setManualCode] = useState("");
   const [result, setResult] = useState(null);
@@ -30,16 +33,12 @@ export default function PortalScan() {
   const startCamera = async () => {
     setResult(null);
     setCameraError(false);
-
-    // ✅ الإصلاح: نُظهر عنصر <video> أولاً (setScanning قبل الحصول على الـ stream)
-    // حتى يكون videoRef.current موجوداً فعلياً في الـ DOM عند تعيين srcObject
     setScanning(true);
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
       streamRef.current = stream;
 
-      // ننتظر لحظة قصيرة لضمان أن React رسم عنصر الفيديو في الـ DOM
       await new Promise(resolve => requestAnimationFrame(resolve));
 
       if (videoRef.current) {
@@ -47,7 +46,6 @@ export default function PortalScan() {
         await videoRef.current.play();
         detectLoop();
       } else {
-        // في حال نادر لم يُرسم العنصر بعد، حاول مرة أخرى بعد فريم إضافي
         requestAnimationFrame(() => {
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
@@ -64,32 +62,43 @@ export default function PortalScan() {
   };
 
   const stopCamera = () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
     setScanning(false);
   };
 
-  // ── كشف QR باستخدام BarcodeDetector (مدمج بالمتصفح) ────────
-  const detectLoop = async () => {
-    if (!("BarcodeDetector" in window)) {
-      setCameraError(true);
-      return;
-    }
-    const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
+  // ── ✅ كشف QR باستخدام jsQR — يعمل على كل المتصفحات (بما فيها Safari/iOS) ──
+  // بعكس BarcodeDetector (غير مدعومة إطلاقاً على iOS)، هذه المكتبة تقرأ
+  // بيانات البكسل مباشرة من كل إطار فيديو وتحلّلها بنفسها، دون الاعتماد
+  // على أي واجهة برمجية خاصة بالمتصفح
+  const detectLoop = () => {
+    const tick = () => {
+      if (!videoRef.current || !streamRef.current || !canvasRef.current) return;
 
-    const tick = async () => {
-      if (!videoRef.current || !streamRef.current) return;
-      try {
-        const codes = await detector.detect(videoRef.current);
-        if (codes.length > 0) {
-          const value = codes[0].rawValue;
-          scanMutation.mutate(value);
-          return; // توقف بعد أول قراءة
+      const video  = videoRef.current;
+      const canvas = canvasRef.current;
+
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert",
+        });
+
+        if (code?.data) {
+          scanMutation.mutate(code.data);
+          return; // توقف بعد أول قراءة ناجحة
         }
-      } catch { /* تجاهل أخطاء الإطار */ }
-      if (streamRef.current) requestAnimationFrame(tick);
+      }
+
+      if (streamRef.current) rafRef.current = requestAnimationFrame(tick);
     };
-    tick();
+    rafRef.current = requestAnimationFrame(tick);
   };
 
   useEffect(() => () => stopCamera(), []);
@@ -106,7 +115,6 @@ export default function PortalScan() {
         امسح رمز QR الموجود في القاعة لتسجيل حضورك تلقائياً
       </p>
 
-      {/* منطقة الكاميرا — العنصر video موجود دائماً في الـ DOM (مخفياً عند عدم المسح) */}
       <div style={{
         position: "relative", width: "100%", maxWidth: 320, aspectRatio: "1",
         margin: "0 auto 20px", borderRadius: 20, overflow: "hidden",
@@ -122,6 +130,8 @@ export default function PortalScan() {
           playsInline
           autoPlay
         />
+        {/* ✅ قماش مخفي — يُستخدم داخلياً فقط لتحليل الإطارات، لا يظهر للمستخدم */}
+        <canvas ref={canvasRef} style={{ display: "none" }} />
 
         {scanning ? (
           <div style={{
@@ -137,7 +147,6 @@ export default function PortalScan() {
         )}
       </div>
 
-      {/* نتيجة المسح */}
       {result && (
         <div style={{
           background: result.success ? "var(--accent)15" : "var(--danger)15",
@@ -150,7 +159,6 @@ export default function PortalScan() {
         </div>
       )}
 
-      {/* زر تشغيل/إيقاف */}
       {!scanning ? (
         <button onClick={startCamera} style={{
           width: "100%", maxWidth: 320, padding: "14px",
@@ -171,11 +179,10 @@ export default function PortalScan() {
         </button>
       )}
 
-      {/* بديل: إدخال يدوي إذا الكاميرا غير مدعومة أو BarcodeDetector غير متاح */}
       {cameraError && (
         <div style={{ maxWidth: 320, margin: "0 auto", textAlign: "right" }}>
           <p style={{ fontSize: 12, color: "var(--warning)", marginBottom: 10, textAlign: "center" }}>
-            ⚠️ تعذّر تشغيل الكاميرا أو مسح QR تلقائياً على هذا المتصفح. أدخل الرمز يدوياً:
+            ⚠️ تعذّر تشغيل الكاميرا على هذا الجهاز. أدخل الرمز يدوياً:
           </p>
           <input
             value={manualCode}
