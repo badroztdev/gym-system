@@ -62,12 +62,14 @@ export default function Login() {
         boxShadow: "var(--shadow)",
       }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 14, margin: "0 auto 12px",
-            background: "linear-gradient(135deg, var(--accent), var(--accent2))",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 24, fontWeight: 700, color: "#0d0f14",
-          }}>G</div>
+          <img
+            src="/logo.png"
+            alt="SGMS"
+            style={{
+              width: 56, height: 56, borderRadius: 14, margin: "0 auto 12px",
+              display: "block", objectFit: "cover",
+            }}
+          />
           <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>SGMS</h1>
           <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>تسجيل الدخول إلى صالتك الرياضية</p>
         </div>
