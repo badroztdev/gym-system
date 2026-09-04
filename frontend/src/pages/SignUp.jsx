@@ -90,7 +90,7 @@ export default function SignUp() {
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
           <div>
-            <label style={labelStyle}>باللغة الاجنبية: اسم الصالة الرياضية *</label>
+            <label style={labelStyle}> اسم الصالة الرياضية باللغة الاجنبية:*</label>
             <input
               placeholder="مثال : club-abtal"
               value={form.gymName}
