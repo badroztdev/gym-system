@@ -32,7 +32,6 @@ export default function PortalLayout() {
   const athletes = data?.data || [];
   const isGuardian = user?.role === "guardian";
 
-  // اختر أول رياضي تلقائياً إذا لم يوجد اختيار
   useEffect(() => {
     if (athletes.length && !selectedAthleteId) {
       setSelectedAthlete(athletes[0].id);
@@ -40,7 +39,6 @@ export default function PortalLayout() {
   }, [athletes, selectedAthleteId]);
 
   const currentAthlete = athletes.find(a => a.id === selectedAthleteId) || athletes[0];
-  // البنية الآن: /portal/{gymSlug}/{page} → الصفحة هي الجزء الرابع
   const activePage = location.pathname.split("/")[3] || "home";
 
   return (
@@ -53,7 +51,6 @@ export default function PortalLayout() {
         display: "flex", justifyContent: "space-between", alignItems: "center",
         position: "sticky", top: 0, zIndex: 20,
       }}>
-        {/* اختيار الرياضي (لولي الأمر فقط) */}
         {isGuardian && athletes.length > 0 ? (
           <button onClick={() => setShowSwitcher(true)} style={{
             display: "flex", alignItems: "center", gap: 8,
@@ -73,7 +70,10 @@ export default function PortalLayout() {
             {athletes.length > 1 && <span style={{ fontSize: 10, color: "var(--muted)" }}>▼</span>}
           </button>
         ) : (
-          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}><img src="/favicon.png" alt="SGMS" style={{ width: 30, height: 30 }} /></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <img src="/logo-badge.png" alt="SGMS" style={{ width: 30, height: 30, borderRadius: "50%", display: "block" }} />
+            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>SGMS</span>
+          </div>
         )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

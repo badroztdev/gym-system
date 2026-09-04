@@ -4,10 +4,22 @@ import { useOutletContext } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import jsQR from "jsqr";
 import { portalService } from "@/portal/services/portal.service";
+import { useAuthStore } from "@/store/authStore";
 import toast from "react-hot-toast";
 
 export default function PortalScan() {
   const { athlete } = useOutletContext();
+  const authToken = useAuthStore(s => s.token);
+
+  // ✅ داخل تطبيق SGMS Athlete (Flutter): مرّر رمز الدخول ومعرّف الرياضي
+  // للتطبيق الأصلي، ليتمكن من فتح ماسح QR أصلي أكثر موثوقية من WebView
+  useEffect(() => {
+    if (window.FlutterScanContext && authToken && athlete?.id) {
+      window.FlutterScanContext.postMessage(
+        JSON.stringify({ token: authToken, athleteId: athlete.id })
+      );
+    }
+  }, [authToken, athlete?.id]);
   const videoRef   = useRef(null);
   const canvasRef  = useRef(null); // ✅ جديد — قماش مخفي لتحليل الإطارات (مطلوب لـ jsQR)
   const streamRef  = useRef(null);
