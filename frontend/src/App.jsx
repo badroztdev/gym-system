@@ -58,8 +58,18 @@ const Placeholder = ({ title }) => (
 function useFcmSetup(token, user) {
   useEffect(() => {
     if (!token || !user) return;
+
+    // ✅ داخل تطبيق SGMS Athlete (Flutter WebView): مرّر رمز الدخول (JWT)
+    // للتطبيق الأصلي عبر الجسر، ليُسجِّل هو نفسه توكن Firebase الأصلي
+    // (أكثر موثوقية من web push داخل WebView)
+    if (window.FlutterAuthBridge) {
+      window.FlutterAuthBridge.postMessage(token);
+    }
+
     const timer = setTimeout(async () => {
       try {
+        // إذا كنا داخل تطبيق Flutter، لا حاجة لمحاولة web push (الجسر أعلاه كافٍ)
+        if (window.FlutterAuthBridge) return;
         if (!("Notification" in window)) return;
         const fcmToken = await requestNotificationPermission();
         if (fcmToken) {
