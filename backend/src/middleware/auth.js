@@ -33,16 +33,36 @@ export const authenticate = async (req, res, next) => {
     // لأنه لا ينتمي لصالة عادية، وgym_id سيكون NULL له فلن يدخل هذا الشرط)
     if (user.role !== "super_admin" && user.gym_id) {
       if (user.subscription_status === "suspended") {
-        return forbidden(res, "تم تعليق اشتراك الصالة. يرجى التواصل مع الدعم لتفعيله مجدداً");
+        return res.status(403).json({
+          success: false,
+          code: "SUBSCRIPTION_ISSUE",
+          reason: "suspended",
+          message: "تم تعليق اشتراك الصالة. يرجى التواصل مع الدعم لتفعيله مجدداً",
+        });
       }
       if (user.subscription_status === "cancelled") {
-        return forbidden(res, "تم إلغاء اشتراك الصالة");
+        return res.status(403).json({
+          success: false,
+          code: "SUBSCRIPTION_ISSUE",
+          reason: "cancelled",
+          message: "تم إلغاء اشتراك الصالة",
+        });
       }
       if (user.subscription_status === "trial" && user.trial_ends_at && new Date(user.trial_ends_at) < new Date()) {
-        return forbidden(res, "انتهت الفترة التجريبية المجانية. يرجى الاشتراك لمتابعة الاستخدام");
+        return res.status(403).json({
+          success: false,
+          code: "SUBSCRIPTION_ISSUE",
+          reason: "trial_expired",
+          message: "انتهت الفترة التجريبية المجانية. يرجى الاشتراك لمتابعة الاستخدام",
+        });
       }
       if (user.subscription_status === "active" && user.subscription_ends_at && new Date(user.subscription_ends_at) < new Date()) {
-        return forbidden(res, "انتهى اشتراك الصالة. يرجى التجديد لمتابعة الاستخدام");
+        return res.status(403).json({
+          success: false,
+          code: "SUBSCRIPTION_ISSUE",
+          reason: "subscription_expired",
+          message: "انتهى اشتراك الصالة. يرجى التجديد لمتابعة الاستخدام",
+        });
       }
     }
 

@@ -25,6 +25,7 @@ import Layout from "@/components/layout/Layout";
 // Pages (لوحة التحكم)
 import Landing       from "@/pages/Landing";
 import Login         from "@/pages/Login";
+import SubscriptionRequired from "@/pages/SubscriptionRequired";
 import SignUp        from "@/pages/SignUp";
 import SuperAdmin    from "@/pages/SuperAdmin";
 import Members       from "@/pages/Members";
@@ -171,6 +172,7 @@ export default function App() {
         <Routes>
           {/* Public */}
           <Route path="/login"  element={<Login />} />
+          <Route path="/subscription-required" element={<SubscriptionRequired />} />
           <Route path="/signup" element={<SignUp />} />
 
           {/* الجذر — يوجّه تلقائياً حسب حالة تسجيل الدخول */}

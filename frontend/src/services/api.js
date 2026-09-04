@@ -18,12 +18,16 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// يمنع تكرار التوجيه لشاشة الاشتراك عدة مرات لو فشلت عدة طلبات معاً
+let redirectingToSubscriptionScreen = false;
+
 // ── Response: handle errors globally ─────────────────────────
 api.interceptors.response.use(
   (res) => res,
   (err) => {
     const status  = err.response?.status;
-    const message = err.response?.data?.message;
+    const data    = err.response?.data;
+    const message = data?.message;
 
     if (status === 401) {
       const user = useAuthStore.getState().user;
@@ -38,8 +42,19 @@ api.interceptors.response.use(
       } else {
         window.location.href = "/login";
       }
-    } else if (status === 403) {
-      toast.error("ليس لديك صلاحية لهذا الإجراء");
+    }
+    // ✅ حالة خاصة: اشتراك الصالة معلَّق/منتهٍ — نوجّه لشاشة واحدة واضحة
+    // بدل ترك كل صفحة تعرض خطأ Toast منفصل ومربك
+    else if (status === 403 && data?.code === "SUBSCRIPTION_ISSUE") {
+      if (!redirectingToSubscriptionScreen) {
+        redirectingToSubscriptionScreen = true;
+        sessionStorage.setItem("subscriptionIssueMessage", message || "");
+        sessionStorage.setItem("subscriptionIssueReason", data?.reason || "");
+        window.location.href = "/subscription-required";
+      }
+    }
+    else if (status === 403) {
+      toast.error(message || "ليس لديك صلاحية لهذا الإجراء");
     } else if (status >= 500) {
       toast.error("خطأ في الخادم، يرجى المحاولة لاحقاً");
     } else if (message && status !== 401) {
