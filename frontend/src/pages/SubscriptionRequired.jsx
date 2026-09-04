@@ -79,11 +79,11 @@ export default function SubscriptionRequired() {
           padding: "16px 18px", marginBottom: 24, textAlign: "right",
         }}>
           <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>للتواصل والاشتراك</div>
-          <a href="tel:+213000000000" style={{
+          <a href="tel:+21391414221" style={{
             display: "block", fontSize: 14, fontWeight: 600,
             color: "var(--accent)", textDecoration: "none", marginBottom: 6,
           }}>📞 اتصل بنا</a>
-          <a href="https://wa.me/213000000000" target="_blank" rel="noreferrer" style={{
+          <a href="https://wa.me/213791414221" target="_blank" rel="noreferrer" style={{
             display: "block", fontSize: 14, fontWeight: 600,
             color: "var(--accent2)", textDecoration: "none",
           }}>💬 راسلنا عبر واتساب</a>
