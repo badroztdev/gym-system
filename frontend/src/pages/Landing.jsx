@@ -176,17 +176,20 @@ export default function Landing() {
           بدون بطاقة بنكية · إلغاء في أي وقت
         </p>
 
+      </section>
+
+      {/* صورة المعاينة — بعرض أوسع من قسم Hero، متمركزة تماماً ومتجاوبة */}
+      <div style={{ width: "100%", display: "flex", justifyContent: "center", padding: "0 5vw", marginTop: -8 }}>
         <img
           src="/landing-showcase.png"
           alt="لوحة تحكم SGMS على الحاسوب والهاتف"
           style={{
-            width: "calc(100% + 200px)", maxWidth: 1100, marginTop: 48,
-            marginLeft: "-100px",
+            width: "100%", maxWidth: 1100,
             borderRadius: 16, display: "block",
             boxShadow: "0 24px 60px -20px rgba(0,0,0,0.5)",
           }}
         />
-      </section>
+      </div>
 
       {/* ── Features ───────────────────────────────────────── */}
       <section style={{ padding: "clamp(28px, 6vw, 64px) 5vw", background: "var(--surface)" }}>
