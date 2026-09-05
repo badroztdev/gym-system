@@ -71,8 +71,8 @@ export default function PortalLayout() {
           </button>
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <img src="/logo-badge.png" alt="SGMS" style={{ width: 30, height: 30, borderRadius: "50%", display: "block" }} />
-            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>SGMS</span>
+            <img src="/logo.png" alt="SGMS" style={{ width: 30, height: 30, borderRadius: "50%", display: "block" }} />
+          
           </div>
         )}
 
