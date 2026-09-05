@@ -175,6 +175,17 @@ export default function Landing() {
         <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 16 }}>
           بدون بطاقة بنكية · إلغاء في أي وقت
         </p>
+
+        <img
+          src="/landing-showcase.png"
+          alt="لوحة تحكم SGMS على الحاسوب والهاتف"
+          style={{
+            width: "calc(100% + 200px)", maxWidth: 1100, marginTop: 48,
+            marginLeft: "-100px",
+            borderRadius: 16, display: "block",
+            boxShadow: "0 24px 60px -20px rgba(0,0,0,0.5)",
+          }}
+        />
       </section>
 
       {/* ── Features ───────────────────────────────────────── */}
