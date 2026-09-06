@@ -91,7 +91,7 @@ export default function SignUp() {
 
           <div>
             <label style={labelStyle}> اسم الصالة الرياضية باللغة الاجنبية:*</label>
-        <input
+            <input
               placeholder="مثال : club-abtal"
               value={form.gymName}
               onChange={(e) => {
