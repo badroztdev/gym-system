@@ -91,10 +91,16 @@ export default function SignUp() {
 
           <div>
             <label style={labelStyle}> اسم الصالة الرياضية باللغة الاجنبية:*</label>
-            <input
+        <input
               placeholder="مثال : club-abtal"
               value={form.gymName}
-              onChange={set("gymName")}
+              onChange={(e) => {
+                const filtered = e.target.value.replace(
+                  /[^a-zA-Z0-9\séèêëàâäùûüôöçÉÈÊËÀÂÄÙÛÜÔÖÇ'\-]/g,
+                  ""
+                );
+                setForm(f => ({ ...f, gymName: filtered }));
+              }}
               style={inputStyle}
             />
             {slugInfo && (
