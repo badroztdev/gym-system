@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams, Outlet } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
+import { useThemeStore } from "@/store/themeStore";
+import { DASHBOARD_DARK_THEME, DASHBOARD_LIGHT_THEME } from "@/dashboardTheme";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
 const NAV = [
@@ -30,6 +32,8 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed]     = useState(false);
   const { user, logout }              = useAuthStore();
+  const { dark, toggleDark }           = useThemeStore();
+  const theme                         = dark ? DASHBOARD_DARK_THEME : DASHBOARD_LIGHT_THEME;
   const location                      = useLocation();
   const navigate                      = useNavigate();
   const { gymSlug }                   = useParams();
@@ -69,7 +73,7 @@ export default function Layout() {
           }}>G</div>
           {(!collapsed || isMobile) && (
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>SGMS</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>GymPro</div>
               <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 2 }}>{user?.gymName || "الصالة"}</div>
             </div>
           )}
@@ -153,7 +157,7 @@ export default function Layout() {
   );
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", direction: "rtl", background: "var(--bg)" }}>
+    <div style={{ ...theme, display: "flex", minHeight: "100vh", direction: "rtl", background: "var(--bg)", transition: "background 0.2s ease" }}>
 
       {/* ── Desktop Sidebar ───────────────────────────────── */}
       {!isMobile && (
@@ -209,9 +213,15 @@ export default function Layout() {
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 15, fontWeight: 700, color: "#0d0f14",
               }}>G</div>
-              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>SGMS</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>GymPro</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={toggleDark} aria-label="تبديل الوضع" style={{
+                width: 34, height: 34, borderRadius: 8,
+                background: "var(--card)", border: "1px solid var(--border)",
+                cursor: "pointer", fontSize: 14,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>{dark ? "☀️" : "🌙"}</button>
               <NotificationBell />
               <button onClick={() => setSidebarOpen(true)} style={{
                 background: "var(--card)", border: "1px solid var(--border)",

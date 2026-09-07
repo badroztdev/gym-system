@@ -1,5 +1,6 @@
 // src/components/layout/PageHeader.jsx
 import { useState, useEffect } from "react";
+import { useThemeStore } from "@/store/themeStore";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
 function useIsMobile() {
@@ -14,6 +15,7 @@ function useIsMobile() {
 
 export default function PageHeader({ title, subtitle, actions, children }) {
   const isMobile = useIsMobile();
+  const { dark, toggleDark } = useThemeStore();
 
   return (
     <header style={{
@@ -35,8 +37,16 @@ export default function PageHeader({ title, subtitle, actions, children }) {
         }}>{title}</h1>
         {subtitle && <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>{subtitle}</p>}
       </div>
-      {/* ✅ الجرس يظهر هنا فقط على الحاسوب — على الهاتف يظهر بجانب زر ☰ في Layout.jsx بدلاً منه */}
+      {/* ✅ زر تبديل الوضع والجرس يظهران هنا فقط على الحاسوب — على الهاتف يظهران في Layout.jsx بدلاً منهما */}
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        {!isMobile && (
+          <button onClick={toggleDark} aria-label="تبديل الوضع" style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: "var(--card)", border: "1px solid var(--border)",
+            cursor: "pointer", fontSize: 15,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>{dark ? "☀️" : "🌙"}</button>
+        )}
         {!isMobile && <NotificationBell />}
         {actions}
         {children}
