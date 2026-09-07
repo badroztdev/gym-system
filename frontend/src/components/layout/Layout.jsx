@@ -161,7 +161,7 @@ export default function Layout() {
   );
 
   return (
-    <div style={{ ...theme, display: "flex", minHeight: "100vh", direction: "rtl", background: "var(--bg)", transition: "background 0.2s ease" }}>
+    <div style={{ ...theme, display: "flex", minHeight: "100vh", direction: i18n.language === "ar" ? "rtl" : "ltr", background: "var(--bg)", transition: "background 0.2s ease" }}>
 
       {/* ── Desktop Sidebar ───────────────────────────────── */}
       {!isMobile && (
@@ -249,7 +249,7 @@ export default function Layout() {
             position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 30,
             background: "var(--surface)", borderTop: "1px solid var(--border)",
             display: "flex", justifyContent: "space-around",
-            padding: "6px 0 10px", direction: "rtl",
+            padding: "6px 0 10px", direction: i18n.language === "ar" ? "rtl" : "ltr",
           }}>
             {NAV.slice(0, 5).map(item => {
               const active = activePath === item.path;
