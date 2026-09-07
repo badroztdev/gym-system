@@ -65,15 +65,13 @@ export default function Layout() {
         gap: 10, flexShrink: 0,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-            background: "linear-gradient(135deg, var(--accent), var(--accent2))",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 17, fontWeight: 700, color: "#0d0f14",
-          }}>G</div>
+          <img
+            src="/logo.png" alt="SGMS"
+            style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, objectFit: "cover", display: "block" }}
+          />
           {(!collapsed || isMobile) && (
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>GymPro</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>SGMS</div>
               <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 2 }}>{user?.gymName || "الصالة"}</div>
             </div>
           )}
@@ -207,13 +205,11 @@ export default function Layout() {
             position: "sticky", top: 0, zIndex: 10,
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{
-                width: 30, height: 30, borderRadius: 8,
-                background: "linear-gradient(135deg, var(--accent), var(--accent2))",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 15, fontWeight: 700, color: "#0d0f14",
-              }}>G</div>
-              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>GymPro</span>
+              <img
+                src="/logo.png" alt="SGMS"
+                style={{ width: 30, height: 30, borderRadius: 8, objectFit: "cover", display: "block" }}
+              />
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>SGMS</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <button onClick={toggleDark} aria-label="تبديل الوضع" style={{
