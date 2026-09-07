@@ -1,5 +1,6 @@
 // src/components/layout/PageHeader.jsx
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useThemeStore } from "@/store/themeStore";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
@@ -16,6 +17,8 @@ function useIsMobile() {
 export default function PageHeader({ title, subtitle, actions, children }) {
   const isMobile = useIsMobile();
   const { dark, toggleDark } = useThemeStore();
+  const { i18n } = useTranslation();
+  const toggleLanguage = () => i18n.changeLanguage(i18n.language === "ar" ? "fr" : "ar");
 
   return (
     <header style={{
@@ -39,6 +42,15 @@ export default function PageHeader({ title, subtitle, actions, children }) {
       </div>
       {/* ✅ زر تبديل الوضع والجرس يظهران هنا فقط على الحاسوب — على الهاتف يظهران في Layout.jsx بدلاً منهما */}
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        {!isMobile && (
+          <button onClick={toggleLanguage} aria-label="تبديل اللغة" style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: "var(--card)", border: "1px solid var(--border)",
+            cursor: "pointer", fontSize: 12, fontWeight: 700,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: "'Sora', sans-serif", color: "var(--text)",
+          }}>{i18n.language === "ar" ? "FR" : "AR"}</button>
+        )}
         {!isMobile && (
           <button onClick={toggleDark} aria-label="تبديل الوضع" style={{
             width: 36, height: 36, borderRadius: 10,

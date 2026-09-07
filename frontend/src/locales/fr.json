@@ -1,0 +1,20 @@
+{
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "members": "Membres",
+    "sessions": "Séances",
+    "subscriptions": "Abonnements",
+    "attendance": "Présence",
+    "progress": "Progrès",
+    "team": "Équipe",
+    "notifications": "Notifications",
+    "settings": "Paramètres"
+  },
+  "common": {
+    "logout": "Déconnexion",
+    "owner": "Propriétaire",
+    "coach": "Entraîneur",
+    "assistant": "Assistant",
+    "more": "Plus"
+  }
+}

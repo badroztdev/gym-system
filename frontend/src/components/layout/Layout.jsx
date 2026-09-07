@@ -1,21 +1,23 @@
 // src/components/layout/Layout.jsx
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams, Outlet } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/store/authStore";
 import { useThemeStore } from "@/store/themeStore";
 import { DASHBOARD_DARK_THEME, DASHBOARD_LIGHT_THEME } from "@/dashboardTheme";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
-const NAV = [
-  { path: "/dashboard",     label: "لوحة التحكم",   icon: "⊞" },
-  { path: "/members",       label: "الأعضاء",        icon: "👥" },
-  { path: "/sessions",      label: "الحصص",          icon: "📅" },
-  { path: "/subscriptions", label: "الاشتراكات",     icon: "🎫" },
-  { path: "/attendance",    label: "الحضور",         icon: "✅" },
-  { path: "/progress",      label: "التقدم",         icon: "📈" },
-  { path: "/team",          label: "الفريق",         icon: "🧑‍🏫" },
-  { path: "/notifications", label: "الإشعارات",      icon: "🔔" },
-  { path: "/settings",      label: "الإعدادات",      icon: "⚙️" },
+// ✅ القائمة الآن دالة تُبنى بالترجمة الحالية (t) بدل نص ثابت
+const getNav = (t) => [
+  { path: "/dashboard",     label: t("nav.dashboard"),     icon: "⊞" },
+  { path: "/members",       label: t("nav.members"),       icon: "👥" },
+  { path: "/sessions",      label: t("nav.sessions"),      icon: "📅" },
+  { path: "/subscriptions", label: t("nav.subscriptions"), icon: "🎫" },
+  { path: "/attendance",    label: t("nav.attendance"),    icon: "✅" },
+  { path: "/progress",      label: t("nav.progress"),      icon: "📈" },
+  { path: "/team",          label: t("nav.team"),          icon: "🧑‍🏫" },
+  { path: "/notifications", label: t("nav.notifications"), icon: "🔔" },
+  { path: "/settings",      label: t("nav.settings"),      icon: "⚙️" },
 ];
 
 function useIsMobile() {
@@ -34,10 +36,14 @@ export default function Layout() {
   const { user, logout }              = useAuthStore();
   const { dark, toggleDark }           = useThemeStore();
   const theme                         = dark ? DASHBOARD_DARK_THEME : DASHBOARD_LIGHT_THEME;
+  const { t, i18n }                    = useTranslation();
+  const NAV                           = getNav(t);
   const location                      = useLocation();
   const navigate                      = useNavigate();
   const { gymSlug }                   = useParams();
   const isMobile                      = useIsMobile();
+
+  const toggleLanguage = () => i18n.changeLanguage(i18n.language === "ar" ? "fr" : "ar");
 
   // ✅ الجزء الثالث من الرابط هو اسم الصفحة الفعلي الآن (بعد /{gymSlug}/)
   // مثال: /s-elhidhab/members → activePath = "/members"
@@ -52,7 +58,7 @@ export default function Layout() {
     if (isMobile) setSidebarOpen(false);
   };
 
-  const ROLE_LABELS = { owner: "المالك", coach: "مدرب", assistant: "مساعد" };
+  const ROLE_LABELS = { owner: t("common.owner"), coach: t("common.coach"), assistant: t("common.assistant") };
 
   const SidebarContent = () => (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -148,7 +154,7 @@ export default function Layout() {
             borderRadius: "var(--radius-sm)", color: "var(--danger)",
             cursor: "pointer", fontSize: 12,
             fontFamily: "'Sora', sans-serif", fontWeight: 500,
-          }}>تسجيل الخروج</button>
+          }}>{t("common.logout")}</button>
         </div>
       )}
     </div>
@@ -212,6 +218,13 @@ export default function Layout() {
               <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>SGMS</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={toggleLanguage} aria-label="تبديل اللغة" style={{
+                width: 34, height: 34, borderRadius: 8,
+                background: "var(--card)", border: "1px solid var(--border)",
+                cursor: "pointer", fontSize: 11, fontWeight: 700,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontFamily: "'Sora', sans-serif", color: "var(--text)",
+              }}>{i18n.language === "ar" ? "FR" : "AR"}</button>
               <button onClick={toggleDark} aria-label="تبديل الوضع" style={{
                 width: 34, height: 34, borderRadius: 8,
                 background: "var(--card)", border: "1px solid var(--border)",

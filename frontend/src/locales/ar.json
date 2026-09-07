@@ -1,0 +1,20 @@
+{
+  "nav": {
+    "dashboard": "لوحة التحكم",
+    "members": "الأعضاء",
+    "sessions": "الحصص",
+    "subscriptions": "الاشتراكات",
+    "attendance": "الحضور",
+    "progress": "التقدم",
+    "team": "الفريق",
+    "notifications": "الإشعارات",
+    "settings": "الإعدادات"
+  },
+  "common": {
+    "logout": "تسجيل الخروج",
+    "owner": "المالك",
+    "coach": "مدرب",
+    "assistant": "مساعد",
+    "more": "المزيد"
+  }
+}
