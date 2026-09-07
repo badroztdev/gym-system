@@ -36,6 +36,15 @@ const BLOOD_GROUPS = [
   { value: "O-",  label: "O-" },
 ];
 
+// ✅ قائمة الأفواج الثابتة — تظهر كقائمة اختيار بدل كتابة حرة
+const GROUP_NAMES = [
+  { value: "",        label: "-- الفوج --" },
+  { value: "الفوج 1", label: "الفوج 1" },
+  { value: "الفوج 2", label: "الفوج 2" },
+  { value: "الفوج 3", label: "الفوج 3" },
+  { value: "الفوج 4", label: "الفوج 4" },
+];
+
 const EMPTY_FORM = {
   fullName: "", phone: "", email: "", gender: "",
   dateOfBirth: "", role: "athlete", ageCategory: "",
@@ -217,9 +226,9 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
           />
         </div>
 
-        <Input
+        <Select
           label="الفوج"
-          placeholder="مثال: الفوج 1"
+          options={GROUP_NAMES}
           value={form.groupName}
           onChange={set("groupName")}
         />
