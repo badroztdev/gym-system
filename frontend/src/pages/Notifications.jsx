@@ -226,6 +226,15 @@ const AGE_CATEGORIES_FILTER = [
   { value: "أكابر", label: "أكابر" },
 ];
 
+// ✅ نفس قائمة الأفواج الثابتة المستخدمة في نموذج إضافة/تعديل الأعضاء
+const GROUP_FILTER_OPTIONS = [
+  { value: "",        label: "كل الأفواج" },
+  { value: "الفوج 1", label: "الفوج 1" },
+  { value: "الفوج 2", label: "الفوج 2" },
+  { value: "الفوج 3", label: "الفوج 3" },
+  { value: "الفوج 4", label: "الفوج 4" },
+];
+
 function SessionReminderCard() {
   const [ageCategory, setAgeCategory] = useState("");
   const [group, setGroup] = useState("");
@@ -285,8 +294,7 @@ function SessionReminderCard() {
           ))}
         </select>
 
-        <input
-          placeholder="الفوج (اختياري، مثال: الفوج 1)"
+        <select
           value={group}
           onChange={e => setGroup(e.target.value)}
           style={{
@@ -295,7 +303,11 @@ function SessionReminderCard() {
             color: "var(--text)", outline: "none", direction: "rtl",
             fontFamily: "'Sora', sans-serif",
           }}
-        />
+        >
+          {GROUP_FILTER_OPTIONS.map(g => (
+            <option key={g.value} value={g.value} style={{ background: "var(--card)", color: "var(--text)" }}>{g.label}</option>
+          ))}
+        </select>
       </div>
 
       <Button variant="secondary" size="sm" loading={loading} onClick={handleSend} style={{ color: "var(--accent2)" }}>
