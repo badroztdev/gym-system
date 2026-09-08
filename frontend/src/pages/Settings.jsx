@@ -1,5 +1,6 @@
 // src/pages/Settings.jsx
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import PageHeader from "@/components/layout/PageHeader";
 import { Button, Input, Select } from "@/components/ui";
@@ -7,14 +8,15 @@ import { settingsService } from "@/services/settings.service";
 import { useAuthStore } from "@/store/authStore";
 import toast from "react-hot-toast";
 
-const TABS = [
-  { id: "gym",         label: "معلومات الصالة", icon: "🏋️" },
-  { id: "profile",     label: "ملفي الشخصي",    icon: "👤" },
-  { id: "preferences", label: "إعدادات عامة",    icon: "⚙️" },
+const getTabs = (t) => [
+  { id: "gym",         label: t("settings.tabGym"),         icon: "🏋️" },
+  { id: "profile",     label: t("settings.tabProfile"),     icon: "👤" },
+  { id: "preferences", label: t("settings.tabPreferences"), icon: "⚙️" },
 ];
 
 // ══ تبويب 1 — معلومات الصالة ═════════════════════════════════
 function GymTab() {
+  const { t, i18n } = useTranslation();
   const qc = useQueryClient();
   const { user, updateUser } = useAuthStore();
   const isOwner = user?.role === "owner";
@@ -31,14 +33,14 @@ function GymTab() {
   const mutation = useMutation({
     mutationFn: settingsService.updateGym,
     onSuccess: (res) => {
-      toast.success("تم تحديث معلومات الصالة ✅");
+      toast.success(t("settings.toastGymUpdated"));
       qc.invalidateQueries({ queryKey: ["gym-settings"] });
       // تحديث اسم الصالة في الـ authStore ليظهر في الـ sidebar فوراً
       updateUser({ ...user, gymName: res.data.name });
     },
   });
 
-  if (isLoading) return <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>جاري التحميل...</div>;
+  if (isLoading) return <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>{t("settings.loading")}</div>;
 
   return (
     <div style={{ maxWidth: 520, display: "flex", flexDirection: "column", gap: 16 }}>
@@ -54,26 +56,26 @@ function GymTab() {
             fontSize: 28, fontWeight: 700, color: "#0d0f14",
           }}>{form.name?.[0] || "G"}</div>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>{form.name || "اسم الصالة"}</div>
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>معرّف الصالة: {gym?.id?.slice(0, 8)}...</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>{form.name || t("settings.gymNameFallback")}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("settings.gymIdLabel", { id: gym?.id?.slice(0, 8) })}</div>
           </div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Input label="اسم الصالة" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} disabled={!isOwner} />
-          <Input label="العنوان" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} disabled={!isOwner} />
+          <Input label={t("settings.gymNameLabel")} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} disabled={!isOwner} />
+          <Input label={t("settings.addressLabel")} value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} disabled={!isOwner} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Input label="الهاتف" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} disabled={!isOwner} />
-            <Input label="البريد الإلكتروني" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} disabled={!isOwner} />
+            <Input label={t("settings.phoneLabel")} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} disabled={!isOwner} />
+            <Input label={t("settings.emailLabel")} value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} disabled={!isOwner} />
           </div>
 
           {isOwner ? (
             <Button onClick={() => mutation.mutate(form)} loading={mutation.isPending} style={{ alignSelf: "flex-start", marginTop: 8 }}>
-              حفظ التغييرات
+              {t("settings.saveChanges")}
             </Button>
           ) : (
             <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-              ⓘ فقط المالك يمكنه تعديل معلومات الصالة
+              {t("settings.ownerOnlyGym")}
             </p>
           )}
         </div>
@@ -84,6 +86,7 @@ function GymTab() {
 
 // ══ تبويب 2 — الملف الشخصي ═══════════════════════════════════
 function ProfileTab() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { user, updateUser } = useAuthStore();
 
@@ -97,12 +100,12 @@ function ProfileTab() {
     if (profile) setForm({ fullName: profile.full_name || "", email: profile.email || "" });
   }, [profile]);
 
-  const ROLE_LABELS = { owner: "المالك", coach: "مدرب", assistant: "مساعد مدرب" };
+  const ROLE_LABELS = { owner: t("common.owner"), coach: t("common.coach"), assistant: t("common.assistant") };
 
   const profileMutation = useMutation({
     mutationFn: settingsService.updateProfile,
     onSuccess: (res) => {
-      toast.success("تم تحديث ملفك الشخصي ✅");
+      toast.success(t("settings.toastProfileUpdated"));
       qc.invalidateQueries({ queryKey: ["my-profile"] });
       updateUser({ ...user, fullName: res.data.full_name, email: res.data.email });
     },
@@ -111,20 +114,20 @@ function ProfileTab() {
   const passwordMutation = useMutation({
     mutationFn: settingsService.changePassword,
     onSuccess: (res) => {
-      toast.success(res.data?.message || "تم تغيير كلمة المرور ✅");
+      toast.success(res.data?.message || t("settings.toastPasswordChanged"));
       setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
     },
   });
 
   const handlePasswordSubmit = () => {
     if (pwForm.newPassword !== pwForm.confirmPassword) {
-      toast.error("كلمة المرور الجديدة غير متطابقة");
+      toast.error(t("settings.errorPasswordMismatch"));
       return;
     }
     passwordMutation.mutate({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword });
   };
 
-  if (isLoading) return <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>جاري التحميل...</div>;
+  if (isLoading) return <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>{t("settings.loading")}</div>;
 
   return (
     <div style={{ maxWidth: 520, display: "flex", flexDirection: "column", gap: 16 }}>
@@ -145,36 +148,36 @@ function ProfileTab() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Input label="الاسم الكامل" value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} />
-          <Input label="رقم الهاتف" value={profile?.phone} disabled />
-          <Input label="البريد الإلكتروني" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+          <Input label={t("settings.fullNameLabel")} value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} />
+          <Input label={t("settings.phoneNumberLabel")} value={profile?.phone} disabled />
+          <Input label={t("settings.emailLabel")} value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
           <Button onClick={() => profileMutation.mutate(form)} loading={profileMutation.isPending} style={{ alignSelf: "flex-start" }}>
-            حفظ التغييرات
+            {t("settings.saveChanges")}
           </Button>
         </div>
       </div>
 
       {/* تغيير كلمة المرور */}
       <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 24 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 16 }}>🔒 تغيير كلمة المرور</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 16 }}>{t("settings.changePasswordTitle")}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <Input
-            label="كلمة المرور الحالية" type="password"
+            label={t("settings.currentPasswordLabel")} type="password"
             value={pwForm.currentPassword}
             onChange={e => setPwForm(f => ({ ...f, currentPassword: e.target.value }))}
           />
           <Input
-            label="كلمة المرور الجديدة" type="password"
+            label={t("settings.newPasswordLabel")} type="password"
             value={pwForm.newPassword}
             onChange={e => setPwForm(f => ({ ...f, newPassword: e.target.value }))}
           />
           <Input
-            label="تأكيد كلمة المرور الجديدة" type="password"
+            label={t("settings.confirmPasswordLabel")} type="password"
             value={pwForm.confirmPassword}
             onChange={e => setPwForm(f => ({ ...f, confirmPassword: e.target.value }))}
           />
           <Button onClick={handlePasswordSubmit} loading={passwordMutation.isPending} style={{ alignSelf: "flex-start" }}>
-            تغيير كلمة المرور
+            {t("settings.changePasswordButton")}
           </Button>
         </div>
       </div>
@@ -183,23 +186,25 @@ function ProfileTab() {
 }
 
 // ══ تبويب 3 — إعدادات عامة ═══════════════════════════════════
-const CURRENCIES = [
-  { value: "DZD", label: "دينار جزائري (DZD)" },
-  { value: "USD", label: "دولار أمريكي (USD)" },
-  { value: "EUR", label: "يورو (EUR)" },
-];
-const TIMEZONES = [
-  { value: "Africa/Algiers", label: "الجزائر (GMT+1)" },
-  { value: "Africa/Tunis",   label: "تونس (GMT+1)" },
-  { value: "Africa/Casablanca", label: "المغرب (GMT+1)" },
-];
-const WEEK_STARTS = [
-  { value: "0", label: "الأحد" },
-  { value: "6", label: "السبت" },
-  { value: "1", label: "الاثنين" },
-];
-
 function PreferencesTab() {
+  const { t, i18n } = useTranslation();
+
+  const CURRENCIES = [
+    { value: "DZD", label: t("settings.currencyDZD") },
+    { value: "USD", label: t("settings.currencyUSD") },
+    { value: "EUR", label: t("settings.currencyEUR") },
+  ];
+  const TIMEZONES = [
+    { value: "Africa/Algiers",    label: t("settings.tzAlgiers") },
+    { value: "Africa/Tunis",      label: t("settings.tzTunis") },
+    { value: "Africa/Casablanca", label: t("settings.tzCasablanca") },
+  ];
+  const WEEK_STARTS = [
+    { value: "0", label: t("settings.weekStartSunday") },
+    { value: "6", label: t("settings.weekStartSaturday") },
+    { value: "1", label: t("settings.weekStartMonday") },
+  ];
+
   const qc = useQueryClient();
   const { user } = useAuthStore();
   const isOwner = user?.role === "owner";
@@ -221,7 +226,7 @@ function PreferencesTab() {
   const mutation = useMutation({
     mutationFn: settingsService.updatePreferences,
     onSuccess: () => {
-      toast.success("تم حفظ الإعدادات ✅");
+      toast.success(t("settings.toastSettingsSaved"));
       qc.invalidateQueries({ queryKey: ["gym-settings"] });
     },
   });
@@ -235,21 +240,21 @@ function PreferencesTab() {
     });
   };
 
-  if (isLoading) return <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>جاري التحميل...</div>;
+  if (isLoading) return <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>{t("settings.loading")}</div>;
 
   return (
     <div style={{ maxWidth: 520 }}>
       <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 24 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 16 }}>⚙️ الإعدادات العامة</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 16 }}>{t("settings.generalSettingsTitle")}</div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Select label="العملة" options={CURRENCIES} value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} disabled={!isOwner} />
-          <Select label="المنطقة الزمنية" options={TIMEZONES} value={form.timezone} onChange={e => setForm(f => ({ ...f, timezone: e.target.value }))} disabled={!isOwner} />
-          <Select label="بداية الأسبوع" options={WEEK_STARTS} value={form.weekStartsOn} onChange={e => setForm(f => ({ ...f, weekStartsOn: e.target.value }))} disabled={!isOwner} />
+          <Select label={t("settings.currencyLabel")} options={CURRENCIES} value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} disabled={!isOwner} />
+          <Select label={t("settings.timezoneLabel")} options={TIMEZONES} value={form.timezone} onChange={e => setForm(f => ({ ...f, timezone: e.target.value }))} disabled={!isOwner} />
+          <Select label={t("settings.weekStartLabel")} options={WEEK_STARTS} value={form.weekStartsOn} onChange={e => setForm(f => ({ ...f, weekStartsOn: e.target.value }))} disabled={!isOwner} />
 
           <div>
             <label style={{ fontSize: 12, color: "var(--muted-lt)", fontWeight: 500, display: "block", marginBottom: 6 }}>
-              مدة صلاحية رمز QR (بالدقائق)
+              {t("settings.qrValidityLabel")}
             </label>
             <input
               type="number" min="1" max="60"
@@ -259,21 +264,21 @@ function PreferencesTab() {
               style={{
                 width: "100%", padding: "10px 14px", background: "var(--surface)",
                 border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
-                color: "var(--text)", fontSize: 13, outline: "none", direction: "rtl",
+                color: "var(--text)", fontSize: 13, outline: "none", direction: i18n.language === "ar" ? "rtl" : "ltr",
                 opacity: isOwner ? 1 : 0.6,
               }}
             />
             <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
-              المدة التي يبقى فيها الرياضي قادراً على تسجيل حضوره بعد بداية الحصة
+              {t("settings.qrValidityHint")}
             </p>
           </div>
 
           {isOwner ? (
             <Button onClick={handleSubmit} loading={mutation.isPending} style={{ alignSelf: "flex-start", marginTop: 4 }}>
-              حفظ الإعدادات
+              {t("settings.saveSettings")}
             </Button>
           ) : (
-            <p style={{ fontSize: 12, color: "var(--muted)" }}>ⓘ فقط المالك يمكنه تعديل هذه الإعدادات</p>
+            <p style={{ fontSize: 12, color: "var(--muted)" }}>{t("settings.ownerOnlyPreferences")}</p>
           )}
         </div>
       </div>
@@ -283,22 +288,24 @@ function PreferencesTab() {
 
 // ══ الصفحة الرئيسية ══════════════════════════════════════════
 export default function SettingsPage() {
+  const { t } = useTranslation();
+  const TABS = getTabs(t);
   const [tab, setTab] = useState("gym");
 
   return (
     <>
-      <PageHeader title="الإعدادات" subtitle="إدارة معلومات الصالة وملفك الشخصي">
+      <PageHeader title={t("settings.pageTitle")} subtitle={t("settings.pageSubtitle")}>
         <div style={{ display: "flex", gap: 4, background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: 4 }}>
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{
+          {TABS.map(tabItem => (
+            <button key={tabItem.id} onClick={() => setTab(tabItem.id)} style={{
               padding: "7px 16px", fontSize: 12, fontWeight: 600,
               borderRadius: "var(--radius-sm)", border: "none",
-              background: tab === t.id ? "var(--accent)" : "transparent",
-              color: tab === t.id ? "#0d0f14" : "var(--muted)",
+              background: tab === tabItem.id ? "var(--accent)" : "transparent",
+              color: tab === tabItem.id ? "#0d0f14" : "var(--muted)",
               cursor: "pointer", fontFamily: "'Sora', sans-serif",
               whiteSpace: "nowrap",
             }}>
-              {t.icon} {t.label}
+              {tabItem.icon} {tabItem.label}
             </button>
           ))}
         </div>
