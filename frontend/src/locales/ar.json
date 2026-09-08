@@ -15,6 +15,78 @@
     "owner": "المالك",
     "coach": "مدرب",
     "assistant": "مساعد",
-    "more": "المزيد"
+    "more": "المزيد",
+    "cancel": "إلغاء",
+    "previous": "السابق",
+    "next": "التالي",
+    "kg": "كغ"
+  },
+  "members": {
+    "title": "الأعضاء",
+    "totalCount": "{{count}} عضو إجمالاً",
+    "newMember": "عضو جديد",
+    "noMembers": "لا يوجد أعضاء",
+    "addFirstMember": "أضف أول عضو للبدء",
+
+    "statTotal": "إجمالي الأعضاء",
+    "statActiveSub": "اشتراك نشط",
+    "statExpiringSoon": "تنتهي قريباً",
+    "statNewThisMonth": "جدد هذا الشهر",
+
+    "statusAll": "الكل",
+    "statusActive": "نشط",
+    "statusExpiring": "تنتهي قريباً",
+    "statusExpired": "منتهي",
+    "statusNoSub": "بدون اشتراك",
+    "statusExpiresInDays": "ينتهي بعد {{days}}ي",
+
+    "searchPlaceholder": "بحث بالاسم أو رقم الهاتف...",
+    "allCategories": "كل الفئات",
+    "showInactive": "إظهار المعطّلين",
+    "showingInactive": "✓ عرض المعطّلين",
+
+    "roleAthlete": "رياضي",
+    "roleGuardian": "ولي أمر",
+    "badgeActive": "نشط",
+    "badgeInactive": "معطّل",
+
+    "colMember": "العضو",
+    "colRole": "الدور",
+    "colPhone": "رقم الهاتف",
+    "colCategory": "الفئة",
+    "colGroup": "الفوج",
+    "colRank": "الرتبة",
+    "colWeight": "الوزن",
+    "colBloodGroup": "زمرة الدم",
+    "colSubscription": "الاشتراك",
+    "colStatus": "الحالة",
+    "colActions": "الإجراءات",
+
+    "actionEdit": "تعديل",
+    "actionDelete": "حذف",
+    "actionActivate": "تفعيل",
+
+    "paginationInfo": "صفحة {{page}} من {{pages}} — {{total}} عضو",
+
+    "toastDeactivated": "تم إلغاء تفعيل العضو",
+    "toastReactivated": "تم إعادة تفعيل العضو",
+    "toastPasswordReset": "تم إعادة تعيين كلمة المرور ✅",
+
+    "resetPasswordTitle": "إعادة تعيين كلمة المرور",
+    "resetPasswordDesc": "اترك الحقل فارغاً لإعادة التعيين إلى",
+    "resetPasswordPhone": "رقم الهاتف",
+    "resetPasswordPlaceholder": "كلمة المرور الجديدة (اختياري)",
+    "resetPasswordConfirm": "تأكيد إعادة التعيين",
+
+    "deleteConfirmTitle": "تأكيد إلغاء التفعيل",
+    "deleteConfirmMessage": "سيتم إلغاء تفعيل هذا العضو وسيفقد صلاحية الوصول. يمكنك إعادة تفعيله لاحقاً.",
+
+    "categorySchools": "مدارس",
+    "categoryBuds": "براعم",
+    "categoryYoungCubs": "أصاغر",
+    "categoryCubs": "أشبال",
+    "categoryMids": "أواسط",
+    "categoryHopes": "أمال",
+    "categorySeniors": "أكابر"
   }
 }

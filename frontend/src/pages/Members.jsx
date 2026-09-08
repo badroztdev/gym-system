@@ -1,5 +1,6 @@
 // src/pages/Members.jsx
 import { useState, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { membersService } from "@/services/members.service";
 import { useAuthStore } from "@/store/authStore";
@@ -19,24 +20,25 @@ function useIsMobile() {
 }
 
 // ── Status helpers ────────────────────────────────────────────
-const subStatus = (member) => {
-  if (!member.sub_status) return { type: "expired", label: "بدون اشتراك" };
-  if (member.sub_status !== "active") return { type: "expired", label: "منتهي" };
+const subStatus = (member, t) => {
+  if (!member.sub_status) return { type: "expired", label: t("members.statusNoSub") };
+  if (member.sub_status !== "active") return { type: "expired", label: t("members.statusExpired") };
   const days = Math.ceil((new Date(member.sub_end_date) - new Date()) / 86400000);
-  if (days <= 7) return { type: "expiring", label: `ينتهي بعد ${days}ي` };
-  return { type: "active", label: "نشط" };
+  if (days <= 7) return { type: "expiring", label: t("members.statusExpiresInDays", { days }) };
+  return { type: "active", label: t("members.statusActive") };
 };
 
 // ── Stat cards row ────────────────────────────────────────────
 function StatsRow() {
   const isMobile = useIsMobile();
+  const { t } = useTranslation();
   const { data } = useQuery({ queryKey: ["members-stats"], queryFn: membersService.getStats });
   const stats = data?.data || {};
   const cards = [
-    { label: "إجمالي الأعضاء",   value: stats.total,         color: "var(--accent2)" },
-    { label: "اشتراك نشط",       value: stats.active_subs,    color: "var(--accent)" },
-    { label: "تنتهي قريباً",     value: stats.expiring_soon,  color: "var(--warning)" },
-    { label: "جدد هذا الشهر",    value: stats.new_this_month, color: "var(--accent3)" },
+    { label: t("members.statTotal"),         value: stats.total,         color: "var(--accent2)" },
+    { label: t("members.statActiveSub"),     value: stats.active_subs,    color: "var(--accent)" },
+    { label: t("members.statExpiringSoon"),  value: stats.expiring_soon,  color: "var(--warning)" },
+    { label: t("members.statNewThisMonth"),  value: stats.new_this_month, color: "var(--accent3)" },
   ];
   return (
     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 10 : 12, marginBottom: isMobile ? 14 : 20 }}>
@@ -58,20 +60,30 @@ function StatsRow() {
 // ── Filters bar ───────────────────────────────────────────────
 function FiltersBar({ search, status, ageCategory, showInactive, onSearch, onStatus, onAgeCategory, onToggleInactive }) {
   const isMobile = useIsMobile();
+  const { t } = useTranslation();
   const statuses = [
-    { value: "",         label: "الكل" },
-    { value: "active",   label: "نشط" },
-    { value: "expiring", label: "تنتهي قريباً" },
-    { value: "expired",  label: "منتهي" },
+    { value: "",         label: t("members.statusAll") },
+    { value: "active",   label: t("members.statusActive") },
+    { value: "expiring", label: t("members.statusExpiring") },
+    { value: "expired",  label: t("members.statusExpired") },
   ];
-  const categories = ["", "مدارس", "براعم", "أصاغر", "أشبال", "أواسط", "أمال", "أكابر"];
+  // ✅ القيم الفعلية (value) تبقى بالعربية دائماً لأنها تُخزَّن هكذا في قاعدة البيانات
+  // فقط التسمية المعروضة (label) تُترجم — يمنع كسر الفلترة عند تبديل اللغة
+  const categoryKeys = ["", "مدارس", "براعم", "أصاغر", "أشبال", "أواسط", "أمال", "أكابر"];
+  const categoryLabels = {
+    "مدارس": t("members.categorySchools"), "براعم": t("members.categoryBuds"),
+    "أصاغر": t("members.categoryYoungCubs"), "أشبال": t("members.categoryCubs"),
+    "أواسط": t("members.categoryMids"), "أمال": t("members.categoryHopes"),
+    "أكابر": t("members.categorySeniors"),
+  };
+  const categories = categoryKeys;
 
   return (
     <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
       <div style={{ position: "relative", flex: 1, minWidth: isMobile ? "100%" : 200 }}>
         <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", fontSize: 14 }}>🔍</span>
         <input
-          placeholder="بحث بالاسم أو رقم الهاتف..."
+          placeholder={t("members.searchPlaceholder")}
           value={search}
           onChange={e => onSearch(e.target.value)}
           style={{
@@ -97,7 +109,7 @@ function FiltersBar({ search, status, ageCategory, showInactive, onSearch, onSta
       >
         {categories.map(c => (
           <option key={c} value={c} style={{ background: "var(--card)", color: "var(--text)" }}>
-            {c || "كل الفئات"}
+            {c ? categoryLabels[c] : t("members.allCategories")}
           </option>
         ))}
       </select>
@@ -121,7 +133,7 @@ function FiltersBar({ search, status, ageCategory, showInactive, onSearch, onSta
         color: showInactive ? "var(--danger)" : "var(--muted)",
         cursor: "pointer", fontFamily: "'Sora', sans-serif", fontWeight: 500,
         whiteSpace: "nowrap",
-      }}>{showInactive ? "✓ عرض المعطّلين" : "إظهار المعطّلين"}</button>
+      }}>{showInactive ? t("members.showingInactive") : t("members.showInactive")}</button>
     </div>
   );
 }
@@ -129,6 +141,7 @@ function FiltersBar({ search, status, ageCategory, showInactive, onSearch, onSta
 // ── Main page ─────────────────────────────────────────────────
 export default function MembersPage() {
   const qc = useQueryClient();
+  const { t, i18n } = useTranslation();
   const { user } = useAuthStore();
   const isOwner = user?.role === "owner";
   const isMobile = useIsMobile();
@@ -154,7 +167,7 @@ export default function MembersPage() {
   const deleteMutation = useMutation({
     mutationFn: membersService.remove,
     onSuccess: () => {
-      toast.success("تم إلغاء تفعيل العضو");
+      toast.success(t("members.toastDeactivated"));
       qc.invalidateQueries({ queryKey: ["members"] });
       qc.invalidateQueries({ queryKey: ["members-stats"] });
       setDeleteId(null);
@@ -164,7 +177,7 @@ export default function MembersPage() {
   const reactivateMutation = useMutation({
     mutationFn: (id) => membersService.update(id, { isActive: true }),
     onSuccess: () => {
-      toast.success("تم إعادة تفعيل العضو");
+      toast.success(t("members.toastReactivated"));
       qc.invalidateQueries({ queryKey: ["members"] });
       qc.invalidateQueries({ queryKey: ["members-stats"] });
     },
@@ -174,7 +187,7 @@ export default function MembersPage() {
     mutationFn: ({ id, newPassword }) =>
       membersService.resetPassword(id, newPassword || undefined),
     onSuccess: (res) => {
-      toast.success(res.data?.message || "تم إعادة تعيين كلمة المرور ✅");
+      toast.success(res.data?.message || t("members.toastPasswordReset"));
       setResetModal(false);
       setResetId(null);
       setCustomPass("");
@@ -196,11 +209,11 @@ export default function MembersPage() {
   return (
     <>
       <PageHeader
-        title="الأعضاء"
-        subtitle={meta.total ? `${meta.total} عضو إجمالاً` : ""}
+        title={t("members.title")}
+        subtitle={meta.total ? t("members.totalCount", { count: meta.total }) : ""}
         actions={
           <Button icon="+" onClick={() => setShowForm(true)}>
-            عضو جديد
+            {t("members.newMember")}
           </Button>
         }
       />
@@ -216,13 +229,13 @@ export default function MembersPage() {
               <Spinner size={32} />
             </div>
           ) : members.length === 0 ? (
-            <Empty icon="👥" title="لا يوجد أعضاء" description="أضف أول عضو للبدء" />
+            <Empty icon="👥" title={t("members.noMembers")} description={t("members.addFirstMember")} />
           ) : isMobile ? (
             /* ── عرض بطاقات للهاتف ─────────────────────────── */
             <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 12 }}>
               {members.map(m => {
-                const s = subStatus(m);
-                const roleMap = { athlete: "رياضي", guardian: "ولي أمر" };
+                const s = subStatus(m, t);
+                const roleMap = { athlete: t("members.roleAthlete"), guardian: t("members.roleGuardian") };
                 return (
                   <div key={m.id} className="fade-in" style={{
                     background: "var(--surface)", border: "1px solid var(--border)",
@@ -242,8 +255,8 @@ export default function MembersPage() {
                         <div className="mono" style={{ fontSize: 11, color: "var(--muted-lt)" }}>{m.phone}</div>
                       </div>
                       {m.is_active
-                        ? <Badge label="نشط" type="active" />
-                        : <Badge label="معطّل" type="expired" />}
+                        ? <Badge label={t("members.badgeActive")} type="active" />
+                        : <Badge label={t("members.badgeInactive")} type="expired" />}
                     </div>
 
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
@@ -256,21 +269,21 @@ export default function MembersPage() {
                     {(m.rank || m.weight_kg || m.blood_group) && (
                       <div style={{ display: "flex", gap: 14, marginBottom: 10, fontSize: 11, color: "var(--muted-lt)" }}>
                         {m.rank && <span>🏅 {m.rank}</span>}
-                        {m.weight_kg && <span className="mono">{m.weight_kg} كغ</span>}
+                        {m.weight_kg && <span className="mono">{m.weight_kg} {t("common.kg")}</span>}
                         {m.blood_group && <span style={{ color: "var(--danger)", fontWeight: 700 }} className="mono">{m.blood_group}</span>}
                       </div>
                     )}
 
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-                      <Button variant="secondary" size="sm" onClick={() => openEdit(m)} style={{ flex: 1, justifyContent: "center", color: "var(--accent2)" }}>تعديل</Button>
+                      <Button variant="secondary" size="sm" onClick={() => openEdit(m)} style={{ flex: 1, justifyContent: "center", color: "var(--accent2)" }}>{t("members.actionEdit")}</Button>
                       {isOwner && (
                         <Button variant="secondary" size="sm" onClick={() => { setResetId(m.id); setCustomPass(""); setResetModal(true); }} style={{ color: "var(--accent3)" }}>🔑</Button>
                       )}
                       {isOwner && m.is_active && (
-                        <Button variant="secondary" size="sm" onClick={() => setDeleteId(m.id)} style={{ color: "var(--danger)" }}>حذف</Button>
+                        <Button variant="secondary" size="sm" onClick={() => setDeleteId(m.id)} style={{ color: "var(--danger)" }}>{t("members.actionDelete")}</Button>
                       )}
                       {isOwner && !m.is_active && (
-                        <Button variant="secondary" size="sm" onClick={() => reactivateMutation.mutate(m.id)} style={{ color: "var(--accent)" }}>تفعيل</Button>
+                        <Button variant="secondary" size="sm" onClick={() => reactivateMutation.mutate(m.id)} style={{ color: "var(--accent)" }}>{t("members.actionActivate")}</Button>
                       )}
                     </div>
                   </div>
@@ -279,18 +292,18 @@ export default function MembersPage() {
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", direction: "rtl" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", direction: i18n.language === "ar" ? "rtl" : "ltr" }}>
                 <thead>
                   <tr style={{ background: "var(--surface)" }}>
-                    {["العضو", "الدور", "رقم الهاتف", "الفئة", "الفوج", "الرتبة", "الوزن", "زمرة الدم", "الاشتراك", "الحالة", "الإجراءات"].map(h => (
+                    {[t("members.colMember"), t("members.colRole"), t("members.colPhone"), t("members.colCategory"), t("members.colGroup"), t("members.colRank"), t("members.colWeight"), t("members.colBloodGroup"), t("members.colSubscription"), t("members.colStatus"), t("members.colActions")].map(h => (
                       <th key={h} style={{ padding: "11px 16px", fontSize: 11, color: "var(--muted)", fontWeight: 500, textAlign: "right", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {members.map((m, i) => {
-                    const s = subStatus(m);
-                    const roleMap = { athlete: "رياضي", guardian: "ولي أمر" };
+                    const s = subStatus(m, t);
+                    const roleMap = { athlete: t("members.roleAthlete"), guardian: t("members.roleGuardian") };
                     return (
                       <tr key={m.id} className="fade-in"
                         style={{
@@ -337,7 +350,7 @@ export default function MembersPage() {
                         </td>
                         <td style={{ padding: "12px 16px" }}>
                           <span className="mono" style={{ fontSize: 12, color: "var(--muted-lt)" }}>
-                            {m.weight_kg ? `${m.weight_kg} كغ` : "—"}
+                            {m.weight_kg ? `${m.weight_kg} ${t("common.kg")}` : "—"}
                           </span>
                         </td>
                         <td style={{ padding: "12px 16px" }}>
@@ -354,20 +367,20 @@ export default function MembersPage() {
                         </td>
                         <td style={{ padding: "12px 16px" }}>
                           {m.is_active
-                            ? <Badge label="نشط" type="active" />
-                            : <Badge label="معطّل" type="expired" />}
+                            ? <Badge label={t("members.badgeActive")} type="active" />
+                            : <Badge label={t("members.badgeInactive")} type="expired" />}
                         </td>
                         <td style={{ padding: "12px 16px" }}>
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            <Button variant="ghost" size="sm" onClick={() => openEdit(m)} style={{ color: "var(--accent2)" }}>تعديل</Button>
+                            <Button variant="ghost" size="sm" onClick={() => openEdit(m)} style={{ color: "var(--accent2)" }}>{t("members.actionEdit")}</Button>
                             {isOwner && (
                               <Button variant="ghost" size="sm" onClick={() => { setResetId(m.id); setCustomPass(""); setResetModal(true); }} style={{ color: "var(--accent3)" }}>🔑</Button>
                             )}
                             {isOwner && m.is_active && (
-                              <Button variant="ghost" size="sm" onClick={() => setDeleteId(m.id)} style={{ color: "var(--danger)" }}>حذف</Button>
+                              <Button variant="ghost" size="sm" onClick={() => setDeleteId(m.id)} style={{ color: "var(--danger)" }}>{t("members.actionDelete")}</Button>
                             )}
                             {isOwner && !m.is_active && (
-                              <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(m.id)} style={{ color: "var(--accent)" }}>تفعيل</Button>
+                              <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(m.id)} style={{ color: "var(--accent)" }}>{t("members.actionActivate")}</Button>
                             )}
                           </div>
                         </td>
@@ -383,11 +396,11 @@ export default function MembersPage() {
           {meta.pages > 1 && (
             <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                صفحة {page} من {meta.pages} — {meta.total} عضو
+                {t("members.paginationInfo", { page, pages: meta.pages, total: meta.total })}
               </span>
               <div style={{ display: "flex", gap: 6 }}>
-                <Button variant="secondary" size="sm" onClick={() => setPage(p => p - 1)} disabled={page === 1}>السابق</Button>
-                <Button variant="secondary" size="sm" onClick={() => setPage(p => p + 1)} disabled={page === meta.pages}>التالي</Button>
+                <Button variant="secondary" size="sm" onClick={() => setPage(p => p - 1)} disabled={page === 1}>{t("common.previous")}</Button>
+                <Button variant="secondary" size="sm" onClick={() => setPage(p => p + 1)} disabled={page === meta.pages}>{t("common.next")}</Button>
               </div>
             </div>
           )}
@@ -406,36 +419,36 @@ export default function MembersPage() {
       <Modal
         open={resetModal}
         onClose={() => { setResetModal(false); setResetId(null); setCustomPass(""); }}
-        title="إعادة تعيين كلمة المرور"
+        title={t("members.resetPasswordTitle")}
         width={380}
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <p style={{ fontSize: 13, color: "var(--muted-lt)", lineHeight: 1.6 }}>
-            اترك الحقل فارغاً لإعادة التعيين إلى <strong style={{ color: "var(--text)" }}>رقم الهاتف</strong>، أو أدخل كلمة مرور جديدة مخصصة.
+            {t("members.resetPasswordDesc")} <strong style={{ color: "var(--text)" }}>{t("members.resetPasswordPhone")}</strong>.
           </p>
           <input
             type="text"
-            placeholder="كلمة المرور الجديدة (اختياري)"
+            placeholder={t("members.resetPasswordPlaceholder")}
             value={customPass}
             onChange={e => setCustomPass(e.target.value)}
             style={{
               width: "100%", padding: "10px 14px",
               background: "var(--surface)", border: "1px solid var(--border)",
               borderRadius: "var(--radius-sm)", color: "var(--text)",
-              fontSize: 13, outline: "none", direction: "rtl",
+              fontSize: 13, outline: "none", direction: i18n.language === "ar" ? "rtl" : "ltr",
               fontFamily: "'Sora', sans-serif",
             }}
           />
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
             <Button variant="secondary" onClick={() => { setResetModal(false); setResetId(null); setCustomPass(""); }}>
-              إلغاء
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={() => resetPasswordMutation.mutate({ id: resetId, newPassword: customPass })}
               loading={resetPasswordMutation.isPending}
               style={{ background: "var(--accent3)", color: "#0d0f14" }}
             >
-              تأكيد إعادة التعيين
+              {t("members.resetPasswordConfirm")}
             </Button>
           </div>
         </div>
@@ -447,8 +460,8 @@ export default function MembersPage() {
         onClose={() => setDeleteId(null)}
         onConfirm={() => deleteMutation.mutate(deleteId)}
         loading={deleteMutation.isPending}
-        title="تأكيد إلغاء التفعيل"
-        message="سيتم إلغاء تفعيل هذا العضو وسيفقد صلاحية الوصول. يمكنك إعادة تفعيله لاحقاً."
+        title={t("members.deleteConfirmTitle")}
+        message={t("members.deleteConfirmMessage")}
       />
     </>
   );

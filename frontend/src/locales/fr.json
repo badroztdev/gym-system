@@ -15,6 +15,78 @@
     "owner": "Propriétaire",
     "coach": "Entraîneur",
     "assistant": "Assistant",
-    "more": "Plus"
+    "more": "Plus",
+    "cancel": "Annuler",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "kg": "kg"
+  },
+  "members": {
+    "title": "Membres",
+    "totalCount": "{{count}} membres au total",
+    "newMember": "Nouveau membre",
+    "noMembers": "Aucun membre",
+    "addFirstMember": "Ajoutez votre premier membre",
+
+    "statTotal": "Total membres",
+    "statActiveSub": "Abonnement actif",
+    "statExpiringSoon": "Expire bientôt",
+    "statNewThisMonth": "Nouveaux ce mois",
+
+    "statusAll": "Tous",
+    "statusActive": "Actif",
+    "statusExpiring": "Expire bientôt",
+    "statusExpired": "Expiré",
+    "statusNoSub": "Sans abonnement",
+    "statusExpiresInDays": "Expire dans {{days}}j",
+
+    "searchPlaceholder": "Rechercher par nom ou téléphone...",
+    "allCategories": "Toutes les catégories",
+    "showInactive": "Afficher les inactifs",
+    "showingInactive": "✓ Inactifs affichés",
+
+    "roleAthlete": "Athlète",
+    "roleGuardian": "Tuteur",
+    "badgeActive": "Actif",
+    "badgeInactive": "Inactif",
+
+    "colMember": "Membre",
+    "colRole": "Rôle",
+    "colPhone": "Téléphone",
+    "colCategory": "Catégorie",
+    "colGroup": "Groupe",
+    "colRank": "Grade",
+    "colWeight": "Poids",
+    "colBloodGroup": "Groupe sanguin",
+    "colSubscription": "Abonnement",
+    "colStatus": "Statut",
+    "colActions": "Actions",
+
+    "actionEdit": "Modifier",
+    "actionDelete": "Supprimer",
+    "actionActivate": "Activer",
+
+    "paginationInfo": "Page {{page}} sur {{pages}} — {{total}} membres",
+
+    "toastDeactivated": "Membre désactivé",
+    "toastReactivated": "Membre réactivé",
+    "toastPasswordReset": "Mot de passe réinitialisé ✅",
+
+    "resetPasswordTitle": "Réinitialiser le mot de passe",
+    "resetPasswordDesc": "Laissez vide pour réinitialiser au",
+    "resetPasswordPhone": "numéro de téléphone",
+    "resetPasswordPlaceholder": "Nouveau mot de passe (optionnel)",
+    "resetPasswordConfirm": "Confirmer la réinitialisation",
+
+    "deleteConfirmTitle": "Confirmer la désactivation",
+    "deleteConfirmMessage": "Ce membre sera désactivé et perdra l'accès. Vous pourrez le réactiver plus tard.",
+
+    "categorySchools": "Écoles",
+    "categoryBuds": "Bourgeons",
+    "categoryYoungCubs": "Poussins",
+    "categoryCubs": "Benjamins",
+    "categoryMids": "Minimes",
+    "categoryHopes": "Espoirs",
+    "categorySeniors": "Seniors"
   }
 }
