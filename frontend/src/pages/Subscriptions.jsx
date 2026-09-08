@@ -1,5 +1,6 @@
 // src/pages/Subscriptions.jsx
 import { useState, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { subscriptionsService } from "@/services/subscriptions.service";
 import { plansService } from "@/services/plans.service";
@@ -13,15 +14,16 @@ import PaymentForm from "@/components/subscriptions/PaymentForm";
 import SubscriptionDetail from "@/components/subscriptions/SubscriptionDetail";
 import toast from "react-hot-toast";
 
-const TABS = [
-  { id: "subscriptions", label: "الاشتراكات", icon: "🎫" },
-  { id: "plans",         label: "الخطط",      icon: "📋" },
-  { id: "payments",      label: "المدفوعات",  icon: "💳" },
+const getTabs = (t) => [
+  { id: "subscriptions", label: t("subscriptions.tabSubscriptions"), icon: "🎫" },
+  { id: "plans",         label: t("subscriptions.tabPlans"),         icon: "📋" },
+  { id: "payments",      label: t("subscriptions.tabPayments"),      icon: "💳" },
 ];
 
-const METHOD_LABELS = {
-  cash: "نقدي", card: "بطاقة", bank_transfer: "تحويل بنكي", online: "عبر الإنترنت",
-};
+const getMethodLabels = (t) => ({
+  cash: t("subscriptions.methodCash"), card: t("subscriptions.methodCard"),
+  bank_transfer: t("subscriptions.methodBankTransfer"), online: t("subscriptions.methodOnline"),
+});
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 768 : false);
@@ -37,32 +39,33 @@ function useIsMobile() {
 //  Tab 1 — الاشتراكات
 // ════════════════════════════════════════════════════════════
 
-function subStatusInfo(s) {
-  if (s.status === "cancelled") return { type: "expired", label: "ملغى" };
-  if (s.status === "suspended") return { type: "pending", label: "معلّق" };
+function subStatusInfo(s, t) {
+  if (s.status === "cancelled") return { type: "expired", label: t("subscriptions.statusCancelled") };
+  if (s.status === "suspended") return { type: "pending", label: t("subscriptions.statusSuspended") };
   const days = Math.ceil((new Date(s.end_date) - new Date()) / 86400000);
-  if (days < 0) return { type: "expired", label: "منتهي" };
-  if (days <= 7) return { type: "expiring", label: `ينتهي بعد ${days}ي` };
-  return { type: "active", label: "نشط" };
+  if (days < 0) return { type: "expired", label: t("subscriptions.statusExpired") };
+  if (days <= 7) return { type: "expiring", label: t("subscriptions.statusExpiresInDays", { days }) };
+  return { type: "active", label: t("subscriptions.statusActive") };
 }
 
-function paymentStatusInfo(s) {
+function paymentStatusInfo(s, t) {
   const remaining = Number(s.remaining);
   const paid = Number(s.total_paid);
-  if (remaining <= 0) return { type: "active", label: "مدفوع" };
-  if (paid > 0) return { type: "expiring", label: "جزئي" };
-  return { type: "expired", label: "غير مدفوع" };
+  if (remaining <= 0) return { type: "active", label: t("subscriptions.payPaid") };
+  if (paid > 0) return { type: "expiring", label: t("subscriptions.payPartial") };
+  return { type: "expired", label: t("subscriptions.payUnpaid") };
 }
 
 function StatsRow() {
   const isMobile = useIsMobile();
+  const { t } = useTranslation();
   const { data } = useQuery({ queryKey: ["subscriptions-stats"], queryFn: subscriptionsService.getStats });
   const s = data?.data || {};
   const cards = [
-    { label: "اشتراكات نشطة",  value: s.active_count,   color: "var(--accent)" },
-    { label: "تنتهي قريباً",   value: s.expiring_count, color: "var(--warning)" },
-    { label: "إيرادات الشهر",  value: s.revenue_this_month, color: "var(--accent2)", suffix: " دج" },
-    { label: "مستحقات معلّقة", value: s.total_due,      color: "var(--danger)",  suffix: " دج" },
+    { label: t("subscriptions.statActiveCount"),  value: s.active_count,   color: "var(--accent)" },
+    { label: t("subscriptions.statExpiringCount"), value: s.expiring_count, color: "var(--warning)" },
+    { label: t("subscriptions.statRevenueMonth"),  value: s.revenue_this_month, color: "var(--accent2)", suffix: " دج" },
+    { label: t("subscriptions.statTotalDue"),      value: s.total_due,      color: "var(--danger)",  suffix: " دج" },
   ];
   return (
     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 10 : 12, marginBottom: isMobile ? 14 : 20 }}>
@@ -83,6 +86,7 @@ function StatsRow() {
 
 function SubscriptionsTab() {
   const qc = useQueryClient();
+  const { t, i18n } = useTranslation();
   const { user } = useAuthStore();
   const isOwner = user?.role === "owner";
   const isMobile = useIsMobile();
@@ -99,7 +103,7 @@ function SubscriptionsTab() {
   const deleteMutation = useMutation({
     mutationFn: subscriptionsService.remove,
     onSuccess: () => {
-      toast.success("تم حذف الاشتراك نهائياً");
+      toast.success(t("subscriptions.toastDeleted"));
       refresh();
       setDeleteId(null);
     },
@@ -120,18 +124,18 @@ function SubscriptionsTab() {
   };
 
   const STATUSES = [
-    { value: "",         label: "الكل" },
-    { value: "active",   label: "نشط" },
-    { value: "expiring", label: "تنتهي قريباً" },
-    { value: "expired",  label: "منتهي" },
-    { value: "suspended",label: "معلّق" },
-    { value: "cancelled",label: "ملغى" },
+    { value: "",         label: t("subscriptions.statusAll") },
+    { value: "active",   label: t("subscriptions.statusActive") },
+    { value: "expiring", label: t("subscriptions.statusExpiring") },
+    { value: "expired",  label: t("subscriptions.statusExpired") },
+    { value: "suspended",label: t("subscriptions.statusSuspended") },
+    { value: "cancelled",label: t("subscriptions.statusCancelled") },
   ];
   const PAY_STATUSES = [
-    { value: "",        label: "كل حالات الدفع" },
-    { value: "paid",    label: "مدفوع" },
-    { value: "partial", label: "جزئي" },
-    { value: "unpaid",  label: "غير مدفوع" },
+    { value: "",        label: t("subscriptions.payAll") },
+    { value: "paid",    label: t("subscriptions.payPaid") },
+    { value: "partial", label: t("subscriptions.payPartial") },
+    { value: "unpaid",  label: t("subscriptions.payUnpaid") },
   ];
 
   return (
@@ -143,14 +147,14 @@ function SubscriptionsTab() {
         <div style={{ position: "relative", flex: 1, minWidth: isMobile ? "100%" : 200 }}>
           <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", fontSize: 14 }}>🔍</span>
           <input
-            placeholder="بحث بالاسم أو رقم الهاتف..."
+            placeholder={t("subscriptions.searchPlaceholder")}
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
             style={{
               width: "100%", padding: "9px 38px 9px 14px",
               background: "var(--card)", border: "1px solid var(--border)",
               borderRadius: "var(--radius-sm)", color: "var(--text)",
-              fontSize: 13, outline: "none", direction: "rtl",
+              fontSize: 13, outline: "none", direction: i18n.language === "ar" ? "rtl" : "ltr",
             }}
           />
         </div>
@@ -167,13 +171,13 @@ function SubscriptionsTab() {
         {isLoading ? (
           <div style={{ display: "flex", justifyContent: "center", padding: 48 }}><Spinner size={32} /></div>
         ) : subs.length === 0 ? (
-          <Empty icon="🎫" title="لا توجد اشتراكات" description="أضف أول اشتراك للبدء" />
+          <Empty icon="🎫" title={t("subscriptions.noSubscriptions")} description={t("subscriptions.addFirstSubscription")} />
         ) : isMobile ? (
           /* ── عرض بطاقات للهاتف ─────────────────────────── */
           <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 12 }}>
             {subs.map(s => {
-              const st = subStatusInfo(s);
-              const pay = paymentStatusInfo(s);
+              const st = subStatusInfo(s, t);
+              const pay = paymentStatusInfo(s, t);
               return (
                 <div key={s.id} className="fade-in" style={{
                   background: "var(--surface)", border: "1px solid var(--border)",
@@ -198,26 +202,26 @@ function SubscriptionsTab() {
 
                   <div style={{ display: "flex", gap: 14, marginBottom: 10, fontSize: 12 }}>
                     <div>
-                      <div style={{ fontSize: 10, color: "var(--muted)" }}>السعر</div>
+                      <div style={{ fontSize: 10, color: "var(--muted)" }}>{t("subscriptions.price")}</div>
                       <div className="mono" style={{ color: "var(--text)" }}>{Number(s.price).toFixed(0)}</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 10, color: "var(--muted)" }}>مدفوع</div>
+                      <div style={{ fontSize: 10, color: "var(--muted)" }}>{t("subscriptions.paid")}</div>
                       <div className="mono" style={{ color: "var(--accent)" }}>{Number(s.total_paid).toFixed(0)}</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 10, color: "var(--muted)" }}>متبقي</div>
+                      <div style={{ fontSize: 10, color: "var(--muted)" }}>{t("subscriptions.remaining")}</div>
                       <div className="mono" style={{ color: Number(s.remaining) > 0 ? "var(--warning)" : "var(--muted)" }}>{Number(s.remaining).toFixed(0)}</div>
                     </div>
                   </div>
 
                   <div style={{ display: "flex", gap: 6, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-                    <Button variant="secondary" size="sm" onClick={() => setDetailId(s.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent2)" }}>تفاصيل</Button>
+                    <Button variant="secondary" size="sm" onClick={() => setDetailId(s.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent2)" }}>{t("subscriptions.actionDetails")}</Button>
                     {Number(s.remaining) > 0 && s.status === "active" && (
-                      <Button variant="secondary" size="sm" onClick={() => setPaymentSub(s)} style={{ flex: 1, justifyContent: "center", color: "var(--accent)" }}>دفعة</Button>
+                      <Button variant="secondary" size="sm" onClick={() => setPaymentSub(s)} style={{ flex: 1, justifyContent: "center", color: "var(--accent)" }}>{t("subscriptions.actionPayment")}</Button>
                     )}
                     {isOwner && (
-                      <Button variant="secondary" size="sm" onClick={() => setDeleteId(s.id)} style={{ color: "var(--danger)" }}>حذف</Button>
+                      <Button variant="secondary" size="sm" onClick={() => setDeleteId(s.id)} style={{ color: "var(--danger)" }}>{t("subscriptions.actionDelete")}</Button>
                     )}
                   </div>
                 </div>
@@ -226,18 +230,18 @@ function SubscriptionsTab() {
           </div>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", direction: "rtl" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", direction: i18n.language === "ar" ? "rtl" : "ltr" }}>
               <thead>
                 <tr style={{ background: "var(--surface)" }}>
-                  {["الرياضي", "الخطة", "الفترة", "السعر", "المدفوع", "المتبقي", "الحالة", "الدفع", "الإجراءات"].map(h => (
+                  {[t("subscriptions.colAthlete"), t("subscriptions.colPlan"), t("subscriptions.colPeriod"), t("subscriptions.colPrice"), t("subscriptions.colPaid"), t("subscriptions.colRemaining"), t("subscriptions.colStatus"), t("subscriptions.colPayment"), t("subscriptions.colActions")].map(h => (
                     <th key={h} style={{ padding: "11px 16px", fontSize: 11, color: "var(--muted)", fontWeight: 500, textAlign: "right", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {subs.map(s => {
-                  const st = subStatusInfo(s);
-                  const pay = paymentStatusInfo(s);
+                  const st = subStatusInfo(s, t);
+                  const pay = paymentStatusInfo(s, t);
                   return (
                     <tr key={s.id} className="fade-in" style={{ borderTop: "1px solid var(--border)" }}
                       onMouseEnter={e => e.currentTarget.style.background = "var(--surface)"}
@@ -267,12 +271,12 @@ function SubscriptionsTab() {
                       <td style={{ padding: "12px 16px" }}><Badge label={pay.label} type={pay.type} /></td>
                       <td style={{ padding: "12px 16px" }}>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <Button variant="ghost" size="sm" onClick={() => setDetailId(s.id)} style={{ color: "var(--accent2)" }}>تفاصيل</Button>
+                          <Button variant="ghost" size="sm" onClick={() => setDetailId(s.id)} style={{ color: "var(--accent2)" }}>{t("subscriptions.actionDetails")}</Button>
                           {Number(s.remaining) > 0 && s.status === "active" && (
-                            <Button variant="ghost" size="sm" onClick={() => setPaymentSub(s)} style={{ color: "var(--accent)" }}>دفعة</Button>
+                            <Button variant="ghost" size="sm" onClick={() => setPaymentSub(s)} style={{ color: "var(--accent)" }}>{t("subscriptions.actionPayment")}</Button>
                           )}
                           {isOwner && (
-                            <Button variant="ghost" size="sm" onClick={() => setDeleteId(s.id)} style={{ color: "var(--danger)" }}>حذف</Button>
+                            <Button variant="ghost" size="sm" onClick={() => setDeleteId(s.id)} style={{ color: "var(--danger)" }}>{t("subscriptions.actionDelete")}</Button>
                           )}
                         </div>
                       </td>
@@ -298,7 +302,7 @@ function SubscriptionsTab() {
       {/* زر اشتراك جديد عائم في PageHeader عبر context — هنا نضيفه كزر إضافي */}
       <div style={{ position: "fixed", bottom: isMobile ? 90 : 150, left: isMobile ? 16 : 30, zIndex: 5 }}>
         <Button onClick={() => setShowForm(true)} style={{ boxShadow: "var(--shadow)", padding: isMobile ? "10px 16px" : "12px 22px" }} icon="+">
-          {isMobile ? "" : "اشتراك جديد"}
+          {isMobile ? "" : t("subscriptions.newSubscription")}
         </Button>
       </div>
 
@@ -324,8 +328,8 @@ function SubscriptionsTab() {
         onClose={() => setDeleteId(null)}
         onConfirm={() => deleteMutation.mutate(deleteId)}
         loading={deleteMutation.isPending}
-        title="حذف الاشتراك نهائياً"
-        message="سيُحذف هذا الاشتراك وكل الدفعات المرتبطة به بشكل نهائي ولا يمكن التراجع عن هذا الإجراء. استخدم هذا فقط لتصحيح خطأ في البيانات — إذا كان الاشتراك صحيحاً وتريد فقط إنهاءه، استخدم تعديل الحالة بدلاً من ذلك."
+        title={t("subscriptions.deleteTitle")}
+        message={t("subscriptions.deleteMessage")}
       />
     </>
   );
@@ -337,6 +341,7 @@ function SubscriptionsTab() {
 
 function PlansTab() {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const isOwner = user?.role === "owner";
   const isMobile = useIsMobile();
@@ -352,24 +357,24 @@ function PlansTab() {
 
   const deleteMutation = useMutation({
     mutationFn: plansService.remove,
-    onSuccess: () => { toast.success("تم تعطيل الخطة"); refresh(); setDeleteId(null); },
+    onSuccess: () => { toast.success(t("subscriptions.toastPlanDisabled")); refresh(); setDeleteId(null); },
   });
 
   const reactivateMutation = useMutation({
     mutationFn: (id) => plansService.update(id, { isActive: true }),
-    onSuccess: () => { toast.success("تم تفعيل الخطة"); refresh(); },
+    onSuccess: () => { toast.success(t("subscriptions.toastPlanActivated")); refresh(); },
   });
 
   return (
     <>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-        <Button icon="+" onClick={() => { setEditPlan(null); setShowForm(true); }}>خطة جديدة</Button>
+        <Button icon="+" onClick={() => { setEditPlan(null); setShowForm(true); }}>{t("subscriptions.newPlan")}</Button>
       </div>
 
       {isLoading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 48 }}><Spinner size={32} /></div>
       ) : plans.length === 0 ? (
-        <Empty icon="📋" title="لا توجد خطط" description="أنشئ أول خطة اشتراك" />
+        <Empty icon="📋" title={t("subscriptions.noPlans")} description={t("subscriptions.addFirstPlan")} />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
           {plans.map(p => (
@@ -388,37 +393,37 @@ function PlansTab() {
                     </span>
                   )}
                 </div>
-                {!p.is_active && <Badge label="معطّلة" type="expired" />}
+                {!p.is_active && <Badge label={t("subscriptions.planInactive")} type="expired" />}
               </div>
 
               {p.description && <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>{p.description}</div>}
 
               <div style={{ display: "flex", gap: 16, marginTop: 4 }}>
                 <div>
-                  <div style={{ fontSize: 10, color: "var(--muted)" }}>السعر</div>
+                  <div style={{ fontSize: 10, color: "var(--muted)" }}>{t("subscriptions.price")}</div>
                   <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: "var(--accent)" }}>{Number(p.price).toFixed(0)} دج</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 10, color: "var(--muted)" }}>المدة</div>
-                  <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>{p.duration_days} يوم</div>
+                  <div style={{ fontSize: 10, color: "var(--muted)" }}>{t("subscriptions.durationLabel")}</div>
+                  <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>{t("subscriptions.planDuration", { days: p.duration_days })}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 10, color: "var(--muted)" }}>الحصص</div>
-                  <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>{p.sessions_limit ?? "∞"}</div>
+                  <div style={{ fontSize: 10, color: "var(--muted)" }}>{t("subscriptions.sessionsLabel")}</div>
+                  <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>{p.sessions_limit ?? t("subscriptions.planUnlimited")}</div>
                 </div>
               </div>
 
               <div style={{ fontSize: 11, color: "var(--muted)" }}>
-                {p.active_subscriptions} اشتراك نشط حالياً
+                {t("subscriptions.activeSubsCount", { count: p.active_subscriptions })}
               </div>
 
               <div style={{ display: "flex", gap: 6, marginTop: 4, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-                <Button variant="secondary" size="sm" onClick={() => { setEditPlan(p); setShowForm(true); }} style={{ flex: 1, justifyContent: "center" }}>تعديل</Button>
+                <Button variant="secondary" size="sm" onClick={() => { setEditPlan(p); setShowForm(true); }} style={{ flex: 1, justifyContent: "center" }}>{t("subscriptions.planEdit")}</Button>
                 {isOwner && (
                   p.is_active ? (
-                    <Button variant="danger" size="sm" onClick={() => setDeleteId(p.id)} style={{ flex: 1, justifyContent: "center" }}>تعطيل</Button>
+                    <Button variant="danger" size="sm" onClick={() => setDeleteId(p.id)} style={{ flex: 1, justifyContent: "center" }}>{t("subscriptions.planDisable")}</Button>
                   ) : (
-                    <Button variant="secondary" size="sm" loading={reactivateMutation.isPending} onClick={() => reactivateMutation.mutate(p.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent)" }}>تفعيل</Button>
+                    <Button variant="secondary" size="sm" loading={reactivateMutation.isPending} onClick={() => reactivateMutation.mutate(p.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent)" }}>{t("subscriptions.planActivate")}</Button>
                   )
                 )}
               </div>
@@ -434,8 +439,8 @@ function PlansTab() {
         onClose={() => setDeleteId(null)}
         onConfirm={() => deleteMutation.mutate(deleteId)}
         loading={deleteMutation.isPending}
-        title="تعطيل الخطة"
-        message="سيتم تعطيل هذه الخطة. الاشتراكات الحالية المرتبطة بها تستمر بشكل طبيعي، ولكن لن يمكن إنشاء اشتراكات جديدة بها."
+        title={t("subscriptions.disablePlanTitle")}
+        message={t("subscriptions.disablePlanMessage")}
       />
     </>
   );
@@ -446,6 +451,7 @@ function PlansTab() {
 // ════════════════════════════════════════════════════════════
 
 function PaymentsTab() {
+  const { t, i18n } = useTranslation();
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [method, setMethod] = useState("");
@@ -461,13 +467,14 @@ function PaymentsTab() {
   });
   const payments = data?.data || [];
   const meta = data?.meta || {};
+  const METHOD_LABELS = getMethodLabels(t);
 
   const METHODS = [
-    { value: "",              label: "كل طرق الدفع" },
-    { value: "cash",          label: "نقدي" },
-    { value: "card",          label: "بطاقة" },
-    { value: "bank_transfer", label: "تحويل بنكي" },
-    { value: "online",        label: "عبر الإنترنت" },
+    { value: "",              label: t("subscriptions.methodAll") },
+    { value: "cash",          label: t("subscriptions.methodCash") },
+    { value: "card",          label: t("subscriptions.methodCard") },
+    { value: "bank_transfer", label: t("subscriptions.methodBankTransfer") },
+    { value: "online",        label: t("subscriptions.methodOnline") },
   ];
 
   return (
@@ -475,9 +482,9 @@ function PaymentsTab() {
       {/* إحصائيات سريعة */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12, marginBottom: isMobile ? 14 : 20 }}>
         {[
-          { label: "إيرادات اليوم", value: stats.today, color: "var(--accent)" },
-          { label: "إيرادات الأسبوع", value: stats.this_week, color: "var(--accent2)" },
-          { label: "إيرادات الشهر", value: stats.this_month, color: "var(--accent3)" },
+          { label: t("subscriptions.statToday"), value: stats.today, color: "var(--accent)" },
+          { label: t("subscriptions.statWeek"), value: stats.this_week, color: "var(--accent2)" },
+          { label: t("subscriptions.statMonth"), value: stats.this_month, color: "var(--accent3)" },
         ].map((c, i) => (
           <div key={i} className={`fade-up d-${i + 1}`} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? "12px 14px" : "16px 20px" }}>
             <div className="mono" style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: c.color }}>
@@ -493,14 +500,14 @@ function PaymentsTab() {
         <div style={{ position: "relative", flex: 1, minWidth: isMobile ? "100%" : 200 }}>
           <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", fontSize: 14 }}>🔍</span>
           <input
-            placeholder="بحث بالاسم أو رقم الهاتف..."
+            placeholder={t("subscriptions.searchPlaceholder")}
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
             style={{
               width: "100%", padding: "9px 38px 9px 14px",
               background: "var(--card)", border: "1px solid var(--border)",
               borderRadius: "var(--radius-sm)", color: "var(--text)",
-              fontSize: 13, outline: "none", direction: "rtl",
+              fontSize: 13, outline: "none", direction: i18n.language === "ar" ? "rtl" : "ltr",
             }}
           />
         </div>
@@ -514,7 +521,7 @@ function PaymentsTab() {
         {isLoading ? (
           <div style={{ display: "flex", justifyContent: "center", padding: 48 }}><Spinner size={32} /></div>
         ) : payments.length === 0 ? (
-          <Empty icon="💳" title="لا توجد مدفوعات" />
+          <Empty icon="💳" title={t("subscriptions.noPayments")} />
         ) : isMobile ? (
           /* ── عرض بطاقات للهاتف ─────────────────────────── */
           <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 12 }}>
@@ -543,10 +550,10 @@ function PaymentsTab() {
           </div>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", direction: "rtl" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", direction: i18n.language === "ar" ? "rtl" : "ltr" }}>
               <thead>
                 <tr style={{ background: "var(--surface)" }}>
-                  {["التاريخ", "الرياضي", "الخطة", "المبلغ", "الطريقة", "بواسطة"].map(h => (
+                  {[t("subscriptions.colDate"), t("subscriptions.colAthlete"), t("subscriptions.colPlan"), t("subscriptions.colAmount"), t("subscriptions.colMethod"), t("subscriptions.colRecordedBy")].map(h => (
                     <th key={h} style={{ padding: "11px 16px", fontSize: 11, color: "var(--muted)", fontWeight: 500, textAlign: "right", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
@@ -581,10 +588,10 @@ function PaymentsTab() {
 
         {meta.pages > 1 && (
           <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>صفحة {page} من {meta.pages} — {meta.total} دفعة</span>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>{t("subscriptions.paginationPayments", { page, pages: meta.pages, total: meta.total })}</span>
             <div style={{ display: "flex", gap: 6 }}>
-              <Button variant="secondary" size="sm" onClick={() => setPage(p => p - 1)} disabled={page === 1}>السابق</Button>
-              <Button variant="secondary" size="sm" onClick={() => setPage(p => p + 1)} disabled={page === meta.pages}>التالي</Button>
+              <Button variant="secondary" size="sm" onClick={() => setPage(p => p - 1)} disabled={page === 1}>{t("common.previous")}</Button>
+              <Button variant="secondary" size="sm" onClick={() => setPage(p => p + 1)} disabled={page === meta.pages}>{t("common.next")}</Button>
             </div>
           </div>
         )}
@@ -607,23 +614,25 @@ const selectStyle = (active) => ({
 const optionStyle = { background: "var(--card)", color: "var(--text)" };
 
 export default function SubscriptionsPage() {
+  const { t } = useTranslation();
+  const TABS = getTabs(t);
   const [tab, setTab] = useState("subscriptions");
   const isMobile = useIsMobile();
 
   return (
     <>
-      <PageHeader title="الاشتراكات والمدفوعات" subtitle={isMobile ? "" : "إدارة الخطط والاشتراكات والمدفوعات"}>
+      <PageHeader title={t("subscriptions.pageTitle")} subtitle={isMobile ? "" : t("subscriptions.pageSubtitle")}>
         <div style={{ display: "flex", gap: 4, background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: 4, flexWrap: "wrap" }}>
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{
+          {TABS.map(tabItem => (
+            <button key={tabItem.id} onClick={() => setTab(tabItem.id)} style={{
               padding: isMobile ? "7px 10px" : "7px 16px", fontSize: 12, fontWeight: 600,
               borderRadius: "var(--radius-sm)", border: "none",
-              background: tab === t.id ? "var(--accent)" : "transparent",
-              color: tab === t.id ? "#0d0f14" : "var(--muted)",
+              background: tab === tabItem.id ? "var(--accent)" : "transparent",
+              color: tab === tabItem.id ? "#0d0f14" : "var(--muted)",
               cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
               fontFamily: "'Sora', sans-serif", transition: "all 0.15s",
             }}>
-              <span>{t.icon}</span>{!isMobile && t.label}
+              <span>{tabItem.icon}</span>{!isMobile && tabItem.label}
             </button>
           ))}
         </div>
