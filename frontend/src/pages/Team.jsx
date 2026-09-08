@@ -1,5 +1,6 @@
 // src/pages/Team.jsx
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import PageHeader from "@/components/layout/PageHeader";
 import { Button, Badge, Spinner, Empty, Confirm } from "@/components/ui";
@@ -10,17 +11,17 @@ import { categoriesService } from "@/services/categories.service";
 import { useAuthStore } from "@/store/authStore";
 import toast from "react-hot-toast";
 
-const TABS = [
-  { id: "staff",      label: "المدربون والمساعدون", icon: "🧑‍🏫" },
-  { id: "categories", label: "الفئات الرياضية",      icon: "🏷️" },
+const getTabs = (t) => [
+  { id: "staff",      label: t("team.tabStaff"),      icon: "🧑‍🏫" },
+  { id: "categories", label: t("team.tabCategories"), icon: "🏷️" },
 ];
-
-const ROLE_LABELS = { owner: "المالك", coach: "مدرب", assistant: "مساعد مدرب" };
 
 // ════════════════════════════════════════════════════════════
 //  Tab 1 — المدربون والمساعدون
 // ════════════════════════════════════════════════════════════
 function StaffTab() {
+  const { t } = useTranslation();
+  const ROLE_LABELS = { owner: t("common.owner"), coach: t("common.coach"), assistant: t("common.assistant") };
   const qc = useQueryClient();
   const { user } = useAuthStore();
   const isOwner = user?.role === "owner";
@@ -40,12 +41,12 @@ function StaffTab() {
 
   const deleteMutation = useMutation({
     mutationFn: staffService.remove,
-    onSuccess: () => { toast.success("تم إلغاء تفعيل العضو"); refresh(); setDeleteId(null); },
+    onSuccess: () => { toast.success(t("team.toastStaffDisabled")); refresh(); setDeleteId(null); },
   });
 
   const reactivateMutation = useMutation({
     mutationFn: (id) => staffService.update(id, { isActive: true }),
-    onSuccess: () => { toast.success("تم إعادة تفعيل العضو"); refresh(); },
+    onSuccess: () => { toast.success(t("team.toastStaffActivated")); refresh(); },
   });
 
   return (
@@ -57,17 +58,17 @@ function StaffTab() {
           background: showInactive ? "var(--danger)15" : "var(--card)",
           color: showInactive ? "var(--danger)" : "var(--muted)",
           cursor: "pointer", fontFamily: "'Sora', sans-serif", fontWeight: 500,
-        }}>{showInactive ? "✓ عرض المعطّلين" : "إظهار المعطّلين"}</button>
+        }}>{showInactive ? t("team.showingInactive") : t("team.showInactive")}</button>
 
         {isOwner && (
-          <Button icon="+" onClick={() => { setEditStaff(null); setShowForm(true); }}>عضو جديد</Button>
+          <Button icon="+" onClick={() => { setEditStaff(null); setShowForm(true); }}>{t("team.newStaff")}</Button>
         )}
       </div>
 
       {isLoading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 48 }}><Spinner size={32} /></div>
       ) : staff.length === 0 ? (
-        <Empty icon="🧑‍🏫" title="لا يوجد مدربون" description="أضف أول مدرب أو مساعد" />
+        <Empty icon="🧑‍🏫" title={t("team.noStaff")} description={t("team.addFirstStaff")} />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
           {staff.map(s => (
@@ -93,18 +94,18 @@ function StaffTab() {
 
               <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
                 <Badge label={ROLE_LABELS[s.role] || s.role} type={s.role === "owner" ? "guardian" : "coach"} />
-                {!s.is_active && <Badge label="معطّل" type="expired" />}
-                <span style={{ fontSize: 11, color: "var(--muted)" }}>📅 {s.sessions_count} حصة</span>
+                {!s.is_active && <Badge label={t("team.staffInactive")} type="expired" />}
+                <span style={{ fontSize: 11, color: "var(--muted)" }}>📅 {t("team.sessionsCount", { count: s.sessions_count })}</span>
               </div>
 
               {s.role !== "owner" && (
                 <div style={{ display: "flex", gap: 6, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-                  <Button variant="secondary" size="sm" onClick={() => { setEditStaff(s); setShowForm(true); }} style={{ flex: 1, justifyContent: "center" }}>تعديل</Button>
+                  <Button variant="secondary" size="sm" onClick={() => { setEditStaff(s); setShowForm(true); }} style={{ flex: 1, justifyContent: "center" }}>{t("team.staffEdit")}</Button>
                   {isOwner && (
                     s.is_active ? (
-                      <Button variant="danger" size="sm" onClick={() => setDeleteId(s.id)} style={{ flex: 1, justifyContent: "center" }}>تعطيل</Button>
+                      <Button variant="danger" size="sm" onClick={() => setDeleteId(s.id)} style={{ flex: 1, justifyContent: "center" }}>{t("team.staffDisable")}</Button>
                     ) : (
-                      <Button variant="secondary" size="sm" loading={reactivateMutation.isPending} onClick={() => reactivateMutation.mutate(s.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent)" }}>تفعيل</Button>
+                      <Button variant="secondary" size="sm" loading={reactivateMutation.isPending} onClick={() => reactivateMutation.mutate(s.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent)" }}>{t("team.staffActivate")}</Button>
                     )
                   )}
                 </div>
@@ -121,8 +122,8 @@ function StaffTab() {
         onClose={() => setDeleteId(null)}
         onConfirm={() => deleteMutation.mutate(deleteId)}
         loading={deleteMutation.isPending}
-        title="تعطيل العضو"
-        message="سيتم تعطيل حساب هذا العضو وسيفقد صلاحية الوصول. يمكنك إعادة تفعيله لاحقاً."
+        title={t("team.disableStaffTitle")}
+        message={t("team.disableStaffMessage")}
       />
     </>
   );
@@ -132,6 +133,7 @@ function StaffTab() {
 //  Tab 2 — الفئات الرياضية
 // ════════════════════════════════════════════════════════════
 function CategoriesTab() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { user } = useAuthStore();
   const isOwner = user?.role === "owner";
@@ -153,24 +155,24 @@ function CategoriesTab() {
 
   const deleteMutation = useMutation({
     mutationFn: categoriesService.remove,
-    onSuccess: () => { toast.success("تم تعطيل الفئة"); refresh(); setDeleteId(null); },
+    onSuccess: () => { toast.success(t("team.toastCategoryDisabled")); refresh(); setDeleteId(null); },
   });
 
   const reactivateMutation = useMutation({
     mutationFn: (id) => categoriesService.update(id, { isActive: true }),
-    onSuccess: () => { toast.success("تم تفعيل الفئة"); refresh(); },
+    onSuccess: () => { toast.success(t("team.toastCategoryActivated")); refresh(); },
   });
 
   return (
     <>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-        {isOwner && <Button icon="+" onClick={() => { setEditCategory(null); setShowForm(true); }}>فئة جديدة</Button>}
+        {isOwner && <Button icon="+" onClick={() => { setEditCategory(null); setShowForm(true); }}>{t("team.newCategory")}</Button>}
       </div>
 
       {isLoading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 48 }}><Spinner size={32} /></div>
       ) : categories.length === 0 ? (
-        <Empty icon="🏷️" title="لا توجد فئات رياضية" description="أضف أول فئة" />
+        <Empty icon="🏷️" title={t("team.noCategories")} description={t("team.addFirstCategory")} />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
           {categories.map(c => (
@@ -185,20 +187,20 @@ function CategoriesTab() {
                   <div style={{ width: 12, height: 12, borderRadius: "50%", background: c.color }} />
                   <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{c.name}</span>
                 </div>
-                {!c.is_active && <Badge label="معطّلة" type="expired" />}
+                {!c.is_active && <Badge label={t("team.categoryInactive")} type="expired" />}
               </div>
 
               <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 12 }}>
-                {c.plans_count} خطة • {c.sessions_count} حصة
+                {t("team.categoryStats", { plans: c.plans_count, sessions: c.sessions_count })}
               </div>
 
               {isOwner && (
                 <div style={{ display: "flex", gap: 6 }}>
-                  <Button variant="secondary" size="sm" onClick={() => { setEditCategory(c); setShowForm(true); }} style={{ flex: 1, justifyContent: "center" }}>تعديل</Button>
+                  <Button variant="secondary" size="sm" onClick={() => { setEditCategory(c); setShowForm(true); }} style={{ flex: 1, justifyContent: "center" }}>{t("team.categoryEdit")}</Button>
                   {c.is_active ? (
-                    <Button variant="danger" size="sm" onClick={() => setDeleteId(c.id)} style={{ flex: 1, justifyContent: "center" }}>تعطيل</Button>
+                    <Button variant="danger" size="sm" onClick={() => setDeleteId(c.id)} style={{ flex: 1, justifyContent: "center" }}>{t("team.categoryDisable")}</Button>
                   ) : (
-                    <Button variant="secondary" size="sm" loading={reactivateMutation.isPending} onClick={() => reactivateMutation.mutate(c.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent)" }}>تفعيل</Button>
+                    <Button variant="secondary" size="sm" loading={reactivateMutation.isPending} onClick={() => reactivateMutation.mutate(c.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent)" }}>{t("team.categoryActivate")}</Button>
                   )}
                 </div>
               )}
@@ -214,8 +216,8 @@ function CategoriesTab() {
         onClose={() => setDeleteId(null)}
         onConfirm={() => deleteMutation.mutate(deleteId)}
         loading={deleteMutation.isPending}
-        title="تعطيل الفئة"
-        message="سيتم تعطيل هذه الفئة الرياضية. الخطط والحصص المرتبطة بها تستمر بشكل طبيعي."
+        title={t("team.disableCategoryTitle")}
+        message={t("team.disableCategoryMessage")}
       />
     </>
   );
@@ -225,22 +227,24 @@ function CategoriesTab() {
 //  Page
 // ════════════════════════════════════════════════════════════
 export default function TeamPage() {
+  const { t } = useTranslation();
+  const TABS = getTabs(t);
   const [tab, setTab] = useState("staff");
 
   return (
     <>
-      <PageHeader title="الفريق" subtitle="إدارة المدربين والمساعدين والفئات الرياضية">
+      <PageHeader title={t("team.pageTitle")} subtitle={t("team.pageSubtitle")}>
         <div style={{ display: "flex", gap: 4, background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: 4 }}>
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{
+          {TABS.map(tabItem => (
+            <button key={tabItem.id} onClick={() => setTab(tabItem.id)} style={{
               padding: "7px 16px", fontSize: 12, fontWeight: 600,
               borderRadius: "var(--radius-sm)", border: "none",
-              background: tab === t.id ? "var(--accent)" : "transparent",
-              color: tab === t.id ? "#0d0f14" : "var(--muted)",
+              background: tab === tabItem.id ? "var(--accent)" : "transparent",
+              color: tab === tabItem.id ? "#0d0f14" : "var(--muted)",
               cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
               fontFamily: "'Sora', sans-serif", transition: "all 0.15s",
             }}>
-              <span>{t.icon}</span>{t.label}
+              <span>{tabItem.icon}</span>{tabItem.label}
             </button>
           ))}
         </div>
