@@ -1,5 +1,6 @@
 // src/components/notifications/NotificationBell.jsx
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationsService } from "@/services/notifications.service";
 import toast from "react-hot-toast";
@@ -25,6 +26,7 @@ function useIsMobile() {
 }
 
 export default function NotificationBell() {
+  const { t, i18n } = useTranslation();
   const [open, setOpen]   = useState(false);
   const ref                = useRef(null);
   const btnRef              = useRef(null);
@@ -139,7 +141,7 @@ export default function NotificationBell() {
           boxShadow: "var(--shadow)",
           zIndex: 100,
           animation: isMobile ? "popCenter 0.2s ease" : "fadeUp 0.2s ease",
-          direction: "rtl",
+          direction: i18n.language === "ar" ? "rtl" : "ltr",
         }}>
           {/* رأس */}
           <div style={{
@@ -148,13 +150,13 @@ export default function NotificationBell() {
             position: "sticky", top: 0, background: "var(--card)", zIndex: 1,
           }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
-              الإشعارات {unread > 0 && <span style={{ color: "var(--danger)", fontSize: 11 }}>({unread} جديد)</span>}
+              {t("notificationBell.title")} {unread > 0 && <span style={{ color: "var(--danger)", fontSize: 11 }}>{t("notificationBell.unreadCount", { count: unread })}</span>}
             </span>
             {unread > 0 && (
               <button onClick={handleMarkAll} style={{
                 background: "none", border: "none", color: "var(--accent)",
                 cursor: "pointer", fontSize: 11, fontFamily: "'Sora', sans-serif",
-              }}>قراءة الكل</button>
+              }}>{t("notificationBell.markAllRead")}</button>
             )}
           </div>
 
@@ -162,7 +164,7 @@ export default function NotificationBell() {
           {notifications.length === 0 ? (
             <div style={{ padding: 32, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
               <div style={{ fontSize: 28, marginBottom: 8 }}>🔕</div>
-              لا توجد إشعارات
+              {t("notificationBell.noNotifications")}
             </div>
           ) : (
             notifications.map(n => {

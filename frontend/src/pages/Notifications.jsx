@@ -1,5 +1,6 @@
 // src/pages/Notifications.jsx
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useQuery as useQ } from "@tanstack/react-query";
 import PageHeader from "@/components/layout/PageHeader";
@@ -8,16 +9,16 @@ import { notificationsService } from "@/services/notifications.service";
 import { membersService } from "@/services/members.service";
 import toast from "react-hot-toast";
 
-const TABS = [
-  { id: "send",    label: "إرسال إشعار",     icon: "📤" },
-  { id: "history", label: "سجل الإشعارات",   icon: "📋" },
+const getTabs = (t) => [
+  { id: "send",    label: t("notifications.tabSend"),    icon: "📤" },
+  { id: "history", label: t("notifications.tabHistory"), icon: "📋" },
 ];
 
-const NOTIF_TYPES = [
-  { value: "general",             label: "عام" },
-  { value: "attendance",          label: "حضور/غياب" },
-  { value: "subscription_expiry", label: "انتهاء اشتراك" },
-  { value: "payment",             label: "دفعة" },
+const getNotifTypes = (t) => [
+  { value: "general",             label: t("notifications.typeGeneral") },
+  { value: "attendance",          label: t("notifications.typeAttendance") },
+  { value: "subscription_expiry", label: t("notifications.typeSubscriptionExpiry") },
+  { value: "payment",             label: t("notifications.typePayment") },
 ];
 
 const TYPE_INFO = {
@@ -42,6 +43,8 @@ function useIsMobile() {
 
 // ══ تبويب الإرسال ════════════════════════════════════════════
 function SendTab() {
+  const { t, i18n } = useTranslation();
+  const NOTIF_TYPES = getNotifTypes(t);
   const qc = useQueryClient();
   const isMobile = useIsMobile();
   const [target, setTarget]       = useState("all");   // all | athletes | guardians | specific
@@ -63,7 +66,7 @@ function SendTab() {
   const sendMutation = useMutation({
     mutationFn: (payload) => notificationsService.sendManual(payload),
     onSuccess: (res) => {
-      toast.success(`✅ تم الإرسال لـ ${res.data?.saved || 0} مستخدم (Push: ${res.data?.pushed || 0})`);
+      toast.success(t("notifications.toastSent", { saved: res.data?.saved || 0, pushed: res.data?.pushed || 0 }));
       setForm({ title: "", body: "", type: "general" });
       setSelected([]);
       qc.invalidateQueries({ queryKey: ["notifications-history"] });
@@ -79,11 +82,11 @@ function SendTab() {
 
   const handleSend = () => {
     if (!form.title.trim() || !form.body.trim()) {
-      toast.error("العنوان والنص مطلوبان");
+      toast.error(t("notifications.errorTitleBodyRequired"));
       return;
     }
     const ids = getTargetIds();
-    if (!ids.length) { toast.error("اختر مستلماً واحداً على الأقل"); return; }
+    if (!ids.length) { toast.error(t("notifications.errorNoRecipient")); return; }
     sendMutation.mutate({ userIds: ids, title: form.title, body: form.body, type: form.type });
   };
 
@@ -92,10 +95,10 @@ function SendTab() {
   );
 
   const TARGET_OPTIONS = [
-    { value: "all",       label: "🌐 الجميع (رياضيون + أولياء الأمور)" },
-    { value: "athletes",  label: "🏋️ الرياضيون فقط" },
-    { value: "guardians", label: "👨‍👩‍👦 أولياء الأمور فقط" },
-    { value: "specific",  label: "🔍 أشخاص محددون" },
+    { value: "all",       label: t("notifications.targetAll") },
+    { value: "athletes",  label: t("notifications.targetAthletes") },
+    { value: "guardians", label: t("notifications.targetGuardians") },
+    { value: "specific",  label: t("notifications.targetSpecific") },
   ];
 
   return (
@@ -107,25 +110,25 @@ function SendTab() {
 
       {/* نموذج الإرسال */}
       <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? 16 : 20, display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>📤 إنشاء إشعار</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>{t("notifications.createNotifTitle")}</div>
 
-        <Select label="المستلمون" options={TARGET_OPTIONS} value={target} onChange={e => { setTarget(e.target.value); setSelected([]); }} />
+        <Select label={t("notifications.recipientsLabel")} options={TARGET_OPTIONS} value={target} onChange={e => { setTarget(e.target.value); setSelected([]); }} />
 
         {/* بحث عن أعضاء محددين */}
         {target === "specific" && (
           <div>
             <label style={{ fontSize: 12, color: "var(--muted-lt)", fontWeight: 500, display: "block", marginBottom: 6 }}>
-              ابحث واختر الأعضاء ({selectedIds.length} مختار)
+              {t("notifications.searchSelectLabel", { count: selectedIds.length })}
             </label>
             <input
-              placeholder="ابحث بالاسم..."
+              placeholder={t("notifications.searchPlaceholder")}
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{
                 width: "100%", padding: "9px 12px", marginBottom: 8,
                 background: "var(--surface)", border: "1px solid var(--border)",
                 borderRadius: "var(--radius-sm)", color: "var(--text)",
-                fontSize: 13, outline: "none", direction: "rtl",
+                fontSize: 13, outline: "none", direction: i18n.language === "ar" ? "rtl" : "ltr",
               }}
             />
             <div style={{ maxHeight: 160, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
@@ -145,33 +148,33 @@ function SendTab() {
           </div>
         )}
 
-        <Select label="نوع الإشعار" options={NOTIF_TYPES} value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} />
+        <Select label={t("notifications.notifTypeLabel")} options={NOTIF_TYPES} value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} />
 
         <div>
-          <label style={{ fontSize: 12, color: "var(--muted-lt)", fontWeight: 500, display: "block", marginBottom: 6 }}>العنوان *</label>
+          <label style={{ fontSize: 12, color: "var(--muted-lt)", fontWeight: 500, display: "block", marginBottom: 6 }}>{t("notifications.titleLabel")}</label>
           <input
-            placeholder="مثال: تذكير بالحصة"
+            placeholder={t("notifications.titlePlaceholder")}
             value={form.title}
             onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
             style={{
               width: "100%", padding: "10px 12px", background: "var(--surface)",
               border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
-              color: "var(--text)", fontSize: 13, outline: "none", direction: "rtl",
+              color: "var(--text)", fontSize: 13, outline: "none", direction: i18n.language === "ar" ? "rtl" : "ltr",
             }}
           />
         </div>
 
         <div>
-          <label style={{ fontSize: 12, color: "var(--muted-lt)", fontWeight: 500, display: "block", marginBottom: 6 }}>نص الإشعار *</label>
+          <label style={{ fontSize: 12, color: "var(--muted-lt)", fontWeight: 500, display: "block", marginBottom: 6 }}>{t("notifications.bodyLabel")}</label>
           <textarea
-            placeholder="اكتب نص الإشعار هنا..."
+            placeholder={t("notifications.bodyPlaceholder")}
             value={form.body}
             onChange={e => setForm(f => ({ ...f, body: e.target.value }))}
             rows={3}
             style={{
               width: "100%", padding: "10px 12px", background: "var(--surface)",
               border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
-              color: "var(--text)", fontSize: 13, outline: "none", direction: "rtl",
+              color: "var(--text)", fontSize: 13, outline: "none", direction: i18n.language === "ar" ? "rtl" : "ltr",
               resize: "vertical", fontFamily: "'Sora', sans-serif",
             }}
           />
@@ -180,19 +183,19 @@ function SendTab() {
         {/* معاينة */}
         {(form.title || form.body) && (
           <div style={{ background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: 12, border: "1px solid var(--border)" }}>
-            <div style={{ fontSize: 10, color: "var(--muted)", marginBottom: 6 }}>معاينة الإشعار</div>
+            <div style={{ fontSize: 10, color: "var(--muted)", marginBottom: 6 }}>{t("notifications.previewLabel")}</div>
             <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
               <span style={{ fontSize: 18 }}>{TYPE_INFO[form.type]?.icon || "🔔"}</span>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{form.title || "العنوان"}</div>
-                <div style={{ fontSize: 11, color: "var(--muted-lt)", marginTop: 2 }}>{form.body || "النص"}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{form.title || t("notifications.previewTitleFallback")}</div>
+                <div style={{ fontSize: 11, color: "var(--muted-lt)", marginTop: 2 }}>{form.body || t("notifications.previewBodyFallback")}</div>
               </div>
             </div>
           </div>
         )}
 
         <Button onClick={handleSend} loading={sendMutation.isPending} style={{ width: "100%", justifyContent: "center" }}>
-          📤 إرسال الإشعار
+          {t("notifications.sendButton")}
         </Button>
       </div>
 
@@ -200,12 +203,12 @@ function SendTab() {
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <AutoNotifCard
           icon="⚠️"
-          title="إشعار انتهاء الاشتراكات"
-          desc="يرسل إشعاراً تلقائياً لكل رياضي واشتراكه ينتهي خلال 3 أيام أو أقل"
+          title={t("notifications.expiringSubsTitle")}
+          desc={t("notifications.expiringSubsDesc")}
           color="var(--warning)"
           onSend={async () => {
             const res = await notificationsService.notifyExpiring();
-            toast.success(`تم إشعار ${res.data?.notified || 0} اشتراك`);
+            toast.success(t("notifications.toastExpiringSent", { count: res.data?.notified || 0 }));
           }}
         />
         <SessionReminderCard />
@@ -215,27 +218,29 @@ function SendTab() {
 }
 
 // ══ بطاقة تذكير بحصة اليوم — مع فلترة حسب الفئة العمرية والفوج ══
-const AGE_CATEGORIES_FILTER = [
-  { value: "", label: "كل الفئات العمرية" },
-  { value: "مدارس", label: "مدارس" },
-  { value: "براعم", label: "براعم" },
-  { value: "أصاغر", label: "أصاغر" },
-  { value: "أشبال", label: "أشبال" },
-  { value: "أواسط", label: "أواسط" },
-  { value: "أمال",  label: "أمال" },
-  { value: "أكابر", label: "أكابر" },
-];
-
-// ✅ نفس قائمة الأفواج الثابتة المستخدمة في نموذج إضافة/تعديل الأعضاء
-const GROUP_FILTER_OPTIONS = [
-  { value: "",        label: "كل الأفواج" },
-  { value: "الفوج 1", label: "الفوج 1" },
-  { value: "الفوج 2", label: "الفوج 2" },
-  { value: "الفوج 3", label: "الفوج 3" },
-  { value: "الفوج 4", label: "الفوج 4" },
-];
-
 function SessionReminderCard() {
+  const { t, i18n } = useTranslation();
+
+  // ✅ القيم (value) تبقى بالعربية دائماً لمطابقة قاعدة البيانات، فقط التسمية تُترجم
+  const AGE_CATEGORIES_FILTER = [
+    { value: "",       label: t("notifications.allAgeCategories") },
+    { value: "مدارس", label: t("members.categorySchools") },
+    { value: "براعم", label: t("members.categoryBuds") },
+    { value: "أصاغر", label: t("members.categoryYoungCubs") },
+    { value: "أشبال", label: t("members.categoryCubs") },
+    { value: "أواسط", label: t("members.categoryMids") },
+    { value: "أمال",  label: t("members.categoryHopes") },
+    { value: "أكابر", label: t("members.categorySeniors") },
+  ];
+
+  const GROUP_FILTER_OPTIONS = [
+    { value: "",        label: t("notifications.allGroups") },
+    { value: "الفوج 1", label: t("memberForm.groupLabel", { num: 1 }) },
+    { value: "الفوج 2", label: t("memberForm.groupLabel", { num: 2 }) },
+    { value: "الفوج 3", label: t("memberForm.groupLabel", { num: 3 }) },
+    { value: "الفوج 4", label: t("memberForm.groupLabel", { num: 4 }) },
+  ];
+
   const [ageCategory, setAgeCategory] = useState("");
   const [group, setGroup] = useState("");
   const [loading, setLoading] = useState(false);
@@ -251,20 +256,20 @@ function SessionReminderCard() {
       const athletes = res.data || [];
 
       if (!athletes.length) {
-        toast.error("لا يوجد رياضيون مطابقون لهذا الفلتر");
+        toast.error(t("notifications.errorNoMatchingAthletes"));
         setLoading(false);
         return;
       }
 
       const sendRes = await notificationsService.sendManual({
         userIds: athletes.map(m => m.id),
-        title: "تذكير بحصة اليوم 📅",
-        body: "لا تنسَ حضور حصتك اليوم — سجّل حضورك بمسح QR القاعة",
+        title: t("notifications.sessionReminderNotifTitle"),
+        body: t("notifications.sessionReminderNotifBody"),
         type: "general",
       });
-      toast.success(`تم الإرسال لـ ${sendRes.data?.saved || 0} رياضي`);
+      toast.success(t("notifications.toastReminderSent", { count: sendRes.data?.saved || 0 }));
     } catch {
-      toast.error("فشل الإرسال");
+      toast.error(t("notifications.errorSendFailed"));
     } finally {
       setLoading(false);
     }
@@ -273,9 +278,9 @@ function SessionReminderCard() {
   return (
     <div style={{ background: "var(--card)", border: "1px solid var(--accent2)30", borderRadius: "var(--radius)", padding: 18 }}>
       <div style={{ fontSize: 24, marginBottom: 8 }}>📅</div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>تذكير بحصة اليوم</div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>{t("notifications.sessionReminderTitle")}</div>
       <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6, marginBottom: 14 }}>
-        أرسل تذكيراً للرياضيين بحصص اليوم — حدّد الفئة العمرية والفوج (اختياري) لتضييق المستلمين
+        {t("notifications.sessionReminderDesc")}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
@@ -285,7 +290,7 @@ function SessionReminderCard() {
           style={{
             padding: "8px 12px", fontSize: 12, borderRadius: "var(--radius-sm)",
             border: "1px solid var(--border)", background: "var(--surface)",
-            color: "var(--text)", outline: "none", direction: "rtl",
+            color: "var(--text)", outline: "none", direction: i18n.language === "ar" ? "rtl" : "ltr",
             fontFamily: "'Sora', sans-serif",
           }}
         >
@@ -300,7 +305,7 @@ function SessionReminderCard() {
           style={{
             padding: "8px 12px", fontSize: 12, borderRadius: "var(--radius-sm)",
             border: "1px solid var(--border)", background: "var(--surface)",
-            color: "var(--text)", outline: "none", direction: "rtl",
+            color: "var(--text)", outline: "none", direction: i18n.language === "ar" ? "rtl" : "ltr",
             fontFamily: "'Sora', sans-serif",
           }}
         >
@@ -311,30 +316,32 @@ function SessionReminderCard() {
       </div>
 
       <Button variant="secondary" size="sm" loading={loading} onClick={handleSend} style={{ color: "var(--accent2)" }}>
-        إرسال الآن
+        {t("notifications.sendNow")}
       </Button>
     </div>
   );
 }
 
 function AutoNotifCard({ icon, title, desc, color, onSend }) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const handle = async () => {
     setLoading(true);
-    try { await onSend(); } catch { toast.error("فشل الإرسال"); } finally { setLoading(false); }
+    try { await onSend(); } catch { toast.error(t("notifications.errorSendFailed")); } finally { setLoading(false); }
   };
   return (
     <div style={{ background: "var(--card)", border: `1px solid ${color}30`, borderRadius: "var(--radius)", padding: "16px 18px" }}>
       <div style={{ fontSize: 24, marginBottom: 8 }}>{icon}</div>
       <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>{title}</div>
       <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6, marginBottom: 14 }}>{desc}</div>
-      <Button variant="secondary" size="sm" loading={loading} onClick={handle} style={{ color }}>إرسال الآن</Button>
+      <Button variant="secondary" size="sm" loading={loading} onClick={handle} style={{ color }}>{t("notifications.sendNow")}</Button>
     </div>
   );
 }
 
 // ══ تبويب السجل ══════════════════════════════════════════════
 function HistoryTab() {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ["notifications-history"],
     queryFn: notificationsService.getAll,
@@ -346,7 +353,7 @@ function HistoryTab() {
       {isLoading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 48 }}><Spinner size={28} /></div>
       ) : notifications.length === 0 ? (
-        <Empty icon="📭" title="لا توجد إشعارات" description="لم يُرسَل أي إشعار بعد" />
+        <Empty icon="📭" title={t("notifications.noNotifications")} description={t("notifications.noNotificationsSentYet")} />
       ) : (
         <div>
           {notifications.map(n => {
@@ -377,29 +384,31 @@ function HistoryTab() {
 
 // ══ الصفحة الرئيسية ══════════════════════════════════════════
 export default function NotificationsPage() {
+  const { t } = useTranslation();
+  const TABS = getTabs(t);
   const [tab, setTab] = useState("send");
   const isMobile = useIsMobile();
 
   return (
     <>
-      <PageHeader title="الإشعارات" subtitle="إرسال وإدارة إشعارات الرياضيين وأولياء الأمور">
+      <PageHeader title={t("notifications.pageTitle")} subtitle={t("notifications.pageSubtitle")}>
         <div style={{
           display: "flex", gap: 4, background: "var(--surface)",
           borderRadius: "var(--radius-sm)", padding: 4,
           width: isMobile ? "100%" : "auto",
         }}>
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{
+          {TABS.map(tabItem => (
+            <button key={tabItem.id} onClick={() => setTab(tabItem.id)} style={{
               padding: isMobile ? "8px 10px" : "7px 16px",
               fontSize: 12, fontWeight: 600,
               borderRadius: "var(--radius-sm)", border: "none",
-              background: tab === t.id ? "var(--accent)" : "transparent",
-              color: tab === t.id ? "#0d0f14" : "var(--muted)",
+              background: tab === tabItem.id ? "var(--accent)" : "transparent",
+              color: tab === tabItem.id ? "#0d0f14" : "var(--muted)",
               cursor: "pointer", fontFamily: "'Sora', sans-serif",
               flex: isMobile ? 1 : "none",
               whiteSpace: "nowrap",
             }}>
-              {t.icon} {t.label}
+              {tabItem.icon} {tabItem.label}
             </button>
           ))}
         </div>
