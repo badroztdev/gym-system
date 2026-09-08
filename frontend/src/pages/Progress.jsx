@@ -1,20 +1,21 @@
 // src/pages/Progress.jsx
 import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import PageHeader from "@/components/layout/PageHeader";
 import { Button, Badge, Spinner, Empty } from "@/components/ui";
 import AthleteProgressDetail from "@/components/progress/AthleteProgressDetail";
 import { progressService } from "@/services/progress.service";
 
-const AGE_CATEGORIES = ["", "مدارس", "براعم", "أصاغر", "أشبال", "أواسط", "أمال", "أكابر"];
+const AGE_CATEGORY_KEYS = ["", "مدارس", "براعم", "أصاغر", "أشبال", "أواسط", "أمال", "أكابر"];
 
-function StatsRow({ data }) {
+function StatsRow({ data, t }) {
   const total = data?.meta?.total || 0;
   const withRecords = data?.data?.filter(a => a.records_count > 0).length || 0;
   const cards = [
-    { label: "إجمالي الرياضيين", value: total, color: "var(--accent2)" },
-    { label: "لديهم سجلات تقدم", value: withRecords, color: "var(--accent)" },
-    { label: "بدون سجلات", value: total - withRecords, color: "var(--warning)" },
+    { label: t("progress.statTotal"), value: total, color: "var(--accent2)" },
+    { label: t("progress.statWithRecords"), value: withRecords, color: "var(--accent)" },
+    { label: t("progress.statWithoutRecords"), value: total - withRecords, color: "var(--warning)" },
   ];
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
@@ -29,6 +30,16 @@ function StatsRow({ data }) {
 }
 
 export default function ProgressPage() {
+  const { t, i18n } = useTranslation();
+
+  // ✅ نفس نمط الفئات في MemberForm: القيمة تبقى بالعربية، فقط التسمية تُترجم
+  const CATEGORY_LABELS = {
+    "مدارس": t("members.categorySchools"), "براعم": t("members.categoryBuds"),
+    "أصاغر": t("members.categoryYoungCubs"), "أشبال": t("members.categoryCubs"),
+    "أواسط": t("members.categoryMids"), "أمال": t("members.categoryHopes"),
+    "أكابر": t("members.categorySeniors"),
+  };
+
   const [search, setSearch] = useState("");
   const [ageCategory, setAgeCategory] = useState("");
   const [page, setPage] = useState(1);
@@ -48,24 +59,24 @@ export default function ProgressPage() {
 
   return (
     <>
-      <PageHeader title="متابعة التقدم" subtitle={meta.total ? `${meta.total} رياضي` : ""} />
+      <PageHeader title={t("progress.pageTitle")} subtitle={meta.total ? t("progress.athletesCount", { count: meta.total }) : ""} />
 
       <main style={{ padding: "24px 28px", flex: 1 }}>
-        <StatsRow data={data} />
+        <StatsRow data={data} t={t} />
 
         {/* فلاتر */}
         <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
           <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
             <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", fontSize: 14 }}>🔍</span>
             <input
-              placeholder="بحث بالاسم..."
+              placeholder={t("progress.searchPlaceholder")}
               value={search}
               onChange={e => handleSearch(e.target.value)}
               style={{
                 width: "100%", padding: "9px 38px 9px 14px",
                 background: "var(--card)", border: "1px solid var(--border)",
                 borderRadius: "var(--radius-sm)", color: "var(--text)",
-                fontSize: 13, outline: "none", direction: "rtl",
+                fontSize: 13, outline: "none", direction: i18n.language === "ar" ? "rtl" : "ltr",
               }}
             />
           </div>
@@ -76,8 +87,8 @@ export default function ProgressPage() {
             color: ageCategory ? "var(--accent2)" : "var(--muted)",
             cursor: "pointer", fontFamily: "'Sora', sans-serif", outline: "none",
           }}>
-            {AGE_CATEGORIES.map(c => (
-              <option key={c} value={c} style={{ background: "var(--card)", color: "var(--text)" }}>{c || "كل الفئات"}</option>
+            {AGE_CATEGORY_KEYS.map(c => (
+              <option key={c} value={c} style={{ background: "var(--card)", color: "var(--text)" }}>{c ? CATEGORY_LABELS[c] : t("progress.allCategories")}</option>
             ))}
           </select>
         </div>
@@ -86,7 +97,7 @@ export default function ProgressPage() {
         {isLoading ? (
           <div style={{ display: "flex", justifyContent: "center", padding: 48 }}><Spinner size={32} /></div>
         ) : athletes.length === 0 ? (
-          <Empty icon="📈" title="لا يوجد رياضيون" />
+          <Empty icon="📈" title={t("progress.noAthletes")} />
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
             {athletes.map(a => (
@@ -107,20 +118,20 @@ export default function ProgressPage() {
                   }}>{a.full_name[0]}</div>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.full_name}</div>
-                    {a.age_category && <Badge label={a.age_category} type="athlete" />}
+                    {a.age_category && <Badge label={CATEGORY_LABELS[a.age_category] || a.age_category} type="athlete" />}
                   </div>
                 </div>
 
                 <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
                   {a.weight_kg && (
                     <div>
-                      <div style={{ fontSize: 10, color: "var(--muted)" }}>آخر وزن</div>
-                      <div className="mono" style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>{a.weight_kg} كغ</div>
+                      <div style={{ fontSize: 10, color: "var(--muted)" }}>{t("progress.lastWeight")}</div>
+                      <div className="mono" style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>{a.weight_kg} {t("common.kg")}</div>
                     </div>
                   )}
                   {a.performance_score && (
                     <div>
-                      <div style={{ fontSize: 10, color: "var(--muted)" }}>آخر أداء</div>
+                      <div style={{ fontSize: 10, color: "var(--muted)" }}>{t("progress.lastPerformance")}</div>
                       <div className="mono" style={{ fontSize: 15, fontWeight: 700, color: "var(--accent2)" }}>{a.performance_score}/100</div>
                     </div>
                   )}
@@ -128,10 +139,10 @@ export default function ProgressPage() {
 
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: 10 }}>
                   <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                    {a.rank ? `🏅 ${a.rank}` : "بدون رتبة"}
+                    {a.rank ? `🏅 ${a.rank}` : t("progress.noRank")}
                   </span>
                   <span style={{ fontSize: 11, color: a.records_count > 0 ? "var(--accent)" : "var(--muted)" }}>
-                    {a.records_count} سجل
+                    {t("progress.recordsCount", { count: a.records_count })}
                   </span>
                 </div>
               </div>
@@ -142,9 +153,9 @@ export default function ProgressPage() {
         {/* pagination */}
         {meta.pages > 1 && (
           <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 20 }}>
-            <Button variant="secondary" size="sm" onClick={() => setPage(p => p-1)} disabled={page===1}>السابق</Button>
-            <span style={{ fontSize: 12, color: "var(--muted)", alignSelf: "center" }}>صفحة {page} من {meta.pages}</span>
-            <Button variant="secondary" size="sm" onClick={() => setPage(p => p+1)} disabled={page===meta.pages}>التالي</Button>
+            <Button variant="secondary" size="sm" onClick={() => setPage(p => p-1)} disabled={page===1}>{t("progress.previous")}</Button>
+            <span style={{ fontSize: 12, color: "var(--muted)", alignSelf: "center" }}>{t("progress.paginationInfo", { page, pages: meta.pages })}</span>
+            <Button variant="secondary" size="sm" onClick={() => setPage(p => p+1)} disabled={page===meta.pages}>{t("progress.next")}</Button>
           </div>
         )}
       </main>

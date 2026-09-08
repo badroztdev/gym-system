@@ -1,5 +1,6 @@
 // src/components/progress/AthleteProgressDetail.jsx
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Modal, Button, Spinner, Empty, Confirm } from "@/components/ui";
@@ -9,6 +10,7 @@ import RankChangeForm from "./RankChangeForm";
 import toast from "react-hot-toast";
 
 export default function AthleteProgressDetail({ open, onClose, athlete }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editRecord, setEditRecord] = useState(null);
@@ -29,24 +31,25 @@ export default function AthleteProgressDetail({ open, onClose, athlete }) {
 
   const deleteMutation = useMutation({
     mutationFn: progressService.remove,
-    onSuccess: () => { toast.success("تم حذف السجل"); refresh(); setDeleteId(null); },
+    onSuccess: () => { toast.success(t("athleteProgressDetail.toastRecordDeleted")); refresh(); setDeleteId(null); },
   });
 
-  // بيانات الرسم البياني (مرتبة تصاعدياً بالتاريخ)
+  // ✅ بيانات الرسم البياني — مفاتيح داخلية ثابتة (weight/performance) بدل نصوص عربية
+  // مباشرة، مع تمرير "name" مُترجَم لكل خط، ليظهر Tooltip بالترجمة الصحيحة دوماً
   const chartData = [...records].reverse().map(r => ({
     date: r.record_date?.slice(5, 10),
-    الوزن: r.weight_kg ? Number(r.weight_kg) : null,
-    الأداء: r.performance_score ? Number(r.performance_score) : null,
+    weight: r.weight_kg ? Number(r.weight_kg) : null,
+    performance: r.performance_score ? Number(r.performance_score) : null,
   }));
 
-  const hasWeightData = chartData.some(d => d.الوزن != null);
-  const hasPerfData   = chartData.some(d => d.الأداء != null);
+  const hasWeightData = chartData.some(d => d.weight != null);
+  const hasPerfData   = chartData.some(d => d.performance != null);
 
   if (!athlete) return null;
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title={`تقدم — ${athlete.full_name}`} width={640}>
+      <Modal open={open} onClose={onClose} title={t("athleteProgressDetail.title", { name: athlete.full_name })} width={640}>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
           {/* رأس: الرتبة الحالية + زر تغييرها */}
@@ -55,10 +58,10 @@ export default function AthleteProgressDetail({ open, onClose, athlete }) {
             background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "12px 16px",
           }}>
             <div>
-              <div style={{ fontSize: 11, color: "var(--muted)" }}>الرتبة الحالية</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--accent)" }}>{athlete.rank || "بدون رتبة"}</div>
+              <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("athleteProgressDetail.currentRank")}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--accent)" }}>{athlete.rank || t("progress.noRank")}</div>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => setShowRankForm(true)}>تغيير الرتبة</Button>
+            <Button variant="secondary" size="sm" onClick={() => setShowRankForm(true)}>{t("athleteProgressDetail.changeRank")}</Button>
           </div>
 
           {isLoading ? (
@@ -68,15 +71,15 @@ export default function AthleteProgressDetail({ open, onClose, athlete }) {
               {/* الرسم البياني */}
               {(hasWeightData || hasPerfData) && (
                 <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", marginBottom: 12 }}>تطور الوزن والأداء</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", marginBottom: 12 }}>{t("athleteProgressDetail.chartTitle")}</div>
                   <ResponsiveContainer width="100%" height={200}>
                     <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--muted)" }} />
                       <YAxis tick={{ fontSize: 10, fill: "var(--muted)" }} />
                       <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
-                      {hasWeightData && <Line type="monotone" dataKey="الوزن" stroke="#6ee7b7" strokeWidth={2} dot={{ r: 3 }} connectNulls />}
-                      {hasPerfData   && <Line type="monotone" dataKey="الأداء" stroke="#818cf8" strokeWidth={2} dot={{ r: 3 }} connectNulls />}
+                      {hasWeightData && <Line type="monotone" dataKey="weight" name={t("athleteProgressDetail.chartWeight")} stroke="#6ee7b7" strokeWidth={2} dot={{ r: 3 }} connectNulls />}
+                      {hasPerfData   && <Line type="monotone" dataKey="performance" name={t("athleteProgressDetail.chartPerformance")} stroke="#818cf8" strokeWidth={2} dot={{ r: 3 }} connectNulls />}
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -84,16 +87,16 @@ export default function AthleteProgressDetail({ open, onClose, athlete }) {
 
               {/* زر إضافة سجل */}
               <Button onClick={() => { setEditRecord(null); setShowForm(true); }} style={{ width: "100%", justifyContent: "center" }}>
-                + إضافة سجل تقدم جديد
+                {t("athleteProgressDetail.addRecord")}
               </Button>
 
               {/* سجلات التقدم */}
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 10 }}>
-                  السجلات ({records.length})
+                  {t("athleteProgressDetail.recordsTitle", { count: records.length })}
                 </div>
                 {records.length === 0 ? (
-                  <Empty icon="📈" title="لا توجد سجلات بعد" />
+                  <Empty icon="📈" title={t("athleteProgressDetail.noRecordsYet")} />
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 280, overflowY: "auto" }}>
                     {records.map(r => (
@@ -103,13 +106,13 @@ export default function AthleteProgressDetail({ open, onClose, athlete }) {
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                           <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
                             <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>{r.record_date?.slice(0,10)}</span>
-                            {r.weight_kg && <span style={{ fontSize: 12, color: "var(--text)" }}>⚖️ {r.weight_kg} كغ</span>}
-                            {r.body_fat_pct && <span style={{ fontSize: 12, color: "var(--text)" }}>📊 {r.body_fat_pct}% دهون</span>}
+                            {r.weight_kg && <span style={{ fontSize: 12, color: "var(--text)" }}>⚖️ {r.weight_kg} {t("common.kg")}</span>}
+                            {r.body_fat_pct && <span style={{ fontSize: 12, color: "var(--text)" }}>📊 {r.body_fat_pct}% {t("athleteProgressDetail.bodyFat")}</span>}
                             {r.performance_score && <span style={{ fontSize: 12, color: "var(--accent2)" }}>⭐ {r.performance_score}/100</span>}
                           </div>
                           <div style={{ display: "flex", gap: 4 }}>
-                            <button onClick={() => { setEditRecord(r); setShowForm(true); }} style={{ background: "none", border: "none", color: "var(--accent2)", cursor: "pointer", fontSize: 12 }}>تعديل</button>
-                            <button onClick={() => setDeleteId(r.id)} style={{ background: "none", border: "none", color: "var(--danger)", cursor: "pointer", fontSize: 12 }}>حذف</button>
+                            <button onClick={() => { setEditRecord(r); setShowForm(true); }} style={{ background: "none", border: "none", color: "var(--accent2)", cursor: "pointer", fontSize: 12 }}>{t("athleteProgressDetail.recordEdit")}</button>
+                            <button onClick={() => setDeleteId(r.id)} style={{ background: "none", border: "none", color: "var(--danger)", cursor: "pointer", fontSize: 12 }}>{t("athleteProgressDetail.recordDelete")}</button>
                           </div>
                         </div>
                         {r.custom_metrics && Object.keys(r.custom_metrics).length > 0 && (
@@ -122,7 +125,7 @@ export default function AthleteProgressDetail({ open, onClose, athlete }) {
                           </div>
                         )}
                         {r.notes && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6, lineHeight: 1.5 }}>📝 {r.notes}</div>}
-                        {r.coach_name && <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 4 }}>سجّله: {r.coach_name}</div>}
+                        {r.coach_name && <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 4 }}>{t("athleteProgressDetail.recordedBy", { name: r.coach_name })}</div>}
                       </div>
                     ))}
                   </div>
@@ -132,7 +135,7 @@ export default function AthleteProgressDetail({ open, onClose, athlete }) {
               {/* سجل تغيّر الرتب */}
               {rankHistory.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 10 }}>سجل الترقيات</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 10 }}>{t("athleteProgressDetail.promotionsHistory")}</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {rankHistory.map((r, i) => (
                       <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: "8px 12px" }}>
@@ -170,8 +173,8 @@ export default function AthleteProgressDetail({ open, onClose, athlete }) {
         onClose={() => setDeleteId(null)}
         onConfirm={() => deleteMutation.mutate(deleteId)}
         loading={deleteMutation.isPending}
-        title="حذف السجل"
-        message="سيتم حذف هذا السجل نهائياً. لا يمكن التراجع عن هذا الإجراء."
+        title={t("athleteProgressDetail.deleteRecordTitle")}
+        message={t("athleteProgressDetail.deleteRecordMessage")}
       />
     </>
   );
