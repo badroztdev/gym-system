@@ -356,5 +356,42 @@
     "toastCategoryActivated": "Catégorie activée",
     "disableCategoryTitle": "Désactiver la catégorie",
     "disableCategoryMessage": "Cette catégorie sportive sera désactivée. Les plans et séances qui y sont liés continueront normalement."
+  },
+  "categoryForm": {
+    "addTitle": "Nouvelle catégorie sportive",
+    "editTitle": "Modifier la catégorie",
+    "nameLabel": "Nom de la catégorie *",
+    "namePlaceholder": "Ex : Football",
+    "colorLabel": "Couleur",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "add": "Ajouter",
+    "errorName": "Le nom de la catégorie est requis",
+    "toastUpdated": "Catégorie mise à jour ✅",
+    "toastCreated": "Catégorie ajoutée ✅"
+  },
+  "staffForm": {
+    "addTitle": "Ajouter un membre de l'équipe",
+    "editTitle": "Modifier : {{name}}",
+    "roleCoach": "Entraîneur",
+    "roleAssistant": "Assistant entraîneur",
+    "fullName": "Nom complet *",
+    "fullNamePlaceholder": "Ex : Karim Mansour",
+    "phone": "Téléphone *",
+    "email": "E-mail",
+    "emailPlaceholder": "example@email.com",
+    "role": "Rôle",
+    "passwordEdit": "Nouveau mot de passe (optionnel)",
+    "passwordAdd": "Mot de passe (optionnel)",
+    "passwordEditPlaceholder": "Laisser vide pour ne pas changer",
+    "passwordAddPlaceholder": "Par défaut : numéro de téléphone",
+    "helpPassword": "💡 Si le mot de passe est laissé vide, le numéro de téléphone sera utilisé comme mot de passe.",
+    "cancel": "Annuler",
+    "saveChanges": "Enregistrer",
+    "addMember": "Ajouter le membre",
+    "errorFullName": "Le nom complet est requis",
+    "errorPhone": "Le numéro de téléphone est requis",
+    "toastUpdated": "Membre mis à jour ✅",
+    "toastCreated": "Membre ajouté avec succès ✅"
   }
 }

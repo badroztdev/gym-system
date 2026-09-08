@@ -356,5 +356,42 @@
     "toastCategoryActivated": "تم تفعيل الفئة",
     "disableCategoryTitle": "تعطيل الفئة",
     "disableCategoryMessage": "سيتم تعطيل هذه الفئة الرياضية. الخطط والحصص المرتبطة بها تستمر بشكل طبيعي."
+  },
+  "categoryForm": {
+    "addTitle": "فئة رياضية جديدة",
+    "editTitle": "تعديل الفئة",
+    "nameLabel": "اسم الفئة *",
+    "namePlaceholder": "مثال: كرة القدم",
+    "colorLabel": "اللون",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "add": "إضافة",
+    "errorName": "اسم الفئة مطلوب",
+    "toastUpdated": "تم تحديث الفئة ✅",
+    "toastCreated": "تم إضافة الفئة ✅"
+  },
+  "staffForm": {
+    "addTitle": "إضافة عضو فريق",
+    "editTitle": "تعديل: {{name}}",
+    "roleCoach": "مدرب",
+    "roleAssistant": "مساعد مدرب",
+    "fullName": "الاسم الكامل *",
+    "fullNamePlaceholder": "مثال: كريم منصور",
+    "phone": "رقم الهاتف *",
+    "email": "البريد الإلكتروني",
+    "emailPlaceholder": "example@email.com",
+    "role": "الدور",
+    "passwordEdit": "كلمة مرور جديدة (اختياري)",
+    "passwordAdd": "كلمة المرور (اختياري)",
+    "passwordEditPlaceholder": "اتركه فارغاً لعدم التغيير",
+    "passwordAddPlaceholder": "افتراضياً: رقم الهاتف",
+    "helpPassword": "💡 إذا تُرك حقل كلمة المرور فارغاً، سيتم استخدام رقم الهاتف كأساس لكلمة المرور.",
+    "cancel": "إلغاء",
+    "saveChanges": "حفظ التغييرات",
+    "addMember": "إضافة العضو",
+    "errorFullName": "الاسم الكامل مطلوب",
+    "errorPhone": "رقم الهاتف مطلوب",
+    "toastUpdated": "تم تحديث بيانات العضو ✅",
+    "toastCreated": "تم إضافة العضو بنجاح ✅"
   }
 }
