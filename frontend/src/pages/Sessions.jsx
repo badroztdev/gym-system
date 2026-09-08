@@ -165,6 +165,20 @@ function ScheduleTab() {
       }}>
         👥 {s.present_count}/{s.enrolled_count}
       </div>
+
+      {/* زر الحذف — يفتح نافذة تأكيد قبل الإلغاء الفعلي */}
+      <button
+        onClick={(e) => { e.stopPropagation(); setCancelId(s.id); }}
+        title={t("sessions.deleteSession")}
+        style={{
+          background: "none", border: "none", cursor: "pointer",
+          color: "var(--danger)", fontSize: compact ? 13 : 15,
+          padding: compact ? 2 : 4, flexShrink: 0, lineHeight: 1,
+          opacity: 0.7,
+        }}
+        onMouseEnter={e => e.currentTarget.style.opacity = 1}
+        onMouseLeave={e => e.currentTarget.style.opacity = 0.7}
+      >🗑️</button>
     </div>
   );
 
