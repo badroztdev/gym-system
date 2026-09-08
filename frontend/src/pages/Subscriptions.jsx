@@ -83,6 +83,8 @@ function StatsRow() {
 
 function SubscriptionsTab() {
   const qc = useQueryClient();
+  const { user } = useAuthStore();
+  const isOwner = user?.role === "owner";
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -92,6 +94,16 @@ function SubscriptionsTab() {
   const [showForm, setShowForm] = useState(false);
   const [paymentSub, setPaymentSub] = useState(null);
   const [detailId, setDetailId] = useState(null);
+  const [deleteId, setDeleteId] = useState(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: subscriptionsService.remove,
+    onSuccess: () => {
+      toast.success("تم حذف الاشتراك نهائياً");
+      refresh();
+      setDeleteId(null);
+    },
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["subscriptions", { search, status, paymentStatus, page }],
@@ -204,6 +216,9 @@ function SubscriptionsTab() {
                     {Number(s.remaining) > 0 && s.status === "active" && (
                       <Button variant="secondary" size="sm" onClick={() => setPaymentSub(s)} style={{ flex: 1, justifyContent: "center", color: "var(--accent)" }}>دفعة</Button>
                     )}
+                    {isOwner && (
+                      <Button variant="secondary" size="sm" onClick={() => setDeleteId(s.id)} style={{ color: "var(--danger)" }}>حذف</Button>
+                    )}
                   </div>
                 </div>
               );
@@ -256,6 +271,9 @@ function SubscriptionsTab() {
                           {Number(s.remaining) > 0 && s.status === "active" && (
                             <Button variant="ghost" size="sm" onClick={() => setPaymentSub(s)} style={{ color: "var(--accent)" }}>دفعة</Button>
                           )}
+                          {isOwner && (
+                            <Button variant="ghost" size="sm" onClick={() => setDeleteId(s.id)} style={{ color: "var(--danger)" }}>حذف</Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -298,6 +316,16 @@ function SubscriptionsTab() {
         onClose={() => setDetailId(null)}
         subscriptionId={detailId}
         onAddPayment={(sub) => { setDetailId(null); setPaymentSub(sub); }}
+      />
+
+      {/* ✅ تأكيد الحذف النهائي — لتصحيح أخطاء الإدخال (مثل تاريخ خاطئ)، وليس لإنهاء اشتراك صحيح */}
+      <Confirm
+        open={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={() => deleteMutation.mutate(deleteId)}
+        loading={deleteMutation.isPending}
+        title="حذف الاشتراك نهائياً"
+        message="سيُحذف هذا الاشتراك وكل الدفعات المرتبطة به بشكل نهائي ولا يمكن التراجع عن هذا الإجراء. استخدم هذا فقط لتصحيح خطأ في البيانات — إذا كان الاشتراك صحيحاً وتريد فقط إنهاءه، استخدم تعديل الحالة بدلاً من ذلك."
       />
     </>
   );

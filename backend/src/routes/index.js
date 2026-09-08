@@ -9,7 +9,7 @@ import { getMembers, getMember, createMember, updateMember, deleteMember, getMem
 import { getCategories, createCategory, updateCategory, deleteCategory } from "../controllers/categories.controller.js";
 import { getStaff, getStaffMember, createStaff, updateStaff, deleteStaff } from "../controllers/staff.controller.js";
 import { getPlans, createPlan, updatePlan, deletePlan } from "../controllers/plans.controller.js";
-import { getSubscriptions, getSubscription, createSubscription, updateSubscription, getSubscriptionStats } from "../controllers/subscriptions.controller.js";
+import { getSubscriptions, getSubscription, createSubscription, updateSubscription, deleteSubscription, getSubscriptionStats } from "../controllers/subscriptions.controller.js";
 import { getPayments, createPayment, deletePayment, getPaymentsStats } from "../controllers/payments.controller.js";
 import { getRooms, createRoom, updateRoom, deleteRoom, regenerateQR } from "../controllers/rooms.controller.js";
 import { getSessions, getSession, createSession, updateSession, cancelSession, getTodaySessions } from "../controllers/sessions.controller.js";
@@ -96,6 +96,7 @@ router.post  ("/subscriptions",       authenticate, staffOnly, [
   validate,
 ], createSubscription);
 router.patch ("/subscriptions/:id",   authenticate, staffOnly, updateSubscription);
+router.delete("/subscriptions/:id",   authenticate, ownerOnly, deleteSubscription);
 
 // ── Payments ──────────────────────────────────────────────────
 router.get   ("/payments/stats", authenticate, staffOnly, getPaymentsStats);

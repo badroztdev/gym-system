@@ -16,4 +16,7 @@ export const subscriptionsService = {
 
   update: (id, data) =>
     api.patch(`/subscriptions/${id}`, data).then((r) => r.data),
+
+  remove: (id) =>
+    api.delete(`/subscriptions/${id}`).then((r) => r.data),
 };

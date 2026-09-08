@@ -1,5 +1,5 @@
 // src/controllers/subscriptions.controller.js
-import { query } from "../utils/db.js";
+import { query, transaction } from "../utils/db.js";
 import {
   ok, created, notFound, badRequest, serverError, paginate,
 } from "../utils/response.js";
@@ -35,7 +35,6 @@ export const getSubscriptions = async (req, res) => {
       conditions.push(`s.status = 'suspended'`);
     }
 
-    // فلتر حالة الدفع يُطبَّق بعد حساب total_paid (LATERAL JOIN) — نستخدم HAVING-like عبر WHERE على alias في subquery خارجي
     const where = conditions.join(" AND ");
 
     let paymentFilter = "";
@@ -62,7 +61,6 @@ export const getSubscriptions = async (req, res) => {
       WHERE ${where}
     `;
 
-    // عدد الإجمالي (مع فلتر الدفع)
     const countRes = await query(
       `SELECT COUNT(*) FROM (${baseQuery}) x ${paymentFilter}`,
       params
@@ -124,14 +122,12 @@ export const createSubscription = async (req, res) => {
     const { athleteId, planId, startDate, price, notes } = req.body;
     const gymId = req.user.gym_id;
 
-    // تحقق أن الرياضي موجود في نفس الصالة
     const athlete = await query(
       "SELECT id FROM users WHERE id = $1 AND gym_id = $2",
       [athleteId, gymId]
     );
     if (!athlete.rows.length) return badRequest(res, "الرياضي غير موجود");
 
-    // تحقق من الخطة
     const plan = await query(
       "SELECT * FROM subscription_plans WHERE id = $1 AND gym_id = $2 AND is_active = TRUE",
       [planId, gymId]
@@ -191,6 +187,36 @@ export const updateSubscription = async (req, res) => {
   }
 };
 
+// ── DELETE /api/subscriptions/:id ──────────────────────────────
+// ✅ حذف نهائي حقيقي — يُستخدم لتصحيح أخطاء إدخال البيانات (مثل تاريخ خاطئ)
+// وليس لإنهاء اشتراك صحيح (لذلك استخدام PATCH status=cancelled)
+// يحذف أولاً كل الدفعات المرتبطة بهذا الاشتراك تحديداً (لتفادي سجلات "يتيمة"
+// أو خطأ قيد المفتاح الأجنبي)، ثم يحذف الاشتراك نفسه — كل ذلك ضمن معاملة واحدة (Transaction)
+export const deleteSubscription = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const gymId = req.user.gym_id;
+
+    // تحقق أولاً أن الاشتراك موجود فعلاً ويخص هذه الصالة
+    const check = await query(
+      `SELECT s.id FROM subscriptions s
+       JOIN users u ON u.id = s.athlete_id
+       WHERE s.id = $1 AND u.gym_id = $2`,
+      [id, gymId]
+    );
+    if (!check.rows.length) return notFound(res, "الاشتراك غير موجود");
+
+    await transaction(async (client) => {
+      await client.query("DELETE FROM payments WHERE subscription_id = $1", [id]);
+      await client.query("DELETE FROM subscriptions WHERE id = $1", [id]);
+    });
+
+    return ok(res, { message: "تم حذف الاشتراك وكل دفعاته المرتبطة نهائياً" });
+  } catch (err) {
+    serverError(res, err);
+  }
+};
+
 // ── GET /api/subscriptions/stats ───────────────────────────────
 export const getSubscriptionStats = async (req, res) => {
   try {
@@ -213,7 +239,6 @@ export const getSubscriptionStats = async (req, res) => {
       [gymId]
     );
 
-    // إيرادات هذا الشهر (من المدفوعات الفعلية)
     const revenue = await query(
       `SELECT COALESCE(SUM(p.amount), 0) AS revenue_this_month
        FROM payments p
