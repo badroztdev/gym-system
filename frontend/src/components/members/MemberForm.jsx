@@ -1,31 +1,32 @@
 // src/components/members/MemberForm.jsx
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Modal, Input, Select, Button } from "@/components/ui";
 import { membersService } from "@/services/members.service";
 import toast from "react-hot-toast";
 
-const ROLES = [
-  { value: "athlete",  label: "رياضي" },
-  { value: "guardian", label: "ولي أمر" },
+const getRoles = (t) => [
+  { value: "athlete",  label: t("members.roleAthlete") },
+  { value: "guardian", label: t("members.roleGuardian") },
 ];
-const GENDERS = [
-  { value: "",       label: "-- الجنس --" },
-  { value: "male",   label: "ذكر" },
-  { value: "female", label: "أنثى" },
+const getGenders = (t) => [
+  { value: "",       label: t("memberForm.genderSelect") },
+  { value: "male",   label: t("memberForm.male") },
+  { value: "female", label: t("memberForm.female") },
 ];
-const AGE_CATEGORIES = [
-  { value: "",        label: "-- الفئة --" },
-  { value: "مدارس",  label: "مدارس" },
-  { value: "براعم",  label: "براعم" },
-  { value: "أصاغر",  label: "أصاغر" },
-  { value: "أشبال",  label: "أشبال" },
-  { value: "أواسط",  label: "أواسط" },
-  { value: "أمال",   label: "أمال" },
-  { value: "أكابر",  label: "أكابر" },
+const getAgeCategories = (t) => [
+  { value: "",        label: t("memberForm.ageCategorySelect") },
+  { value: "مدارس",  label: t("members.categorySchools") },
+  { value: "براعم",  label: t("members.categoryBuds") },
+  { value: "أصاغر",  label: t("members.categoryYoungCubs") },
+  { value: "أشبال",  label: t("members.categoryCubs") },
+  { value: "أواسط",  label: t("members.categoryMids") },
+  { value: "أمال",   label: t("members.categoryHopes") },
+  { value: "أكابر",  label: t("members.categorySeniors") },
 ];
-const BLOOD_GROUPS = [
-  { value: "",    label: "-- زمرة الدم --" },
+const getBloodGroups = (t) => [
+  { value: "",    label: t("memberForm.bloodGroupSelect") },
   { value: "A+",  label: "A+" },
   { value: "A-",  label: "A-" },
   { value: "B+",  label: "B+" },
@@ -36,13 +37,13 @@ const BLOOD_GROUPS = [
   { value: "O-",  label: "O-" },
 ];
 
-// ✅ قائمة الأفواج الثابتة — تظهر كقائمة اختيار بدل كتابة حرة
-const GROUP_NAMES = [
-  { value: "",        label: "-- الفوج --" },
-  { value: "الفوج 1", label: "الفوج 1" },
-  { value: "الفوج 2", label: "الفوج 2" },
-  { value: "الفوج 3", label: "الفوج 3" },
-  { value: "الفوج 4", label: "الفوج 4" },
+// ✅ قائمة الأفواج — القيمة (value) تبقى بالعربية دائماً لمطابقة ما يُخزَّن في قاعدة البيانات
+const getGroupNames = (t) => [
+  { value: "",        label: t("memberForm.groupSelect") },
+  { value: "الفوج 1", label: t("memberForm.groupLabel", { num: 1 }) },
+  { value: "الفوج 2", label: t("memberForm.groupLabel", { num: 2 }) },
+  { value: "الفوج 3", label: t("memberForm.groupLabel", { num: 3 }) },
+  { value: "الفوج 4", label: t("memberForm.groupLabel", { num: 4 }) },
 ];
 
 const EMPTY_FORM = {
@@ -63,6 +64,12 @@ function Section({ title }) {
 }
 
 export default function MemberForm({ open, onClose, member, onSuccess }) {
+  const { t } = useTranslation();
+  const ROLES          = getRoles(t);
+  const GENDERS        = getGenders(t);
+  const AGE_CATEGORIES = getAgeCategories(t);
+  const BLOOD_GROUPS   = getBloodGroups(t);
+  const GROUP_NAMES    = getGroupNames(t);
   const isEdit = !!member;
   const [loading, setLoading] = useState(false);
   const [errors,  setErrors]  = useState({});
@@ -115,7 +122,7 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
   });
   const guardians = guardiansData?.data || [];
   const guardianOptions = [
-    { value: "", label: "-- بدون ولي أمر --" },
+    { value: "", label: t("memberForm.noGuardian") },
     ...guardians.map(g => ({ value: g.id, label: `${g.full_name} — ${g.phone}` })),
   ];
 
@@ -123,11 +130,11 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
 
   const validate = () => {
     const errs = {};
-    if (!form.fullName.trim()) errs.fullName = "الاسم الكامل مطلوب";
+    if (!form.fullName.trim()) errs.fullName = t("memberForm.errorFullName");
     // رقم الهاتف مطلوب فقط إذا لم يكن مرتبطاً بولي أمر
-    if (!form.guardianId && !form.phone.trim()) errs.phone = "رقم الهاتف مطلوب";
+    if (!form.guardianId && !form.phone.trim()) errs.phone = t("memberForm.errorPhone");
     if (form.weightKg && isNaN(Number(form.weightKg)))
-      errs.weightKg = "يجب أن يكون رقماً";
+      errs.weightKg = t("memberForm.errorWeight");
     return errs;
   };
 
@@ -143,10 +150,10 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
       };
       if (isEdit) {
         await membersService.update(member.id, payload);
-        toast.success("تم تحديث بيانات العضو ✅");
+        toast.success(t("memberForm.toastUpdated"));
       } else {
         await membersService.create(payload);
-        toast.success("تم إضافة العضو بنجاح ✅");
+        toast.success(t("memberForm.toastCreated"));
       }
       onSuccess?.();
       onClose();
@@ -161,16 +168,16 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? `تعديل: ${member?.full_name}` : "إضافة عضو جديد"}
+      title={isEdit ? t("memberForm.editTitle", { name: member?.full_name }) : t("memberForm.addTitle")}
       width={520}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-        <Section title="المعلومات الأساسية" />
+        <Section title={t("memberForm.sectionBasic")} />
 
         <Input
-          label="الاسم الكامل *"
-          placeholder="مثال: محمد بن علي"
+          label={t("memberForm.fullName")}
+          placeholder={t("memberForm.fullNamePlaceholder")}
           value={form.fullName}
           onChange={set("fullName")}
           error={errors.fullName}
@@ -178,16 +185,16 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Input
-            label={form.guardianId ? "رقم الهاتف (اختياري)" : "رقم الهاتف *"}
-            placeholder={form.guardianId ? "يمكن تركه فارغاً" : "0550000000"}
+            label={form.guardianId ? t("memberForm.phoneOptional") : t("memberForm.phoneRequired")}
+            placeholder={form.guardianId ? t("memberForm.phoneOptionalPlaceholder") : t("memberForm.phonePlaceholder")}
             value={form.phone}
             onChange={set("phone")}
             error={errors.phone}
             type="tel"
           />
           <Input
-            label="البريد الإلكتروني"
-            placeholder="example@email.com"
+            label={t("memberForm.email")}
+            placeholder={t("memberForm.emailPlaceholder")}
             value={form.email}
             onChange={set("email")}
             type="email"
@@ -195,16 +202,16 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-          <Select label="الجنس"         options={GENDERS} value={form.gender}      onChange={set("gender")} />
-          <Select label="الدور"          options={ROLES}   value={form.role}        onChange={set("role")} />
-          <Input  label="تاريخ الميلاد" type="date"       value={form.dateOfBirth} onChange={set("dateOfBirth")} />
+          <Select label={t("memberForm.gender")}       options={GENDERS} value={form.gender}      onChange={set("gender")} />
+          <Select label={t("memberForm.role")}          options={ROLES}   value={form.role}        onChange={set("role")} />
+          <Input  label={t("memberForm.dateOfBirth")}   type="date"       value={form.dateOfBirth} onChange={set("dateOfBirth")} />
         </div>
 
-        <Section title="المعلومات الرياضية" />
+        <Section title={t("memberForm.sectionSport")} />
 
         {form.role === "athlete" && (
           <Select
-            label="ربط بولي الأمر (اختياري)"
+            label={t("memberForm.guardianLink")}
             options={guardianOptions}
             value={form.guardianId}
             onChange={set("guardianId")}
@@ -213,21 +220,21 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Select
-            label="الفئة العمرية"
+            label={t("memberForm.ageCategory")}
             options={AGE_CATEGORIES}
             value={form.ageCategory}
             onChange={set("ageCategory")}
           />
           <Input
-            label="الرتبة / المستوى"
-            placeholder="مثال: الدرجة الأولى"
+            label={t("memberForm.rank")}
+            placeholder={t("memberForm.rankPlaceholder")}
             value={form.rank}
             onChange={set("rank")}
           />
         </div>
 
         <Select
-          label="الفوج"
+          label={t("memberForm.group")}
           options={GROUP_NAMES}
           value={form.groupName}
           onChange={set("groupName")}
@@ -235,8 +242,8 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Input
-            label="الوزن (كغ)"
-            placeholder="مثال: 72.5"
+            label={t("memberForm.weight")}
+            placeholder={t("memberForm.weightPlaceholder")}
             value={form.weightKg}
             onChange={set("weightKg")}
             error={errors.weightKg}
@@ -245,7 +252,7 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
             min="0"
           />
           <Select
-            label="زمرة الدم"
+            label={t("memberForm.bloodGroup")}
             options={BLOOD_GROUPS}
             value={form.bloodGroup}
             onChange={set("bloodGroup")}
@@ -258,16 +265,16 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
             background: "var(--surface)", padding: "10px 12px",
             borderRadius: "var(--radius-sm)", lineHeight: 1.6,
           }}>
-            💡 كلمة المرور الافتراضية هي رقم الهاتف.
-            {form.guardianId && " إذا تُرك رقم الهاتف فارغاً، سيتم استخدام اسم الرياضي كأساس لكلمة المرور."}
-            {form.guardianId && " سيتمكن ولي الأمر من متابعة هذا الرياضي من حسابه."}
+            {t("memberForm.helpDefaultPassword")}
+            {form.guardianId && " " + t("memberForm.helpGuardianPhone")}
+            {form.guardianId && " " + t("memberForm.helpGuardianAccess")}
           </p>
         )}
 
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
-          <Button variant="secondary" onClick={onClose} disabled={loading}>إلغاء</Button>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>{t("common.cancel")}</Button>
           <Button onClick={handleSubmit} loading={loading}>
-            {isEdit ? "حفظ التغييرات" : "إضافة العضو"}
+            {isEdit ? t("memberForm.saveChanges") : t("memberForm.addMember")}
           </Button>
         </div>
       </div>
