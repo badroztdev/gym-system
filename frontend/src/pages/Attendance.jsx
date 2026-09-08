@@ -1,5 +1,6 @@
 // src/pages/Attendance.jsx
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -9,10 +10,10 @@ import PageHeader from "@/components/layout/PageHeader";
 import { Spinner } from "@/components/ui";
 import { attendanceService } from "@/services/attendance.service";
 
-const PERIODS = [
-  { value: "week",  label: "أسبوعي" },
-  { value: "month", label: "شهري" },
-  { value: "year",  label: "سنوي" },
+const getPeriods = (t) => [
+  { value: "week",  label: t("dashboard.periodWeek") },
+  { value: "month", label: t("dashboard.periodMonth") },
+  { value: "year",  label: t("dashboard.periodYear") },
 ];
 
 const PIE_COLORS = ["#6ee7b7","#818cf8","#fb923c","#f87171","#fbbf24","#0ea5e9","#a78bfa"];
@@ -47,10 +48,10 @@ function StatCard({ icon, label, value, sub, color }) {
   );
 }
 
-function PeriodSelector({ value, onChange }) {
+function PeriodSelector({ value, onChange, periods }) {
   return (
     <div style={{ display: "flex", gap: 4, background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: 3 }}>
-      {PERIODS.map(p => (
+      {periods.map(p => (
         <button key={p.value} onClick={() => onChange(p.value)} style={{
           padding: "5px 12px", fontSize: 11, fontWeight: 600, borderRadius: 6, border: "none",
           background: value === p.value ? "var(--accent)" : "transparent",
@@ -62,9 +63,9 @@ function PeriodSelector({ value, onChange }) {
   );
 }
 
-const STATUS_AR = { present: "حاضر", absent: "غائب", late: "متأخر", excused: "بعذر" };
-
 export default function AttendancePage() {
+  const { t } = useTranslation();
+  const PERIODS = getPeriods(t);
   const isMobile = useIsMobile();
   const [trendPeriod, setTrendPeriod] = useState("month");
   const [leaderOrder, setLeaderOrder] = useState("best");
@@ -107,7 +108,7 @@ export default function AttendancePage() {
 
   return (
     <>
-      <PageHeader title="الحضور والغياب" subtitle="نظرة شاملة على حضور كل الحصص" />
+      <PageHeader title={t("attendance.pageTitle")} subtitle={t("attendance.pageSubtitle")} />
 
       <main style={{ padding: isMobile ? "14px 12px" : "24px 28px", flex: 1 }}>
 
@@ -117,29 +118,29 @@ export default function AttendancePage() {
           gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)",
           gap: 12, marginBottom: 20,
         }}>
-          <StatCard icon="✅" label="حاضر (30 يوم)" value={o.present || 0} color="var(--accent)" />
-          <StatCard icon="❌" label="غائب" value={o.absent || 0} color="var(--danger)" />
-          <StatCard icon="⏰" label="متأخر" value={o.late || 0} color="var(--warning)" />
-          <StatCard icon="📄" label="بعذر" value={o.excused || 0} color="var(--muted)" />
-          <StatCard icon="📊" label="نسبة الحضور" value={`${o.attendanceRate || 0}%`} sub={`${o.unique_athletes || 0} رياضي`} color="var(--accent2)" />
+          <StatCard icon="✅" label={t("attendance.statPresent30")} value={o.present || 0} color="var(--accent)" />
+          <StatCard icon="❌" label={t("attendance.statAbsent")} value={o.absent || 0} color="var(--danger)" />
+          <StatCard icon="⏰" label={t("attendance.statLate")} value={o.late || 0} color="var(--warning)" />
+          <StatCard icon="📄" label={t("attendance.statExcused")} value={o.excused || 0} color="var(--muted)" />
+          <StatCard icon="📊" label={t("attendance.statAttendanceRate")} value={`${o.attendanceRate || 0}%`} sub={t("attendance.statAthletesCount", { count: o.unique_athletes || 0 })} color="var(--accent2)" />
         </div>
 
         {/* اتجاه الحضور */}
         <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? 14 : 20, marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>📈 اتجاه الحضور</div>
-            <PeriodSelector value={trendPeriod} onChange={setTrendPeriod} />
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{t("attendance.trendTitle")}</div>
+            <PeriodSelector value={trendPeriod} onChange={setTrendPeriod} periods={PERIODS} />
           </div>
           <ResponsiveContainer width="100%" height={isMobile ? 200 : 260}>
-            <BarChart data={trend.map(t => ({ ...t, label: formatLabel(t.label), present: Number(t.present), absent: Number(t.absent), late: Number(t.late) }))}>
+            <BarChart data={trend.map(tr => ({ ...tr, label: formatLabel(tr.label), present: Number(tr.present), absent: Number(tr.absent), late: Number(tr.late) }))}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--muted)" }} />
               <YAxis tick={{ fontSize: 10, fill: "var(--muted)" }} allowDecimals={false} />
               <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="present" name="حاضر" fill="#6ee7b7" radius={[4,4,0,0]} />
-              <Bar dataKey="late"    name="متأخر" fill="#fbbf24" radius={[4,4,0,0]} />
-              <Bar dataKey="absent"  name="غائب"  fill="#f87171" radius={[4,4,0,0]} />
+              <Bar dataKey="present" name={t("attendance.chartPresent")} fill="#6ee7b7" radius={[4,4,0,0]} />
+              <Bar dataKey="late"    name={t("attendance.chartLate")}    fill="#fbbf24" radius={[4,4,0,0]} />
+              <Bar dataKey="absent"  name={t("attendance.chartAbsent")}  fill="#f87171" radius={[4,4,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -150,25 +151,25 @@ export default function AttendancePage() {
           {/* ترتيب الرياضيين */}
           <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? 14 : 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>🏆 ترتيب نسبة الحضور (30 يوم)</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{t("attendance.rankingTitle")}</div>
               <div style={{ display: "flex", gap: 4, background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: 3 }}>
                 <button onClick={() => setLeaderOrder("best")} style={{
                   padding: "5px 12px", fontSize: 11, fontWeight: 600, borderRadius: 6, border: "none",
                   background: leaderOrder === "best" ? "var(--accent)" : "transparent",
                   color: leaderOrder === "best" ? "#0d0f14" : "var(--muted)",
                   cursor: "pointer", fontFamily: "'Sora', sans-serif",
-                }}>الأفضل</button>
+                }}>{t("attendance.best")}</button>
                 <button onClick={() => setLeaderOrder("worst")} style={{
                   padding: "5px 12px", fontSize: 11, fontWeight: 600, borderRadius: 6, border: "none",
                   background: leaderOrder === "worst" ? "var(--danger)" : "transparent",
                   color: leaderOrder === "worst" ? "#fff" : "var(--muted)",
                   cursor: "pointer", fontFamily: "'Sora', sans-serif",
-                }}>الأقل</button>
+                }}>{t("attendance.worst")}</button>
               </div>
             </div>
 
             {leaderboard.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 24, color: "var(--muted)", fontSize: 12 }}>لا توجد بيانات كافية</div>
+              <div style={{ textAlign: "center", padding: 24, color: "var(--muted)", fontSize: 12 }}>{t("attendance.noSufficientData")}</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
                 {leaderboard.map((a, i) => (
@@ -198,9 +199,9 @@ export default function AttendancePage() {
 
           {/* توزيع حسب الفئة العمرية */}
           <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? 14 : 20 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 14 }}>🏷️ نسبة الحضور حسب الفئة</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 14 }}>{t("attendance.categoryDistTitle")}</div>
             {byCategory.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 24, color: "var(--muted)", fontSize: 12 }}>لا توجد بيانات</div>
+              <div style={{ textAlign: "center", padding: 24, color: "var(--muted)", fontSize: 12 }}>{t("attendance.noData")}</div>
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
@@ -218,16 +219,16 @@ export default function AttendancePage() {
         {/* آخر الحصص مع ملخص الحضور */}
         <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
-            🕐 آخر الحصص
+            {t("attendance.recentSessionsTitle")}
           </div>
           {recentSessions.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 32, color: "var(--muted)", fontSize: 12 }}>لا توجد حصص سابقة بعد</div>
+            <div style={{ textAlign: "center", padding: 32, color: "var(--muted)", fontSize: 12 }}>{t("attendance.noRecentSessions")}</div>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--surface)" }}>
-                    {["الحصة", "التاريخ", "القاعة", "حاضر", "متأخر", "غائب"].map(h => (
+                    {[t("attendance.colSession"), t("attendance.colDate"), t("attendance.colRoom"), t("attendance.colPresent"), t("attendance.colLate"), t("attendance.colAbsent")].map(h => (
                       <th key={h} style={{ padding: "9px 14px", fontSize: 11, color: "var(--muted)", textAlign: "right" }}>{h}</th>
                     ))}
                   </tr>

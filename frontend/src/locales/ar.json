@@ -434,5 +434,33 @@
     "activityNewMember": "عضو جديد",
     "activityPayment": "دفعة",
     "activityNewSubscription": "اشتراك جديد"
+  },
+  "attendance": {
+    "pageTitle": "الحضور والغياب",
+    "pageSubtitle": "نظرة شاملة على حضور كل الحصص",
+    "statPresent30": "حاضر (30 يوم)",
+    "statAbsent": "غائب",
+    "statLate": "متأخر",
+    "statExcused": "بعذر",
+    "statAttendanceRate": "نسبة الحضور",
+    "statAthletesCount": "{{count}} رياضي",
+    "trendTitle": "📈 اتجاه الحضور",
+    "chartPresent": "حاضر",
+    "chartLate": "متأخر",
+    "chartAbsent": "غائب",
+    "rankingTitle": "🏆 ترتيب نسبة الحضور (30 يوم)",
+    "best": "الأفضل",
+    "worst": "الأقل",
+    "noSufficientData": "لا توجد بيانات كافية",
+    "categoryDistTitle": "🏷️ نسبة الحضور حسب الفئة",
+    "noData": "لا توجد بيانات",
+    "recentSessionsTitle": "🕐 آخر الحصص",
+    "noRecentSessions": "لا توجد حصص سابقة بعد",
+    "colSession": "الحصة",
+    "colDate": "التاريخ",
+    "colRoom": "القاعة",
+    "colPresent": "حاضر",
+    "colLate": "متأخر",
+    "colAbsent": "غائب"
   }
 }

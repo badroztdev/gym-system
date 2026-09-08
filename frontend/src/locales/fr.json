@@ -434,5 +434,33 @@
     "activityNewMember": "Nouveau membre",
     "activityPayment": "Paiement",
     "activityNewSubscription": "Nouvel abonnement"
+  },
+  "attendance": {
+    "pageTitle": "Présence et absences",
+    "pageSubtitle": "Vue d'ensemble de la présence pour toutes les séances",
+    "statPresent30": "Présent (30j)",
+    "statAbsent": "Absent",
+    "statLate": "En retard",
+    "statExcused": "Excusé",
+    "statAttendanceRate": "Taux de présence",
+    "statAthletesCount": "{{count}} athlètes",
+    "trendTitle": "📈 Tendance de présence",
+    "chartPresent": "Présent",
+    "chartLate": "En retard",
+    "chartAbsent": "Absent",
+    "rankingTitle": "🏆 Classement du taux de présence (30j)",
+    "best": "Meilleurs",
+    "worst": "Pires",
+    "noSufficientData": "Données insuffisantes",
+    "categoryDistTitle": "🏷️ Taux de présence par catégorie",
+    "noData": "Aucune donnée",
+    "recentSessionsTitle": "🕐 Dernières séances",
+    "noRecentSessions": "Aucune séance précédente",
+    "colSession": "Séance",
+    "colDate": "Date",
+    "colRoom": "Salle",
+    "colPresent": "Présent",
+    "colLate": "Retard",
+    "colAbsent": "Absent"
   }
 }
