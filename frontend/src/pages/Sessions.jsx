@@ -1,5 +1,6 @@
 // src/pages/Sessions.jsx
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import PageHeader from "@/components/layout/PageHeader";
 import { Button, Badge, Spinner, Empty, Confirm, Modal, Input } from "@/components/ui";
@@ -24,13 +25,13 @@ function useIsMobile() {
 // قراءة QR code بالكاميرا (مكتبة مضمّنة في المتصفح عبر BarcodeDetector)
 // أو مجرد حقل نص للإدخال اليدوي كخيار بديل
 
-const TABS = [
-  { id: "schedule", label: "الجدول",   icon: "📅" },
-  { id: "rooms",    label: "القاعات",  icon: "🏛️" },
-  { id: "attendance",label: "الحضور", icon: "✅" },
+const getTabs = (t) => [
+  { id: "schedule",   label: t("sessions.tabSchedule"),   icon: "📅" },
+  { id: "rooms",      label: t("sessions.tabRooms"),      icon: "🏛️" },
+  { id: "attendance", label: t("sessions.tabAttendance"), icon: "✅" },
 ];
 
-const DAY_NAMES = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+const getDayNames = (t) => t("sessions.dayNames", { returnObjects: true });
 
 // الأسبوع الحالي
 function getWeekDates() {
@@ -49,6 +50,8 @@ function getWeekDates() {
 //  Tab 1 — الجدول الأسبوعي
 // ════════════════════════════════════════════════════════════
 function ScheduleTab() {
+  const { t } = useTranslation();
+  const DAY_NAMES = getDayNames(t);
   const qc = useQueryClient();
   const [weekOffset, setWeekOffset] = useState(0);
   const [showForm, setShowForm] = useState(false);
@@ -73,7 +76,7 @@ function ScheduleTab() {
   const cancelMutation = useMutation({
     mutationFn: (id) => sessionsService.cancel(id, "ألغيت من لوحة التحكم"),
     onSuccess: () => {
-      toast.success("تم إلغاء الحصة");
+      toast.success(t("sessions.toastSessionCancelled"));
       qc.invalidateQueries({ queryKey: ["sessions-week"], exact: false });
       setCancelId(null);
     },
@@ -173,14 +176,14 @@ function ScheduleTab() {
         justifyContent: "space-between", marginBottom: 16,
         gap: 8, flexWrap: "wrap",
       }}>
-        <Button variant="secondary" size="sm" onClick={() => setWeekOffset(w => w - 1)}>← السابق</Button>
+        <Button variant="secondary" size="sm" onClick={() => setWeekOffset(w => w - 1)}>{t("sessions.previous")}</Button>
         <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", textAlign: "center" }}>
           <span className="mono">{weekDates[0].slice(5)}</span>
           <span style={{ color: "var(--muted)", margin: "0 4px" }}>—</span>
           <span className="mono">{weekDates[6].slice(5)}</span>
-          {weekOffset === 0 && <div style={{ color: "var(--accent)", fontSize: 10, marginTop: 2 }}>هذا الأسبوع</div>}
+          {weekOffset === 0 && <div style={{ color: "var(--accent)", fontSize: 10, marginTop: 2 }}>{t("sessions.thisWeek")}</div>}
         </div>
-        <Button variant="secondary" size="sm" onClick={() => setWeekOffset(w => w + 1)}>التالي →</Button>
+        <Button variant="secondary" size="sm" onClick={() => setWeekOffset(w => w + 1)}>{t("sessions.next")}</Button>
       </div>
 
       {isLoading ? (
@@ -209,11 +212,11 @@ function ScheduleTab() {
                       {DAY_NAMES[i]}
                     </span>
                     <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>{date.slice(5)}</span>
-                    {isToday && <span style={{ fontSize: 10, background: "var(--accent)20", color: "var(--accent)", padding: "1px 8px", borderRadius: 10, fontWeight: 600 }}>اليوم</span>}
+                    {isToday && <span style={{ fontSize: 10, background: "var(--accent)20", color: "var(--accent)", padding: "1px 8px", borderRadius: 10, fontWeight: 600 }}>{t("sessions.today")}</span>}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     {daySessions.length > 0 && (
-                      <span style={{ fontSize: 11, color: "var(--muted)" }}>{daySessions.length} حصة</span>
+                      <span style={{ fontSize: 11, color: "var(--muted)" }}>{t("sessions.sessionsCount", { count: daySessions.length })}</span>
                     )}
                     <button onClick={() => { setEditSession(null); setShowForm(true); }} style={{
                       width: 28, height: 28, borderRadius: "50%",
@@ -256,7 +259,7 @@ function ScheduleTab() {
                 </div>
                 <div style={{ padding: 6, display: "flex", flexDirection: "column", gap: 4 }}>
                   {daySessions.length === 0 ? (
-                    <div style={{ fontSize: 10, color: "var(--muted)", textAlign: "center", padding: "12px 0" }}>لا توجد حصص</div>
+                    <div style={{ fontSize: 10, color: "var(--muted)", textAlign: "center", padding: "12px 0" }}>{t("sessions.noSessions")}</div>
                   ) : (
                     daySessions.map(s => <SessionCard key={s.id} s={s} compact={true} />)
                   )}
@@ -283,8 +286,8 @@ function ScheduleTab() {
         onClose={() => setCancelId(null)}
         onConfirm={() => cancelMutation.mutate(cancelId)}
         loading={cancelMutation.isPending}
-        title="إلغاء الحصة"
-        message="سيتم إلغاء هذه الحصة نهائياً. لا يمكن التراجع عن هذا الإجراء."
+        title={t("sessions.cancelSessionTitle")}
+        message={t("sessions.cancelSessionMessage")}
       />
     </>
   );
@@ -294,6 +297,7 @@ function ScheduleTab() {
 //  Tab 2 — القاعات
 // ════════════════════════════════════════════════════════════
 function RoomsTab() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { user } = useAuthStore();
   const isOwner = user?.role === "owner";
@@ -310,26 +314,26 @@ function RoomsTab() {
 
   const regenMutation = useMutation({
     mutationFn: roomsService.regenerateQR,
-    onSuccess: () => { toast.success("تم تجديد رمز QR ✅"); refresh(); },
+    onSuccess: () => { toast.success(t("sessions.toastQRRegenerated")); refresh(); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: roomsService.remove,
-    onSuccess: () => { toast.success("تم تعطيل القاعة"); refresh(); },
+    onSuccess: () => { toast.success(t("sessions.toastRoomDisabled")); refresh(); },
   });
 
   return (
     <>
       {isOwner && (
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-          <Button icon="+" onClick={() => { setEditRoom(null); setShowForm(true); }}>قاعة جديدة</Button>
+          <Button icon="+" onClick={() => { setEditRoom(null); setShowForm(true); }}>{t("sessions.newRoom")}</Button>
         </div>
       )}
 
       {isLoading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 48 }}><Spinner size={32} /></div>
       ) : rooms.length === 0 ? (
-        <Empty icon="🏛️" title="لا توجد قاعات" description="أضف أول قاعة للبدء" />
+        <Empty icon="🏛️" title={t("sessions.noRooms")} description={t("sessions.addFirstRoom")} />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
           {rooms.map(r => (
@@ -341,10 +345,10 @@ function RoomsTab() {
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>{r.name}</div>
                   <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                    👥 {r.capacity} مقعد • 📅 {r.sessions_today} حصص اليوم
+                    👥 {r.capacity} {t("sessions.seats")} • 📅 {r.sessions_today} {t("sessions.sessionsToday")}
                   </div>
                 </div>
-                {!r.is_active && <Badge label="معطّلة" type="expired" />}
+                {!r.is_active && <Badge label={t("sessions.roomInactive")} type="expired" />}
               </div>
 
               {/* QR Code Display */}
@@ -354,7 +358,7 @@ function RoomsTab() {
                 alignItems: "center", justifyContent: "space-between",
               }}>
                 <div>
-                  <div style={{ fontSize: 10, color: "var(--muted)", marginBottom: 4 }}>رمز QR الثابت للقاعة</div>
+                  <div style={{ fontSize: 10, color: "var(--muted)", marginBottom: 4 }}>{t("sessions.qrLabel")}</div>
                   <div className="mono" style={{ fontSize: 10, color: "var(--accent)", wordBreak: "break-all" }}>
                     {r.qr_code}
                   </div>
@@ -364,9 +368,9 @@ function RoomsTab() {
 
               {isOwner && (
                 <div style={{ display: "flex", gap: 6 }}>
-                  <Button variant="secondary" size="sm" onClick={() => { setEditRoom(r); setShowForm(true); }} style={{ flex: 1, justifyContent: "center" }}>تعديل</Button>
-                  <Button variant="secondary" size="sm" loading={regenMutation.isPending} onClick={() => regenMutation.mutate(r.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent2)" }}>تجديد QR</Button>
-                  {r.is_active && <Button variant="danger" size="sm" onClick={() => deleteMutation.mutate(r.id)} style={{ flex: 1, justifyContent: "center" }}>تعطيل</Button>}
+                  <Button variant="secondary" size="sm" onClick={() => { setEditRoom(r); setShowForm(true); }} style={{ flex: 1, justifyContent: "center" }}>{t("sessions.roomEdit")}</Button>
+                  <Button variant="secondary" size="sm" loading={regenMutation.isPending} onClick={() => regenMutation.mutate(r.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent2)" }}>{t("sessions.roomRegenQR")}</Button>
+                  {r.is_active && <Button variant="danger" size="sm" onClick={() => deleteMutation.mutate(r.id)} style={{ flex: 1, justifyContent: "center" }}>{t("sessions.roomDisable")}</Button>}
                 </div>
               )}
             </div>
@@ -382,7 +386,7 @@ function RoomsTab() {
         {qrRoom && (
           <div style={{ textAlign: "center", padding: "20px 0" }}>
             <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
-              ضع هذا الرمز في القاعة — الرياضي يمسحه لتسجيل حضوره
+              {t("sessions.qrModalHint")}
             </div>
             {/* QR مبسّط كنص */}
             <div style={{
@@ -394,7 +398,7 @@ function RoomsTab() {
             <div className="mono" style={{ fontSize: 12, color: "var(--muted)", wordBreak: "break-all", padding: "0 20px" }}>
               {qrRoom.qr_code}
             </div>
-            <Button style={{ marginTop: 16 }} onClick={() => window.print()}>🖨️ طباعة</Button>
+            <Button style={{ marginTop: 16 }} onClick={() => window.print()}>{t("sessions.print")}</Button>
           </div>
         )}
       </Modal>
@@ -411,6 +415,7 @@ function QRDisplay({ value, size = 200 }) {
 
 // نموذج القاعة
 function RoomForm({ open, onClose, room, onSuccess }) {
+  const { t } = useTranslation();
   const isEdit = !!room;
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: "", capacity: "20" });
@@ -421,15 +426,15 @@ function RoomForm({ open, onClose, room, onSuccess }) {
   }, [open, room]);
 
   const handleSubmit = async () => {
-    if (!form.name.trim()) { toast.error("اسم القاعة مطلوب"); return; }
+    if (!form.name.trim()) { toast.error(t("sessions.roomNameRequired")); return; }
     setLoading(true);
     try {
       if (isEdit) {
         await roomsService.update(room.id, { name: form.name, capacity: Number(form.capacity) });
-        toast.success("تم تحديث القاعة ✅");
+        toast.success(t("sessions.toastRoomUpdated"));
       } else {
         await roomsService.create({ name: form.name, capacity: Number(form.capacity) });
-        toast.success("تم إضافة القاعة ✅");
+        toast.success(t("sessions.toastRoomCreated"));
       }
       onSuccess?.();
       onClose();
@@ -437,14 +442,14 @@ function RoomForm({ open, onClose, room, onSuccess }) {
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={isEdit ? "تعديل القاعة" : "قاعة جديدة"} width={380}>
+    <Modal open={open} onClose={onClose} title={isEdit ? t("sessions.roomEditTitle") : t("sessions.roomNewTitle")} width={380}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <Input label="اسم القاعة *" placeholder="مثال: قاعة A" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
-        <Input label="الطاقة الاستيعابية" type="number" min="1" value={form.capacity} onChange={e => setForm(p => ({ ...p, capacity: e.target.value }))} />
-        {!isEdit && <p style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.6, background: "var(--surface)", padding: "10px 12px", borderRadius: "var(--radius-sm)" }}>💡 سيتم توليد رمز QR ثابت للقاعة تلقائياً عند الإنشاء.</p>}
+        <Input label={t("sessions.roomNameLabel")} placeholder={t("sessions.roomNamePlaceholder")} value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
+        <Input label={t("sessions.roomCapacityLabel")} type="number" min="1" value={form.capacity} onChange={e => setForm(p => ({ ...p, capacity: e.target.value }))} />
+        {!isEdit && <p style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.6, background: "var(--surface)", padding: "10px 12px", borderRadius: "var(--radius-sm)" }}>{t("sessions.roomCreateHint")}</p>}
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <Button variant="secondary" onClick={onClose}>إلغاء</Button>
-          <Button onClick={handleSubmit} loading={loading}>{isEdit ? "حفظ" : "إنشاء"}</Button>
+          <Button variant="secondary" onClick={onClose}>{t("sessions.cancel")}</Button>
+          <Button onClick={handleSubmit} loading={loading}>{isEdit ? t("sessions.save") : t("sessions.create")}</Button>
         </div>
       </div>
     </Modal>
@@ -455,6 +460,7 @@ function RoomForm({ open, onClose, room, onSuccess }) {
 //  Tab 3 — الحضور
 // ════════════════════════════════════════════════════════════
 function AttendanceTab() {
+  const { t, i18n } = useTranslation();
   const isMobile = useIsMobile();
   const [selectedSession, setSelectedSession] = useState(null);
   const [qrInput, setQrInput] = useState("");
@@ -477,7 +483,7 @@ function AttendanceTab() {
   const handleManualStatus = async (athleteId, status) => {
     try {
       await attendanceService.manualRecord({ sessionId: selectedSession.id, athleteId, status });
-      toast.success("تم تحديث الحضور");
+      toast.success(t("sessions.toastAttendanceUpdated"));
       refetch();
     } catch {}
   };
@@ -488,18 +494,18 @@ function AttendanceTab() {
     try {
       // في الواجهة نحتاج athleteId — هنا نفترض أن المسح يتم من التطبيق
       // لكن للاختبار يدوياً نطلب من المدير إدخال QR + ID الرياضي
-      toast.error("مسح QR متاح من تطبيق الهاتف للرياضي");
+      toast.error(t("sessions.qrScanHint"));
     } finally { setScanning(false); }
   };
 
   const STATUS_COLORS = {
-    present: { color: "var(--accent)",  label: "حاضر"  },
-    absent:  { color: "var(--danger)",  label: "غائب"  },
-    late:    { color: "var(--warning)", label: "متأخر" },
-    excused: { color: "var(--muted)",   label: "بعذر"  },
+    present: { color: "var(--accent)",  label: t("sessions.statusPresent")  },
+    absent:  { color: "var(--danger)",  label: t("sessions.statusAbsent")  },
+    late:    { color: "var(--warning)", label: t("sessions.statusLate") },
+    excused: { color: "var(--muted)",   label: t("sessions.statusExcused")  },
   };
   // حالة افتراضية لمن لم يُسجَّل حضوره/غيابه بعد (status = null من الـ backend)
-  const NOT_RECORDED = { color: "var(--muted-lt)", label: "لم يُسجَّل" };
+  const NOT_RECORDED = { color: "var(--muted-lt)", label: t("sessions.statusNotRecorded") };
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "280px 1fr", gap: 16, alignItems: "flex-start" }}>
@@ -509,10 +515,10 @@ function AttendanceTab() {
         maxHeight: isMobile ? 260 : "none", overflowY: isMobile ? "auto" : "visible",
       }}>
         <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
-          حصص اليوم
+          {t("sessions.todaySessions")}
         </div>
         {todaySessions.length === 0 ? (
-          <div style={{ padding: 24, textAlign: "center", color: "var(--muted)", fontSize: 12 }}>لا توجد حصص اليوم</div>
+          <div style={{ padding: 24, textAlign: "center", color: "var(--muted)", fontSize: 12 }}>{t("sessions.noSessionsToday")}</div>
         ) : (
           todaySessions.map(s => (
             <button key={s.id} onClick={() => setSelectedSession(s)} style={{
@@ -524,10 +530,10 @@ function AttendanceTab() {
             }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{s.title}</div>
               <div className="mono" style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                {s.start_time?.slice(0,5)} — {s.room_name || "بدون قاعة"}
+                {s.start_time?.slice(0,5)} — {s.room_name || t("sessions.noRoom")}
               </div>
               <div style={{ fontSize: 11, color: "var(--accent)", marginTop: 2 }}>
-                ✅ {s.present_count} حاضر
+                ✅ {s.present_count} {t("sessions.presentOf")}
               </div>
             </button>
           ))
@@ -539,7 +545,7 @@ function AttendanceTab() {
         {!selectedSession ? (
           <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 48, textAlign: "center", color: "var(--muted)" }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>👈</div>
-            <div style={{ fontSize: 13 }}>اختر حصة من القائمة لعرض الحضور</div>
+            <div style={{ fontSize: 13 }}>{t("sessions.selectSessionHint")}</div>
           </div>
         ) : (
           <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
@@ -552,9 +558,9 @@ function AttendanceTab() {
                 </div>
               </div>
               <div style={{ display: "flex", gap: 12, fontSize: 12, flexWrap: "wrap" }}>
-                <span style={{ color: "var(--accent)" }}>✅ {present} حاضر</span>
-                <span style={{ color: "var(--danger)" }}>❌ {absent} غائب</span>
-                <span style={{ color: "var(--warning)" }}>⏰ {late} متأخر</span>
+                <span style={{ color: "var(--accent)" }}>✅ {present} {t("sessions.statusPresent")}</span>
+                <span style={{ color: "var(--danger)" }}>❌ {absent} {t("sessions.statusAbsent")}</span>
+                <span style={{ color: "var(--warning)" }}>⏰ {late} {t("sessions.statusLate")}</span>
               </div>
             </div>
 
@@ -563,7 +569,7 @@ function AttendanceTab() {
               <div style={{ display: "flex", justifyContent: "center", padding: 32 }}><Spinner size={24} /></div>
             ) : attendanceList.length === 0 ? (
               <div style={{ padding: 32, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
-                لا يوجد رياضيون مؤهلون لهذه الحصة (تحقق من الفئة العمرية المحدَّدة للحصة)
+                {t("sessions.noEligibleAthletes")}
               </div>
             ) : isMobile ? (
               /* ── عرض بطاقات للهاتف ─────────────────────────── */
@@ -584,7 +590,7 @@ function AttendanceTab() {
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                          {a.scan_method === "qr_room" ? "🔲 QR" : a.scanned_at ? "✍️ يدوي" : ""}
+                          {a.scan_method === "qr_room" ? "🔲 QR" : a.scanned_at ? t("sessions.manualMethod") : ""}
                           {a.scanned_at && (
                             <span className="mono" style={{ marginRight: 6 }}>
                               {new Date(a.scanned_at).toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" })}
@@ -609,10 +615,10 @@ function AttendanceTab() {
                 })}
               </div>
             ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse", direction: "rtl" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", direction: i18n.language === "ar" ? "rtl" : "ltr" }}>
                 <thead>
                   <tr style={{ background: "var(--surface)" }}>
-                    {["الرياضي", "الهاتف", "الفئة", "الحالة", "طريقة التسجيل", "الوقت", "تغيير"].map(h => (
+                    {[t("sessions.colAthlete"), t("sessions.colPhone"), t("sessions.colCategory"), t("sessions.colStatus"), t("sessions.colMethod"), t("sessions.colTime"), t("sessions.colChange")].map(h => (
                       <th key={h} style={{ padding: "10px 14px", fontSize: 11, color: "var(--muted)", fontWeight: 500, textAlign: "right" }}>{h}</th>
                     ))}
                   </tr>
@@ -629,7 +635,7 @@ function AttendanceTab() {
                           <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 12, background: st.color + "20", color: st.color, fontWeight: 600 }}>{st.label}</span>
                         </td>
                         <td style={{ padding: "10px 14px", fontSize: 11, color: "var(--muted)" }}>
-                          {a.scan_method === "qr_room" ? "🔲 QR" : "✍️ يدوي"}
+                          {a.scan_method === "qr_room" ? "🔲 QR" : t("sessions.manualMethod")}
                         </td>
                         <td className="mono" style={{ padding: "10px 14px", fontSize: 11, color: "var(--muted)" }}>
                           {a.scanned_at ? new Date(a.scanned_at).toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" }) : "—"}
@@ -665,23 +671,25 @@ function AttendanceTab() {
 //  Page
 // ════════════════════════════════════════════════════════════
 export default function SessionsPage() {
+  const { t } = useTranslation();
+  const TABS = getTabs(t);
   const [tab, setTab] = useState("schedule");
   const isMobile = useIsMobile();
 
   return (
     <>
-      <PageHeader title="الحصص والجداول" subtitle={isMobile ? "" : "إدارة الجداول والقاعات ونظام الحضور"}>
+      <PageHeader title={t("sessions.pageTitle")} subtitle={isMobile ? "" : t("sessions.pageSubtitle")}>
         <div style={{ display: "flex", gap: 4, background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: 4 }}>
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{
+          {TABS.map(tabItem => (
+            <button key={tabItem.id} onClick={() => setTab(tabItem.id)} style={{
               padding: isMobile ? "7px 10px" : "7px 16px", fontSize: 12, fontWeight: 600,
               borderRadius: "var(--radius-sm)", border: "none",
-              background: tab === t.id ? "var(--accent)" : "transparent",
-              color: tab === t.id ? "#0d0f14" : "var(--muted)",
+              background: tab === tabItem.id ? "var(--accent)" : "transparent",
+              color: tab === tabItem.id ? "#0d0f14" : "var(--muted)",
               cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
               fontFamily: "'Sora', sans-serif", transition: "all 0.15s",
             }}>
-              <span>{t.icon}</span>{!isMobile && t.label}
+              <span>{tabItem.icon}</span>{!isMobile && tabItem.label}
             </button>
           ))}
         </div>
