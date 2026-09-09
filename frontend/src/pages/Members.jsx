@@ -287,18 +287,18 @@ export default function MembersPage() {
                     )}
 
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-                      <Button variant="secondary" size="sm" onClick={() => openEdit(m)} style={{ flex: 1, justifyContent: "center", color: "var(--accent2)" }}>{t("members.actionEdit")}</Button>
+                      <Button variant="secondary" size="sm" onClick={() => openEdit(m)} title={t("members.actionEdit")} style={{ flex: 1, justifyContent: "center", color: "var(--accent2)" }}>✏️</Button>
                       {isOwner && (
                         <Button variant="secondary" size="sm" onClick={() => { setResetId(m.id); setCustomPass(""); setResetModal(true); }} style={{ color: "var(--accent3)" }}>🔑</Button>
                       )}
                       {isOwner && m.is_active && (
                         <>
-                          <Button variant="secondary" size="sm" onClick={() => setDeleteId(m.id)} style={{ color: "var(--danger)" }}>{t("members.actionDelete")}</Button>
-                          <Button variant="secondary" size="sm" onClick={() => setPermanentDeleteId(m.id)} style={{ color: "#fff", background: "var(--danger)" }}>{t("members.actionPermanentDelete")}</Button>
+                          <Button variant="secondary" size="sm" onClick={() => setDeleteId(m.id)} title={t("members.actionDelete")} style={{ color: "var(--danger)" }}>🚫</Button>
+                          <Button variant="secondary" size="sm" onClick={() => setPermanentDeleteId(m.id)} title={t("members.actionPermanentDelete")} style={{ color: "#fff", background: "var(--danger)" }}>🗑️</Button>
                         </>
                       )}
                       {isOwner && !m.is_active && (
-                        <Button variant="secondary" size="sm" onClick={() => reactivateMutation.mutate(m.id)} style={{ color: "var(--accent)" }}>{t("members.actionActivate")}</Button>
+                        <Button variant="secondary" size="sm" onClick={() => reactivateMutation.mutate(m.id)} title={t("members.actionActivate")} style={{ color: "var(--accent)" }}>✅</Button>
                       )}
                     </div>
                   </div>
@@ -386,19 +386,19 @@ export default function MembersPage() {
                             : <Badge label={t("members.badgeInactive")} type="expired" />}
                         </td>
                         <td style={{ padding: "12px 16px" }}>
-                          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center", minWidth: 180 }}>
-                            <Button variant="ghost" size="sm" onClick={() => openEdit(m)} style={{ color: "var(--accent2)" }}>{t("members.actionEdit")}</Button>
+                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <Button variant="ghost" size="sm" onClick={() => openEdit(m)} title={t("members.actionEdit")} style={{ color: "var(--accent2)" }}>✏️</Button>
                             {isOwner && (
                               <Button variant="ghost" size="sm" onClick={() => { setResetId(m.id); setCustomPass(""); setResetModal(true); }} style={{ color: "var(--accent3)" }}>🔑</Button>
                             )}
                             {isOwner && m.is_active && (
                               <>
-                                <Button variant="ghost" size="sm" onClick={() => setDeleteId(m.id)} style={{ color: "var(--danger)" }}>{t("members.actionDelete")}</Button>
-                                <Button variant="ghost" size="sm" onClick={() => setPermanentDeleteId(m.id)} style={{ color: "var(--danger)", fontWeight: 700 }}>{t("members.actionPermanentDelete")}</Button>
+                                <Button variant="ghost" size="sm" onClick={() => setDeleteId(m.id)} title={t("members.actionDelete")} style={{ color: "var(--danger)" }}>🚫</Button>
+                                <Button variant="ghost" size="sm" onClick={() => setPermanentDeleteId(m.id)} title={t("members.actionPermanentDelete")} style={{ color: "var(--danger)", fontWeight: 700 }}>🗑️</Button>
                               </>
                             )}
                             {isOwner && !m.is_active && (
-                              <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(m.id)} style={{ color: "var(--accent)" }}>{t("members.actionActivate")}</Button>
+                              <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(m.id)} title={t("members.actionActivate")} style={{ color: "var(--accent)" }}>✅</Button>
                             )}
                           </div>
                         </td>
