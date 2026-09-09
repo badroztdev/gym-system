@@ -292,10 +292,10 @@ export default function MembersPage() {
                         <Button variant="secondary" size="sm" onClick={() => { setResetId(m.id); setCustomPass(""); setResetModal(true); }} style={{ color: "var(--accent3)" }}>🔑</Button>
                       )}
                       {isOwner && m.is_active && (
-                        <Button variant="secondary" size="sm" onClick={() => setDeleteId(m.id)} style={{ color: "var(--danger)" }}>{t("members.actionDelete")}</Button>
-                        {isOwner && (
+                        <>
+                          <Button variant="secondary" size="sm" onClick={() => setDeleteId(m.id)} style={{ color: "var(--danger)" }}>{t("members.actionDelete")}</Button>
                           <Button variant="secondary" size="sm" onClick={() => setPermanentDeleteId(m.id)} style={{ color: "#fff", background: "var(--danger)" }}>{t("members.actionPermanentDelete")}</Button>
-                        )}
+                        </>
                       )}
                       {isOwner && !m.is_active && (
                         <Button variant="secondary" size="sm" onClick={() => reactivateMutation.mutate(m.id)} style={{ color: "var(--accent)" }}>{t("members.actionActivate")}</Button>
@@ -392,10 +392,10 @@ export default function MembersPage() {
                               <Button variant="ghost" size="sm" onClick={() => { setResetId(m.id); setCustomPass(""); setResetModal(true); }} style={{ color: "var(--accent3)" }}>🔑</Button>
                             )}
                             {isOwner && m.is_active && (
-                              <Button variant="ghost" size="sm" onClick={() => setDeleteId(m.id)} style={{ color: "var(--danger)" }}>{t("members.actionDelete")}</Button>
-                              {isOwner && (
+                              <>
+                                <Button variant="ghost" size="sm" onClick={() => setDeleteId(m.id)} style={{ color: "var(--danger)" }}>{t("members.actionDelete")}</Button>
                                 <Button variant="ghost" size="sm" onClick={() => setPermanentDeleteId(m.id)} style={{ color: "var(--danger)", fontWeight: 700 }}>{t("members.actionPermanentDelete")}</Button>
-                              )}
+                              </>
                             )}
                             {isOwner && !m.is_active && (
                               <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(m.id)} style={{ color: "var(--accent)" }}>{t("members.actionActivate")}</Button>
