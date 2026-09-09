@@ -77,7 +77,11 @@
     "categoryCubs": "أشبال",
     "categoryMids": "أواسط",
     "categoryHopes": "أمال",
-    "categorySeniors": "أكابر"
+    "categorySeniors": "أكابر",
+    "actionPermanentDelete": "حذف نهائي",
+    "toastPermanentlyDeleted": "تم حذف العضو نهائياً",
+    "permanentDeleteConfirmTitle": "⚠️ حذف نهائي — لا يمكن التراجع",
+    "permanentDeleteConfirmMessage": "سيُحذف هذا العضو وكل بياناته المرتبطة (اشتراكات، حضور، دفعات، سجلات تقدم) نهائياً من قاعدة البيانات. رقم هاتفه سيصبح متاحاً للاستخدام من جديد. هذا الإجراء لا يمكن التراجع عنه إطلاقاً."
   },
   "memberForm": {
     "addTitle": "إضافة عضو جديد",

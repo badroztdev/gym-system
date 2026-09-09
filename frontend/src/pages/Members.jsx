@@ -154,6 +154,7 @@ export default function MembersPage() {
   const [showForm, setShowForm] = useState(false);
   const [editMember, setEditMember] = useState(null);
   const [deleteId,  setDeleteId]  = useState(null);
+  const [permanentDeleteId, setPermanentDeleteId] = useState(null);
   const [resetId,   setResetId]   = useState(null);
   const [resetModal, setResetModal] = useState(false);
   const [customPass, setCustomPass] = useState("");
@@ -171,6 +172,17 @@ export default function MembersPage() {
       qc.invalidateQueries({ queryKey: ["members"] });
       qc.invalidateQueries({ queryKey: ["members-stats"] });
       setDeleteId(null);
+    },
+  });
+
+  // ✅ حذف نهائي حقيقي — يُستخدم لإتاحة إعادة استخدام رقم الهاتف لاحقاً
+  const permanentDeleteMutation = useMutation({
+    mutationFn: membersService.removePermanently,
+    onSuccess: (res) => {
+      toast.success(res.data?.message || t("members.toastPermanentlyDeleted"));
+      qc.invalidateQueries({ queryKey: ["members"] });
+      qc.invalidateQueries({ queryKey: ["members-stats"] });
+      setPermanentDeleteId(null);
     },
   });
 
@@ -281,6 +293,9 @@ export default function MembersPage() {
                       )}
                       {isOwner && m.is_active && (
                         <Button variant="secondary" size="sm" onClick={() => setDeleteId(m.id)} style={{ color: "var(--danger)" }}>{t("members.actionDelete")}</Button>
+                        {isOwner && (
+                          <Button variant="secondary" size="sm" onClick={() => setPermanentDeleteId(m.id)} style={{ color: "#fff", background: "var(--danger)" }}>{t("members.actionPermanentDelete")}</Button>
+                        )}
                       )}
                       {isOwner && !m.is_active && (
                         <Button variant="secondary" size="sm" onClick={() => reactivateMutation.mutate(m.id)} style={{ color: "var(--accent)" }}>{t("members.actionActivate")}</Button>
@@ -378,6 +393,9 @@ export default function MembersPage() {
                             )}
                             {isOwner && m.is_active && (
                               <Button variant="ghost" size="sm" onClick={() => setDeleteId(m.id)} style={{ color: "var(--danger)" }}>{t("members.actionDelete")}</Button>
+                              {isOwner && (
+                                <Button variant="ghost" size="sm" onClick={() => setPermanentDeleteId(m.id)} style={{ color: "var(--danger)", fontWeight: 700 }}>{t("members.actionPermanentDelete")}</Button>
+                              )}
                             )}
                             {isOwner && !m.is_active && (
                               <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(m.id)} style={{ color: "var(--accent)" }}>{t("members.actionActivate")}</Button>
@@ -462,6 +480,16 @@ export default function MembersPage() {
         loading={deleteMutation.isPending}
         title={t("members.deleteConfirmTitle")}
         message={t("members.deleteConfirmMessage")}
+      />
+
+      {/* ✅ تأكيد الحذف النهائي — تحذير أقوى بسبب عدم إمكانية التراجع */}
+      <Confirm
+        open={!!permanentDeleteId}
+        onClose={() => setPermanentDeleteId(null)}
+        onConfirm={() => permanentDeleteMutation.mutate(permanentDeleteId)}
+        loading={permanentDeleteMutation.isPending}
+        title={t("members.permanentDeleteConfirmTitle")}
+        message={t("members.permanentDeleteConfirmMessage")}
       />
     </>
   );

@@ -77,7 +77,11 @@
     "categoryCubs": "Benjamins",
     "categoryMids": "Minimes",
     "categoryHopes": "Espoirs",
-    "categorySeniors": "Seniors"
+    "categorySeniors": "Seniors",
+    "actionPermanentDelete": "Suppr. définitive",
+    "toastPermanentlyDeleted": "Membre supprimé définitivement",
+    "permanentDeleteConfirmTitle": "⚠️ Suppression définitive — irréversible",
+    "permanentDeleteConfirmMessage": "Ce membre et toutes ses données associées (abonnements, présences, paiements, progrès) seront supprimés définitivement de la base de données. Son numéro de téléphone redeviendra disponible. Cette action est totalement irréversible."
   },
   "memberForm": {
     "addTitle": "Ajouter un nouveau membre",

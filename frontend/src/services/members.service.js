@@ -20,6 +20,9 @@ export const membersService = {
   remove: (id) =>
     api.delete(`/members/${id}`),
 
+  removePermanently: (id) =>
+    api.delete(`/members/${id}/permanent`).then((r) => r.data),
+
   resetPassword: (id, newPassword) =>
     api.post(`/members/${id}/reset-password`, { newPassword }).then((r) => r.data),
 };
