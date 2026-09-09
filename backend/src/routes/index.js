@@ -5,7 +5,7 @@ import { validate } from "../middleware/validate.js";
 import { authenticate, staffOnly, coachAndAbove, ownerOnly, authorize } from "../middleware/auth.js";
 
 import { login, me } from "../controllers/auth.controller.js";
-import { getMembers, getMember, createMember, updateMember, deleteMember, getMembersStats, resetPassword } from "../controllers/members.controller.js";
+import { getMembers, getMember, createMember, updateMember, deleteMember, deleteMemberPermanently, getMembersStats, resetPassword } from "../controllers/members.controller.js";
 import { getCategories, createCategory, updateCategory, deleteCategory } from "../controllers/categories.controller.js";
 import { getStaff, getStaffMember, createStaff, updateStaff, deleteStaff } from "../controllers/staff.controller.js";
 import { getPlans, createPlan, updatePlan, deletePlan } from "../controllers/plans.controller.js";
@@ -54,6 +54,7 @@ router.post  ("/members",                       authenticate, staffOnly, [
 ], createMember);
 router.patch ("/members/:id",   authenticate, staffOnly, updateMember);
 router.delete("/members/:id",   authenticate, ownerOnly, deleteMember);
+router.delete("/members/:id/permanent", authenticate, ownerOnly, deleteMemberPermanently);
 
 // ── Categories ────────────────────────────────────────────────
 router.get   ("/categories",     authenticate, staffOnly,    getCategories);
