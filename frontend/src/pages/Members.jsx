@@ -311,7 +311,7 @@ export default function MembersPage() {
                 <thead>
                   <tr style={{ background: "var(--surface)" }}>
                     {[t("members.colMember"), t("members.colRole"), t("members.colPhone"), t("members.colCategory"), t("members.colGroup"), t("members.colRank"), t("members.colWeight"), t("members.colBloodGroup"), t("members.colSubscription"), t("members.colStatus"), t("members.colActions")].map(h => (
-                      <th key={h} style={{ padding: "11px 16px", fontSize: 11, color: "var(--muted)", fontWeight: 500, textAlign: "right", whiteSpace: "nowrap" }}>{h}</th>
+                      <th key={h} style={{ padding: "11px 16px", fontSize: 11, color: "var(--muted)", fontWeight: 500, textAlign: i18n.language === "ar" ? "right" : "left", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -386,7 +386,7 @@ export default function MembersPage() {
                             : <Badge label={t("members.badgeInactive")} type="expired" />}
                         </td>
                         <td style={{ padding: "12px 16px" }}>
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center", minWidth: 180 }}>
                             <Button variant="ghost" size="sm" onClick={() => openEdit(m)} style={{ color: "var(--accent2)" }}>{t("members.actionEdit")}</Button>
                             {isOwner && (
                               <Button variant="ghost" size="sm" onClick={() => { setResetId(m.id); setCustomPass(""); setResetModal(true); }} style={{ color: "var(--accent3)" }}>🔑</Button>
