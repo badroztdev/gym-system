@@ -1,5 +1,6 @@
 // src/components/subscriptions/SubscriptionForm.jsx
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Modal, Input, Select, Button, Spinner } from "@/components/ui";
 import { membersService } from "@/services/members.service";
@@ -10,6 +11,7 @@ import toast from "react-hot-toast";
 const today = () => new Date().toISOString().slice(0, 10);
 
 export default function SubscriptionForm({ open, onClose, onSuccess, presetAthlete = null }) {
+  const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -55,9 +57,9 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
 
   const validate = () => {
     const errs = {};
-    if (!selectedAthlete) errs.athlete = "اختر الرياضي أولاً";
-    if (!form.planId) errs.planId = "اختر الخطة";
-    if (form.price === "" || Number(form.price) < 0) errs.price = "السعر مطلوب";
+    if (!selectedAthlete) errs.athlete = t("subscriptionForm.errorAthlete");
+    if (!form.planId) errs.planId = t("subscriptionForm.errorPlan");
+    if (form.price === "" || Number(form.price) < 0) errs.price = t("subscriptionForm.errorPrice");
     return errs;
   };
 
@@ -74,7 +76,7 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
         price:     Number(form.price),
         notes:     form.notes || null,
       });
-      toast.success("تم إنشاء الاشتراك بنجاح ✅");
+      toast.success(t("subscriptionForm.toastCreated"));
       onSuccess?.();
       onClose();
     } catch {
@@ -85,21 +87,26 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
   };
 
   const planOptions = [
-    { value: "", label: "-- اختر الخطة --" },
+    { value: "", label: t("subscriptionForm.planSelect") },
     ...plans.map(p => ({
       value: p.id,
-      label: `${p.name} — ${p.price} دج / ${p.duration_days} يوم${p.sessions_limit ? ` / ${p.sessions_limit} حصة` : ""}`,
+      label: t("subscriptionForm.planOptionFormat", {
+        name: p.name,
+        price: p.price,
+        days: p.duration_days,
+        sessions: p.sessions_limit ? t("subscriptionForm.planOptionSessions", { count: p.sessions_limit }) : "",
+      }),
     })),
   ];
 
   return (
-    <Modal open={open} onClose={onClose} title="اشتراك جديد" width={520}>
+    <Modal open={open} onClose={onClose} title={t("subscriptionForm.addTitle")} width={520}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
         {/* ── اختيار الرياضي ── */}
         <div>
           <label style={{ fontSize: 12, color: "var(--muted-lt)", fontWeight: 500, display: "block", marginBottom: 6 }}>
-            الرياضي *
+            {t("subscriptionForm.athleteLabel")}
           </label>
 
           {selectedAthlete ? (
@@ -114,14 +121,14 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
               </div>
               {!presetAthlete && (
                 <Button variant="ghost" size="sm" onClick={() => setSelectedAthlete(null)} style={{ color: "var(--danger)" }}>
-                  تغيير
+                  {t("subscriptionForm.changeAthlete")}
                 </Button>
               )}
             </div>
           ) : (
             <div style={{ position: "relative" }}>
               <Input
-                placeholder="ابحث بالاسم أو رقم الهاتف (حرفان على الأقل)..."
+                placeholder={t("subscriptionForm.searchPlaceholder")}
                 value={athleteSearch}
                 onChange={e => setAthleteSearch(e.target.value)}
                 error={errors.athlete}
@@ -136,14 +143,14 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
                   {searching ? (
                     <div style={{ padding: 14, display: "flex", justifyContent: "center" }}><Spinner size={18} /></div>
                   ) : athleteResults.length === 0 ? (
-                    <div style={{ padding: 14, fontSize: 12, color: "var(--muted)", textAlign: "center" }}>لا توجد نتائج</div>
+                    <div style={{ padding: 14, fontSize: 12, color: "var(--muted)", textAlign: "center" }}>{t("subscriptionForm.noResults")}</div>
                   ) : (
                     athleteResults.map(a => (
                       <button
                         key={a.id}
                         onClick={() => { setSelectedAthlete(a); setAthleteSearch(""); }}
                         style={{
-                          width: "100%", textAlign: "right", padding: "10px 14px",
+                          width: "100%", textAlign: i18n.language === "ar" ? "right" : "left", padding: "10px 14px",
                           background: "transparent", border: "none", cursor: "pointer",
                           borderBottom: "1px solid var(--border)",
                         }}
@@ -163,7 +170,7 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
 
         {/* ── الخطة ── */}
         <Select
-          label="الخطة *"
+          label={t("subscriptionForm.planLabel")}
           options={planOptions}
           value={form.planId}
           onChange={set("planId")}
@@ -172,13 +179,13 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Input
-            label="تاريخ البداية"
+            label={t("subscriptionForm.startDateLabel")}
             type="date"
             value={form.startDate}
             onChange={set("startDate")}
           />
           <Input
-            label="السعر (دج) *"
+            label={t("subscriptionForm.priceLabel")}
             type="number" min="0" step="0.01"
             value={form.price}
             onChange={set("price")}
@@ -188,21 +195,21 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
 
         {selectedPlan && (
           <div style={{ fontSize: 11, color: "var(--muted)", background: "var(--surface)", padding: "10px 12px", borderRadius: "var(--radius-sm)", lineHeight: 1.6 }}>
-            📅 تاريخ الانتهاء: <span className="mono">{addDays(form.startDate, selectedPlan.duration_days)}</span>
-            {selectedPlan.sessions_limit && <> — 🎫 عدد الحصص: <span className="mono">{selectedPlan.sessions_limit}</span></>}
+            {t("subscriptionForm.endDateInfo")}<span className="mono">{addDays(form.startDate, selectedPlan.duration_days)}</span>
+            {selectedPlan.sessions_limit && <>{t("subscriptionForm.sessionsCountInfo")}<span className="mono">{selectedPlan.sessions_limit}</span></>}
           </div>
         )}
 
         <Input
-          label="ملاحظات"
-          placeholder="اختياري"
+          label={t("subscriptionForm.notesLabel")}
+          placeholder={t("subscriptionForm.notesPlaceholder")}
           value={form.notes}
           onChange={set("notes")}
         />
 
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
-          <Button variant="secondary" onClick={onClose} disabled={loading}>إلغاء</Button>
-          <Button onClick={handleSubmit} loading={loading}>إنشاء الاشتراك</Button>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>{t("subscriptionForm.cancel")}</Button>
+          <Button onClick={handleSubmit} loading={loading}>{t("subscriptionForm.createSubscription")}</Button>
         </div>
       </div>
     </Modal>

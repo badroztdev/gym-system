@@ -632,5 +632,28 @@
     "saveSettings": "حفظ الإعدادات",
     "ownerOnlyPreferences": "ⓘ فقط المالك يمكنه تعديل هذه الإعدادات",
     "toastSettingsSaved": "تم حفظ الإعدادات ✅"
+  },
+  "subscriptionForm": {
+    "addTitle": "اشتراك جديد",
+    "athleteLabel": "الرياضي *",
+    "changeAthlete": "تغيير",
+    "searchPlaceholder": "ابحث بالاسم أو رقم الهاتف (حرفان على الأقل)...",
+    "noResults": "لا توجد نتائج",
+    "planLabel": "الخطة *",
+    "planSelect": "-- اختر الخطة --",
+    "planOptionFormat": "{{name}} — {{price}} دج / {{days}} يوم{{sessions}}",
+    "planOptionSessions": " / {{count}} حصة",
+    "startDateLabel": "تاريخ البداية",
+    "priceLabel": "السعر (دج) *",
+    "endDateInfo": "📅 تاريخ الانتهاء: ",
+    "sessionsCountInfo": " — 🎫 عدد الحصص: ",
+    "notesLabel": "ملاحظات",
+    "notesPlaceholder": "اختياري",
+    "cancel": "إلغاء",
+    "createSubscription": "إنشاء الاشتراك",
+    "errorAthlete": "اختر الرياضي أولاً",
+    "errorPlan": "اختر الخطة",
+    "errorPrice": "السعر مطلوب",
+    "toastCreated": "تم إنشاء الاشتراك بنجاح ✅"
   }
 }

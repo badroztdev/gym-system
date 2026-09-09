@@ -632,5 +632,28 @@
     "saveSettings": "Enregistrer les paramètres",
     "ownerOnlyPreferences": "ⓘ Seul le propriétaire peut modifier ces paramètres",
     "toastSettingsSaved": "Paramètres enregistrés ✅"
+  },
+  "subscriptionForm": {
+    "addTitle": "Nouvel abonnement",
+    "athleteLabel": "Athlète *",
+    "changeAthlete": "Changer",
+    "searchPlaceholder": "Rechercher par nom ou téléphone (2 caractères min)...",
+    "noResults": "Aucun résultat",
+    "planLabel": "Plan *",
+    "planSelect": "-- Choisir le plan --",
+    "planOptionFormat": "{{name}} — {{price}} DA / {{days}} jours{{sessions}}",
+    "planOptionSessions": " / {{count}} séances",
+    "startDateLabel": "Date de début",
+    "priceLabel": "Prix (DA) *",
+    "endDateInfo": "📅 Date de fin : ",
+    "sessionsCountInfo": " — 🎫 Nombre de séances : ",
+    "notesLabel": "Notes",
+    "notesPlaceholder": "Optionnel",
+    "cancel": "Annuler",
+    "createSubscription": "Créer l'abonnement",
+    "errorAthlete": "Choisissez d'abord l'athlète",
+    "errorPlan": "Choisissez le plan",
+    "errorPrice": "Le prix est requis",
+    "toastCreated": "Abonnement créé avec succès ✅"
   }
 }
