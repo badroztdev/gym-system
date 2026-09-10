@@ -287,14 +287,14 @@ export default function MembersPage() {
                     )}
 
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-                      <Button variant="secondary" size="sm" onClick={() => openEdit(m)} title={t("members.actionEdit")} style={{ width: 26, height: 26, padding: 0, minWidth: "unset", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent2)" }}>✏️</Button>
+                      <Button variant="secondary" size="sm" onClick={() => openEdit(m)} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--accent2)" }}>{t("members.actionEdit")}</Button>
                       {isOwner && (
                         <Button variant="secondary" size="sm" onClick={() => { setResetId(m.id); setCustomPass(""); setResetModal(true); }} style={{ color: "var(--accent3)" }}>🔑</Button>
                       )}
                       {isOwner && m.is_active && (
                         <>
-                          <Button variant="secondary" size="sm" onClick={() => setDeleteId(m.id)} title={t("members.actionDelete")} style={{ width: 26, height: 26, padding: 0, minWidth: "unset", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--danger)" }}>🚫</Button>
-                          <Button variant="secondary" size="sm" onClick={() => setPermanentDeleteId(m.id)} title={t("members.actionPermanentDelete")} style={{ width: 26, height: 26, padding: 0, minWidth: "unset", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", background: "var(--danger)" }}>🗑️</Button>
+                          <Button variant="secondary" size="sm" onClick={() => setDeleteId(m.id)} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--danger)" }}>{t("members.actionDelete")}</Button>
+                          <Button variant="secondary" size="sm" onClick={() => setPermanentDeleteId(m.id)} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "#fff", background: "var(--danger)" }}>{t("members.actionPermanentDelete")}</Button>
                         </>
                       )}
                       {isOwner && !m.is_active && (
@@ -387,14 +387,14 @@ export default function MembersPage() {
                         </td>
                         <td style={{ padding: "12px 16px" }}>
                           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                            <Button variant="ghost" size="sm" onClick={() => openEdit(m)} title={t("members.actionEdit")} style={{ width: 26, height: 26, padding: 0, minWidth: "unset", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent2)" }}>✏️</Button>
+                            <Button variant="ghost" size="sm" onClick={() => openEdit(m)} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--accent2)" }}>{t("members.actionEdit")}</Button>
                             {isOwner && (
                               <Button variant="ghost" size="sm" onClick={() => { setResetId(m.id); setCustomPass(""); setResetModal(true); }} style={{ color: "var(--accent3)" }}>🔑</Button>
                             )}
                             {isOwner && m.is_active && (
                               <>
-                                <Button variant="ghost" size="sm" onClick={() => setDeleteId(m.id)} title={t("members.actionDelete")} style={{ width: 26, height: 26, padding: 0, minWidth: "unset", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--danger)" }}>🚫</Button>
-                                <Button variant="ghost" size="sm" onClick={() => setPermanentDeleteId(m.id)} title={t("members.actionPermanentDelete")} style={{ width: 26, height: 26, padding: 0, minWidth: "unset", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--danger)", fontWeight: 700 }}>🗑️</Button>
+                                <Button variant="ghost" size="sm" onClick={() => setDeleteId(m.id)} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--danger)" }}>{t("members.actionDelete")}</Button>
+                                <Button variant="ghost" size="sm" onClick={() => setPermanentDeleteId(m.id)} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--danger)", fontWeight: 700 }}>{t("members.actionPermanentDelete")}</Button>
                               </>
                             )}
                             {isOwner && !m.is_active && (
