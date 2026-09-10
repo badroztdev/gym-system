@@ -33,6 +33,15 @@ const getTabs = (t) => [
 
 const getDayNames = (t) => t("sessions.dayNames", { returnObjects: true });
 
+// ✅ إصلاح: .toISOString() يحوّل للتوقيت العالمي (UTC) لا المحلي
+// في الجزائر (UTC+1)، هذا يُسبب ظهور تاريخ الأمس خلال الساعة 00:00-01:00
+function toLocalDateString(d) {
+  const year  = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day   = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 // الأسبوع الحالي
 function getWeekDates() {
   const today = new Date();
@@ -42,7 +51,7 @@ function getWeekDates() {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(sunday);
     d.setDate(sunday.getDate() + i);
-    return d.toISOString().slice(0, 10);
+    return toLocalDateString(d);
   });
 }
 
@@ -63,7 +72,7 @@ function ScheduleTab() {
     return base.map(d => {
       const date = new Date(d);
       date.setDate(date.getDate() + weekOffset * 7);
-      return date.toISOString().slice(0, 10);
+      return toLocalDateString(date);
     });
   }, [weekOffset]);
 
@@ -84,7 +93,7 @@ function ScheduleTab() {
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["sessions-week"], exact: false });
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateString(new Date());
 
   const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 768 : false);
   useEffect(() => {

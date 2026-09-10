@@ -11,7 +11,17 @@ const METHODS = [
   { value: "online",        label: "دفع عبر الإنترنت" },
 ];
 
-const today = () => new Date().toISOString().slice(0, 10);
+// ✅ إصلاح: .toISOString() يحوّل للتوقيت العالمي (UTC) لا المحلي
+// في الجزائر (UTC+1)، هذا يُسبب ظهور تاريخ الأمس خلال الساعة 00:00-01:00
+// الدالة أدناه تبني النص من مكوّنات التاريخ المحلية مباشرة، بلا أي تحويل توقيت
+function toLocalDateString(d) {
+  const year  = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day   = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+const today = () => toLocalDateString(new Date());
 
 export default function PaymentForm({ open, onClose, subscription, onSuccess }) {
   const [loading, setLoading] = useState(false);

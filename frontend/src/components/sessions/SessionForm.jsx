@@ -60,7 +60,16 @@ const AGE_CATEGORIES = [
   { value: "أكابر" },
 ];
 
-const today = () => new Date().toISOString().slice(0, 10);
+// ✅ إصلاح: .toISOString() يحوّل للتوقيت العالمي (UTC) لا المحلي
+// في الجزائر (UTC+1)، هذا يُسبب ظهور تاريخ الأمس خلال الساعة 00:00-01:00
+function toLocalDateString(d) {
+  const year  = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day   = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+const today = () => toLocalDateString(new Date());
 
 const EMPTY = {
   title: "", description: "", sessionDate: today(),

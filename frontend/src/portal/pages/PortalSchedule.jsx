@@ -6,6 +6,15 @@ import { portalService } from "@/portal/services/portal.service";
 
 const DAY_NAMES = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
 
+// ✅ إصلاح: .toISOString() يحوّل للتوقيت العالمي (UTC) لا المحلي
+// في الجزائر (UTC+1)، هذا يُسبب ظهور تاريخ الأمس خلال الساعة 00:00-01:00
+function toLocalDateString(d) {
+  const year  = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day   = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function getWeekDates(offset = 0) {
   const today = new Date();
   const day = today.getDay();
@@ -14,7 +23,7 @@ function getWeekDates(offset = 0) {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(sunday);
     d.setDate(sunday.getDate() + i);
-    return d.toISOString().slice(0, 10);
+    return toLocalDateString(d);
   });
 }
 
@@ -22,7 +31,7 @@ export default function PortalSchedule() {
   const { athlete } = useOutletContext();
   const [weekOffset, setWeekOffset] = useState(0);
   const weekDates = getWeekDates(weekOffset);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateString(new Date());
 
   const { data, isLoading } = useQuery({
     queryKey: ["portal-schedule", athlete?.id, weekOffset],

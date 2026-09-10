@@ -8,7 +8,14 @@ import { plansService } from "@/services/plans.service";
 import { subscriptionsService } from "@/services/subscriptions.service";
 import toast from "react-hot-toast";
 
-const today = () => new Date().toISOString().slice(0, 10);
+function toLocalDateString(d) {
+  const year  = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day   = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+const today = () => toLocalDateString(new Date());
 
 export default function SubscriptionForm({ open, onClose, onSuccess, presetAthlete = null }) {
   const { t, i18n } = useTranslation();
@@ -221,5 +228,5 @@ function addDays(dateStr, days) {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return null;
   d.setDate(d.getDate() + Number(days));
-  return d.toISOString().slice(0, 10);
+  return toLocalDateString(d);
 }
