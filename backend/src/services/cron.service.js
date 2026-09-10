@@ -3,6 +3,60 @@
 import { query } from "../utils/db.js";
 import { sendMulticast, NotificationTemplates } from "./fcm.service.js";
 
+// ── ✅ جديد: التجديد التلقائي للاشتراكات المنتهية ─────────────
+// عند وصول تاريخ انتهاء أي اشتراك نشط، يُنشأ تلقائياً اشتراك تالٍ
+// بنفس الخطة والسعر، يبدأ بالضبط من تاريخ انتهاء الاشتراك السابق —
+// ينطبق على كل الاشتراكات دائماً، بدون أي استثناء أو خيار تفعيل/تعطيل
+// ✅ يجب أن تُستدعى قبل expireSubscriptions() لأنها تحتاج رؤية
+// الاشتراكات وهي لا تزال status='active' لمعرفة تفاصيلها كاملة
+async function autoRenewSubscriptions() {
+  try {
+    console.log("🔄 [Cron] Auto-renewing expired subscriptions...");
+
+    const expiring = await query(`
+      SELECT s.id, s.athlete_id, s.plan_id, s.price, s.end_date,
+             sp.duration_days, sp.sessions_limit
+      FROM subscriptions s
+      JOIN subscription_plans sp ON sp.id = s.plan_id
+      WHERE s.status = 'active' AND s.end_date < CURRENT_DATE
+    `);
+
+    let renewed = 0;
+    for (const sub of expiring.rows) {
+      // ✅ تحقق أمان: هل يوجد اشتراك تالٍ بالفعل يبدأ من نفس تاريخ الانتهاء؟
+      // يمنع تكرار التجديد لو أُعيد تشغيل المهمة أكثر من مرة لنفس اليوم
+      const already = await query(
+        `SELECT id FROM subscriptions WHERE athlete_id = $1 AND start_date = $2`,
+        [sub.athlete_id, sub.end_date]
+      );
+      if (already.rows.length) continue;
+
+      await query(
+        `INSERT INTO subscriptions
+           (athlete_id, plan_id, start_date, end_date, status,
+            sessions_remaining, price, notes)
+         VALUES (
+           $1, $2, $3::date,
+           ($3::date + ($4 || ' days')::interval)::date,
+           'active', $5, $6, $7
+         )`,
+        [
+          sub.athlete_id, sub.plan_id, sub.end_date,
+          sub.duration_days, sub.sessions_limit, sub.price,
+          "تجديد تلقائي",
+        ]
+      );
+      renewed++;
+    }
+
+    if (renewed > 0) {
+      console.log(`✅ [Cron] Auto-renewed ${renewed} subscriptions`);
+    }
+  } catch (err) {
+    console.error("❌ [Cron] autoRenewSubscriptions error:", err.message);
+  }
+}
+
 // ── دالة إشعار انتهاء الاشتراكات ─────────────────────────────
 async function notifyExpiringSubscriptions() {
   try {
@@ -20,7 +74,6 @@ async function notifyExpiringSubscriptions() {
     for (const sub of subs.rows) {
       const tpl = NotificationTemplates.subscriptionExpiring(sub.athlete_name, sub.days_left);
 
-      // أولياء الأمور + الرياضي نفسه
       const ids = await query(
         `SELECT guardian_id AS id FROM guardian_athlete WHERE athlete_id = $1
          UNION SELECT $1::uuid`,
@@ -67,13 +120,10 @@ async function expireSubscriptions() {
 }
 
 // ── دالة إشعار انتهاء اشتراك الصالة نفسها (SaaS) ──────────────
-// مختلفة تماماً عن notifyExpiringSubscriptions أعلاه (التي تخص اشتراكات الرياضيين
-// داخل كل صالة). هذه تخص اشتراك الصالة في منصة SGMS نفسها (تجريبي/شهري/سنوي)
 async function notifyExpiringGymSubscriptions() {
   try {
     console.log("🔔 [Cron] Checking expiring gym (SaaS) subscriptions...");
 
-    // صالات تنتهي فترتها التجريبية خلال 3 أيام
     const trialGyms = await query(`
       SELECT id, name, trial_ends_at,
              (trial_ends_at::date - CURRENT_DATE) AS days_left
@@ -82,7 +132,6 @@ async function notifyExpiringGymSubscriptions() {
         AND trial_ends_at BETWEEN NOW() AND NOW() + INTERVAL '3 days'
     `);
 
-    // صالات نشطة (مدفوعة) تنتهي خلال 3 أيام
     const activeGyms = await query(`
       SELECT id, name, subscription_ends_at,
              (subscription_ends_at::date - CURRENT_DATE) AS days_left
@@ -140,12 +189,15 @@ export function startCronJobs() {
   const INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 ساعة
 
   // تشغيل فوري عند بدء الخادم
+  // ✅ التجديد التلقائي يجب أن يعمل أولاً، قبل expireSubscriptions
+  autoRenewSubscriptions();
   expireSubscriptions();
   notifyExpiringSubscriptions();
   notifyExpiringGymSubscriptions();
 
   // جدولة يومية
   setInterval(async () => {
+    await autoRenewSubscriptions();
     await expireSubscriptions();
     await notifyExpiringSubscriptions();
     await notifyExpiringGymSubscriptions();
