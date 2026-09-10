@@ -193,7 +193,7 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
           />
         </div>
 
-        {selectedPlan && (
+        {selectedPlan && addDays(form.startDate, selectedPlan.duration_days) && (
           <div style={{ fontSize: 11, color: "var(--muted)", background: "var(--surface)", padding: "10px 12px", borderRadius: "var(--radius-sm)", lineHeight: 1.6 }}>
             {t("subscriptionForm.endDateInfo")}<span className="mono">{addDays(form.startDate, selectedPlan.duration_days)}</span>
             {selectedPlan.sessions_limit && <>{t("subscriptionForm.sessionsCountInfo")}<span className="mono">{selectedPlan.sessions_limit}</span></>}
@@ -217,7 +217,9 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
 }
 
 function addDays(dateStr, days) {
+  if (!dateStr) return null;
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return null;
   d.setDate(d.getDate() + Number(days));
   return d.toISOString().slice(0, 10);
 }
