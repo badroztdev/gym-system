@@ -298,7 +298,7 @@ export default function MembersPage() {
                         </>
                       )}
                       {isOwner && !m.is_active && (
-                        <Button variant="secondary" size="sm" onClick={() => reactivateMutation.mutate(m.id)} title={t("members.actionActivate")} style={{ color: "var(--accent)" }}>✅</Button>
+                        <Button variant="secondary" size="sm" onClick={() => reactivateMutation.mutate(m.id)} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--accent)" }}>{t("members.actionActivate")}</Button>
                       )}
                     </div>
                   </div>
@@ -398,7 +398,7 @@ export default function MembersPage() {
                               </>
                             )}
                             {isOwner && !m.is_active && (
-                              <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(m.id)} title={t("members.actionActivate")} style={{ color: "var(--accent)" }}>✅</Button>
+                              <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(m.id)} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--accent)" }}>{t("members.actionActivate")}</Button>
                             )}
                           </div>
                         </td>
