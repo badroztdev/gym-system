@@ -223,14 +223,17 @@ function SessionReminderCard() {
 
   // ✅ القيم (value) تبقى بالعربية دائماً لمطابقة قاعدة البيانات، فقط التسمية تُترجم
   const AGE_CATEGORIES_FILTER = [
-    { value: "",       label: t("notifications.allAgeCategories") },
-    { value: "مدارس", label: t("members.categorySchools") },
-    { value: "براعم", label: t("members.categoryBuds") },
-    { value: "أصاغر", label: t("members.categoryYoungCubs") },
-    { value: "أشبال", label: t("members.categoryCubs") },
-    { value: "أواسط", label: t("members.categoryMids") },
-    { value: "أمال",  label: t("members.categoryHopes") },
-    { value: "أكابر", label: t("members.categorySeniors") },
+    { value: "",        label: t("notifications.allAgeCategories") },
+    { value: "مدارس",   label: t("members.categorySchools") },
+    { value: "كتاكيت",  label: t("members.categoryChicks") },
+    { value: "تلاميذ",  label: t("members.categoryPupils") },
+    { value: "براعم",   label: t("members.categoryBuds") },
+    { value: "أصاغر",   label: t("members.categoryYoungCubs") },
+    { value: "ناشئين",  label: t("members.categoryMinimes") },
+    { value: "أشبال",   label: t("members.categoryCubs") },
+    { value: "أواسط",   label: t("members.categoryMids") },
+    { value: "أمال",    label: t("members.categoryHopes") },
+    { value: "أكابر",   label: t("members.categorySeniors") },
   ];
 
   const GROUP_FILTER_OPTIONS = [

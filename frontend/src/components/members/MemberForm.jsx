@@ -17,13 +17,16 @@ const getGenders = (t) => [
 ];
 const getAgeCategories = (t) => [
   { value: "",        label: t("memberForm.ageCategorySelect") },
-  { value: "مدارس",  label: t("members.categorySchools") },
-  { value: "براعم",  label: t("members.categoryBuds") },
-  { value: "أصاغر",  label: t("members.categoryYoungCubs") },
-  { value: "أشبال",  label: t("members.categoryCubs") },
-  { value: "أواسط",  label: t("members.categoryMids") },
-  { value: "أمال",   label: t("members.categoryHopes") },
-  { value: "أكابر",  label: t("members.categorySeniors") },
+  { value: "مدارس",   label: t("members.categorySchools") },
+  { value: "كتاكيت",  label: t("members.categoryChicks") },
+  { value: "تلاميذ",  label: t("members.categoryPupils") },
+  { value: "براعم",   label: t("members.categoryBuds") },
+  { value: "أصاغر",   label: t("members.categoryYoungCubs") },
+  { value: "ناشئين",  label: t("members.categoryMinimes") },
+  { value: "أشبال",   label: t("members.categoryCubs") },
+  { value: "أواسط",   label: t("members.categoryMids") },
+  { value: "أمال",    label: t("members.categoryHopes") },
+  { value: "أكابر",   label: t("members.categorySeniors") },
 ];
 const getBloodGroups = (t) => [
   { value: "",    label: t("memberForm.bloodGroupSelect") },

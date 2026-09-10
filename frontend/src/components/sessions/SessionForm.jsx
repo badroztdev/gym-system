@@ -54,13 +54,10 @@ function TimeSelect({ label, value, onChange, error, timeOptions }) {
 }
 
 const AGE_CATEGORIES = [
-  { value: "مدارس",  label: "مدارس" },
-  { value: "براعم",  label: "براعم" },
-  { value: "أصاغر",  label: "أصاغر" },
-  { value: "أشبال",  label: "أشبال" },
-  { value: "أواسط",  label: "أواسط" },
-  { value: "أمال",   label: "أمال" },
-  { value: "أكابر",  label: "أكابر" },
+  { value: "مدارس" },  { value: "كتاكيت" }, { value: "تلاميذ" },
+  { value: "براعم" },  { value: "أصاغر" },  { value: "ناشئين" },
+  { value: "أشبال" },  { value: "أواسط" },  { value: "أمال" },
+  { value: "أكابر" },
 ];
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -88,10 +85,11 @@ export default function SessionForm({ open, onClose, session, onSuccess }) {
   // ✅ نفس نمط الفئات في MemberForm: القيمة (value) تبقى بالعربية دائماً
   // لمطابقة ما يُخزَّن في قاعدة البيانات، فقط التسمية تُترجم
   const AGE_CATEGORY_LABELS = {
-    "مدارس": t("members.categorySchools"), "براعم": t("members.categoryBuds"),
-    "أصاغر": t("members.categoryYoungCubs"), "أشبال": t("members.categoryCubs"),
-    "أواسط": t("members.categoryMids"), "أمال": t("members.categoryHopes"),
-    "أكابر": t("members.categorySeniors"),
+    "مدارس": t("members.categorySchools"), "كتاكيت": t("members.categoryChicks"),
+    "تلاميذ": t("members.categoryPupils"), "براعم": t("members.categoryBuds"),
+    "أصاغر": t("members.categoryYoungCubs"), "ناشئين": t("members.categoryMinimes"),
+    "أشبال": t("members.categoryCubs"), "أواسط": t("members.categoryMids"),
+    "أمال": t("members.categoryHopes"), "أكابر": t("members.categorySeniors"),
   };
 
   const isEdit = !!session;
