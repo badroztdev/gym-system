@@ -12,11 +12,21 @@ let tokenExpiry = 0;
 function getServiceAccount() {
   if (serviceAccount) return serviceAccount;
   try {
+    // ✅ الإصلاح الجوهري: الطريقة المفضّلة الآن هي قراءة بيانات الاعتماد
+    // من متغيّر بيئي (Environment Variable) يحتوي محتوى ملف JSON كاملاً كنص —
+    // أكثر أماناً وموثوقية على منصات مثل Railway، لأنها لا تعتمد على وجود
+    // ملف فعلي على القرص (الذي لا يُرفَع أبداً لمستودع Git لأسباب أمنية،
+    // وبالتالي كان غائباً تماماً عن الخادم المنشور، مما أفشل كل محاولة إرسال صامتاً)
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+      return serviceAccount;
+    }
+    // احتياطي: قراءة من ملف محلي (يبقى مفيداً للتطوير على جهازك الشخصي فقط)
     const path = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || "./firebase-service-account.json";
     serviceAccount = JSON.parse(readFileSync(path, "utf8"));
     return serviceAccount;
-  } catch {
-    console.warn("⚠️  Firebase Service Account not found — notifications disabled");
+  } catch (err) {
+    console.warn("⚠️  Firebase Service Account not found — notifications disabled:", err.message);
     return null;
   }
 }
@@ -72,9 +82,14 @@ export const sendNotification = async ({ token, title, body, data = {} }) => {
       }),
     });
     const result = await res.json();
-    if (result.error) return { success: false, error: result.error };
+    if (result.error) {
+      // ✅ إضافة: كان الخطأ يُخفى تماماً سابقاً — الآن يظهر في سجلات Railway
+      console.error("❌ [FCM] send error:", JSON.stringify(result.error));
+      return { success: false, error: result.error };
+    }
     return { success: true, messageId: result.name };
   } catch (err) {
+    console.error("❌ [FCM] sendNotification exception:", err.message);
     return { success: false, error: err.message };
   }
 };
