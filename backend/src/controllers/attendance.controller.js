@@ -23,18 +23,45 @@ export const scanQR = async (req, res) => {
     );
     if (!athleteRes.rows.length) return badRequest(res, "الرياضي غير موجود في هذه الصالة");
 
-    const sessionRes = await query(
+    // ✅ الإصلاح الجوهري: نظام أولوية بمرحلتين لتحديد الحصة الصحيحة
+    // المشكلة السابقة: هامش تسامح ±30 دقيقة على كل حصة كان يجعل حصتين متتاليتين
+    // (مثلاً 17:00-18:30 و18:30-21:00) تتداخلان معاً عند المسح قرب نقطة التقائهما
+    // (مثلاً 18:45)، فيختار النظام خطأً الحصة الأقدم بدءاً بدل الحصة الجارية فعلياً
+
+    // المرحلة 1: حصة تجري فعلياً الآن — بدون أي هامش تسامح إطلاقاً (الأولوية القصوى)
+    let sessionRes = await query(
       `SELECT s.id, s.title
        FROM sessions s
        WHERE s.room_id = $1
          AND s.session_date = (NOW() AT TIME ZONE 'Africa/Algiers')::date
-         AND s.start_time <= (NOW() AT TIME ZONE 'Africa/Algiers')::time + INTERVAL '30 minutes'
-         AND s.end_time   >= (NOW() AT TIME ZONE 'Africa/Algiers')::time - INTERVAL '30 minutes'
+         AND s.start_time <= (NOW() AT TIME ZONE 'Africa/Algiers')::time
+         AND s.end_time   >= (NOW() AT TIME ZONE 'Africa/Algiers')::time
          AND s.is_cancelled = FALSE
-       ORDER BY s.start_time
+       ORDER BY s.start_time DESC
        LIMIT 1`,
       [room.id]
     );
+
+    // المرحلة 2 (احتياطية فقط): لا توجد حصة دقيقة الآن — ابحث بهامش تسامح صغير
+    // (±15 دقيقة بدل 30، لتقليل احتمال التداخل)، ورتِّب حسب الأقرب زمنياً للحظة
+    // المسح (وليس الأقدم بدءاً) — يخدم حالة الوصول قبل البداية بقليل أو بعد النهاية بقليل
+    if (!sessionRes.rows.length) {
+      sessionRes = await query(
+        `SELECT s.id, s.title
+         FROM sessions s
+         WHERE s.room_id = $1
+           AND s.session_date = (NOW() AT TIME ZONE 'Africa/Algiers')::date
+           AND s.start_time <= (NOW() AT TIME ZONE 'Africa/Algiers')::time + INTERVAL '15 minutes'
+           AND s.end_time   >= (NOW() AT TIME ZONE 'Africa/Algiers')::time - INTERVAL '15 minutes'
+           AND s.is_cancelled = FALSE
+         ORDER BY
+           ABS(EXTRACT(EPOCH FROM (
+             (NOW() AT TIME ZONE 'Africa/Algiers')::time - s.start_time
+           )))
+         LIMIT 1`,
+        [room.id]
+      );
+    }
 
     if (!sessionRes.rows.length) {
       return badRequest(res, `لا توجد حصة جارية الآن في قاعة ${room.name}`);
@@ -65,8 +92,6 @@ export const scanQR = async (req, res) => {
 };
 
 // ── GET /api/attendance/session/:sessionId ─────────────────────
-// ✅ الإصلاح الجوهري: نعرض كل الرياضيين المؤهلين للحصة (حسب فئتها العمرية)
-// حتى لو لم يُسجَّل حضورهم بعد — بدل الاعتماد فقط على سجلات attendance الموجودة
 export const getSessionAttendance = async (req, res) => {
   try {
     const { sessionId } = req.params;
@@ -78,8 +103,6 @@ export const getSessionAttendance = async (req, res) => {
     if (!sessionCheck.rows.length) return notFound(res, "الحصة غير موجودة");
     const session = sessionCheck.rows[0];
 
-    // كل الرياضيين النشطين المؤهلين لهذه الحصة (بنفس فئتها العمرية، أو الجميع إذا لم تُحدَّد فئة)
-    // مع حالة حضورهم إن وُجدت (LEFT JOIN)، وافتراضياً 'لم يُسجَّل بعد' إن لم توجد
     const conditions = ["u.gym_id = $1", "u.role = 'athlete'", "u.is_active = TRUE"];
     const params = [session.gym_id];
     let p = 2;
@@ -90,7 +113,7 @@ export const getSessionAttendance = async (req, res) => {
       p++;
     }
 
-    params.push(sessionId); // آخر معامل لربط attendance بالحصة الحالية تحديداً
+    params.push(sessionId);
 
     const { rows } = await query(
       `SELECT
@@ -198,7 +221,6 @@ export const getAthleteAttendance = async (req, res) => {
 };
 
 // ── GET /api/attendance/overview ────────────────────────────────
-// إحصائيات عامة شاملة لكل الحصص في الصالة (آخر 30 يوماً افتراضياً)
 export const getAttendanceOverview = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
@@ -234,7 +256,6 @@ export const getAttendanceOverview = async (req, res) => {
 };
 
 // ── GET /api/attendance/trend?period=week|month|year ────────────
-// اتجاه الحضور عبر الزمن (نفس منطق dashboard.controller لكن مخصَّص لصفحة الحضور)
 export const getAttendanceTrend = async (req, res) => {
   try {
     const { period = "month" } = req.query;
@@ -267,11 +288,10 @@ export const getAttendanceTrend = async (req, res) => {
 };
 
 // ── GET /api/attendance/leaderboard ──────────────────────────────
-// ترتيب الرياضيين حسب نسبة الحضور (آخر 30 يوماً)
 export const getAttendanceLeaderboard = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
-    const { order = "best" } = req.query; // best | worst
+    const { order = "best" } = req.query;
 
     const { rows } = await query(`
       SELECT
@@ -300,7 +320,6 @@ export const getAttendanceLeaderboard = async (req, res) => {
 };
 
 // ── GET /api/attendance/by-category ──────────────────────────────
-// توزيع نسب الحضور حسب الفئة العمرية
 export const getAttendanceByCategory = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
@@ -328,7 +347,6 @@ export const getAttendanceByCategory = async (req, res) => {
 };
 
 // ── GET /api/attendance/recent-sessions ──────────────────────────
-// آخر الحصص مع ملخص حضورها (للجدول السفلي في الصفحة)
 export const getRecentSessionsAttendance = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
