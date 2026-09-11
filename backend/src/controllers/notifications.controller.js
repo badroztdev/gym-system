@@ -51,6 +51,10 @@ export const sendManual = async (req, res) => {
     if (!userIds?.length || !title || !body)
       return badRequest(res, "userIds والعنوان والنص مطلوبون");
 
+    // ✅ تسجيل تشخيصي مؤقت — يكشف القيم الفعلية أثناء التشغيل الحقيقي
+    console.log("🔍 [sendManual] userIds:", JSON.stringify(userIds));
+    console.log("🔍 [sendManual] req.user.gym_id:", req.user.gym_id);
+
     for (const uid of userIds) {
       await query(
         `INSERT INTO notifications (user_id, title, body, type, metadata) VALUES ($1,$2,$3,$4,$5)`,
@@ -64,6 +68,10 @@ export const sendManual = async (req, res) => {
        WHERE ft.user_id = ANY($1::uuid[]) AND u.gym_id=$2 AND ft.is_active=TRUE`,
       [userIds, req.user.gym_id]
     );
+
+    // ✅ تسجيل تشخيصي مؤقت — كم توكناً وجد الاستعلام فعلياً
+    console.log("🔍 [sendManual] tokens found:", tokensRes.rows.length);
+
     const result = await sendMulticast({ tokens: tokensRes.rows.map(r => r.token), title, body });
     return ok(res, { saved: userIds.length, pushed: result.sent });
   } catch (err) { serverError(res, err); }
