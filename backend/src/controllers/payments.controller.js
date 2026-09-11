@@ -1,5 +1,6 @@
 // src/controllers/payments.controller.js
 import { query } from "../utils/db.js";
+import { sendMulticast } from "../services/fcm.service.js";
 import {
   ok, created, noContent, notFound, badRequest, serverError, paginate,
 } from "../utils/response.js";
@@ -74,13 +75,110 @@ export const getPayments = async (req, res) => {
   }
 };
 
+// ══════════════════════════════════════════════════════════════
+// ✅ إرسال واتساب — دالة فارغة جاهزة للتعبئة لاحقاً
+// بمجرد حصولك على Access Token وPhone Number ID من Meta WhatsApp
+// Cloud API، عبّئ الكود هنا فقط (لن تحتاج تعديل أي مكان آخر)
+// ══════════════════════════════════════════════════════════════
+async function sendWhatsAppMessage(phone, athleteName) {
+  const WHATSAPP_TOKEN     = process.env.WHATSAPP_ACCESS_TOKEN;
+  const WHATSAPP_PHONE_ID  = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  if (!WHATSAPP_TOKEN || !WHATSAPP_PHONE_ID) {
+    console.log("ℹ️ [WhatsApp] لم يُعدّ بعد — تخطي إرسال رسالة واتساب لـ", phone);
+    return;
+  }
+
+  try {
+    // TODO: عدّل اسم القالب (template name) ليطابق بالضبط الاسم الذي وافقت عليه Meta
+    const res = await fetch(
+      `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${WHATSAPP_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: phone.replace(/^0/, "213"), // تحويل الرقم المحلي (05..) لصيغة دولية (2135..)
+          type: "template",
+          template: {
+            name: "payment_confirmation", // ✏️ عدّل هذا الاسم حسب القالب المعتمد لديك
+            language: { code: "ar" },
+            components: [
+              { type: "body", parameters: [{ type: "text", text: athleteName }] },
+            ],
+          },
+        }),
+      }
+    );
+    if (!res.ok) {
+      const errBody = await res.text();
+      console.error("❌ [WhatsApp] فشل الإرسال:", errBody);
+    } else {
+      console.log("✅ [WhatsApp] أُرسلت رسالة لـ", phone);
+    }
+  } catch (err) {
+    console.error("❌ [WhatsApp] خطأ في الاتصال:", err.message);
+  }
+}
+
+// ── إشعار اكتمال الدفع بالكامل — داخل المنصة (Portal) + واتساب ──
+async function notifyFullPayment(subscriptionId, gymId) {
+  try {
+    const info = await query(
+      `SELECT u.id AS athlete_id, u.full_name AS athlete_name, u.phone AS athlete_phone
+       FROM subscriptions s
+       JOIN users u ON u.id = s.athlete_id
+       WHERE s.id = $1`,
+      [subscriptionId]
+    );
+    if (!info.rows.length) return;
+    const { athlete_id, athlete_name, athlete_phone } = info.rows[0];
+
+    const title = "تم اكتمال الدفع ✅";
+    const body  = `تم دفع اشتراكك بالكامل، شكراً لك ${athlete_name}!`;
+
+    // ── الرياضي نفسه + كل أولياء أموره المرتبطين ──────────────
+    const ids = await query(
+      `SELECT guardian_id AS id FROM guardian_athlete WHERE athlete_id = $1
+       UNION SELECT $1::uuid`,
+      [athlete_id]
+    );
+
+    for (const { id } of ids.rows) {
+      await query(
+        `INSERT INTO notifications (user_id, title, body, type, metadata)
+         VALUES ($1, $2, $3, 'payment', $4)`,
+        [id, title, body, JSON.stringify({ subscriptionId })]
+      );
+    }
+
+    // ── إشعار Push فوري لكل من لديه توكن نشط ──────────────────
+    const tokens = await query(
+      `SELECT token FROM user_fcm_tokens WHERE user_id = ANY($1::uuid[]) AND is_active = TRUE`,
+      [ids.rows.map(r => r.id)]
+    );
+    if (tokens.rows.length) {
+      await sendMulticast({ tokens: tokens.rows.map(r => r.token), title, body });
+    }
+
+    // ── رسالة واتساب (فارغة حتى تُعدّ بيانات Meta) ─────────────
+    if (athlete_phone) {
+      await sendWhatsAppMessage(athlete_phone, athlete_name);
+    }
+  } catch (err) {
+    console.error("❌ notifyFullPayment error:", err.message);
+  }
+}
+
 // ── POST /api/payments ──────────────────────────────────────────
 export const createPayment = async (req, res) => {
   try {
     const { subscriptionId, amount, method = "cash", notes, paidAt } = req.body;
     const gymId = req.user.gym_id;
 
-    // تحقق أن الاشتراك ينتمي لهذه الصالة، واجلب السعر والمدفوع حالياً
     const sub = await query(
       `SELECT s.id, s.price,
               COALESCE((SELECT SUM(amount) FROM payments WHERE subscription_id = s.id AND status='paid'), 0) AS total_paid
@@ -107,6 +205,13 @@ export const createPayment = async (req, res) => {
        RETURNING *`,
       [subscriptionId, amount, method, notes || null, req.user.id, paidAt || null]
     );
+
+    // ✅ جديد: هل أصبح الاشتراك مدفوعاً بالكامل بعد هذه الدفعة تحديداً؟
+    const newRemaining = remaining - Number(amount);
+    if (newRemaining <= 0.01) {
+      // لا نُعطِّل استجابة المستخدم بانتظار الإشعارات — تعمل في الخلفية
+      notifyFullPayment(subscriptionId, gymId);
+    }
 
     return created(res, rows[0]);
   } catch (err) {
