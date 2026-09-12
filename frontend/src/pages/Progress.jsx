@@ -7,7 +7,7 @@ import { Button, Badge, Spinner, Empty } from "@/components/ui";
 import AthleteProgressDetail from "@/components/progress/AthleteProgressDetail";
 import { progressService } from "@/services/progress.service";
 
-const AGE_CATEGORY_KEYS = ["", "مدارس", "كتاكيت", "تلاميذ", "براعم", "أصاغر", "ناشئين", "أشبال", "أواسط", "أمال", "أكابر"];
+const AGE_CATEGORY_KEYS = ["", "مدارس", "كتاكيت", "براعم", "أصاغر", "أشبال", "أواسط", "أمال", "أكابر"];
 
 function StatsRow({ data, t }) {
   const total = data?.meta?.total || 0;
@@ -35,8 +35,7 @@ export default function ProgressPage() {
   // ✅ نفس نمط الفئات في MemberForm: القيمة تبقى بالعربية، فقط التسمية تُترجم
   const CATEGORY_LABELS = {
     "مدارس": t("members.categorySchools"), "كتاكيت": t("members.categoryChicks"),
-    "تلاميذ": t("members.categoryPupils"), "براعم": t("members.categoryBuds"),
-    "أصاغر": t("members.categoryYoungCubs"), "ناشئين": t("members.categoryMinimes"),
+    "براعم": t("members.categoryBuds"), "أصاغر": t("members.categoryYoungCubs"),
     "أشبال": t("members.categoryCubs"), "أواسط": t("members.categoryMids"),
     "أمال": t("members.categoryHopes"), "أكابر": t("members.categorySeniors"),
   };

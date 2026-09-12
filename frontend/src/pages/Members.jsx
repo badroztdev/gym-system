@@ -69,11 +69,10 @@ function FiltersBar({ search, status, ageCategory, showInactive, onSearch, onSta
   ];
   // ✅ القيم الفعلية (value) تبقى بالعربية دائماً لأنها تُخزَّن هكذا في قاعدة البيانات
   // فقط التسمية المعروضة (label) تُترجم — يمنع كسر الفلترة عند تبديل اللغة
-  const categoryKeys = ["", "مدارس", "كتاكيت", "تلاميذ", "براعم", "أصاغر", "ناشئين", "أشبال", "أواسط", "أمال", "أكابر"];
+  const categoryKeys = ["", "مدارس", "كتاكيت", "براعم", "أصاغر", "أشبال", "أواسط", "أمال", "أكابر"];
   const categoryLabels = {
     "مدارس": t("members.categorySchools"), "كتاكيت": t("members.categoryChicks"),
-    "تلاميذ": t("members.categoryPupils"), "براعم": t("members.categoryBuds"),
-    "أصاغر": t("members.categoryYoungCubs"), "ناشئين": t("members.categoryMinimes"),
+    "براعم": t("members.categoryBuds"), "أصاغر": t("members.categoryYoungCubs"),
     "أشبال": t("members.categoryCubs"), "أواسط": t("members.categoryMids"),
     "أمال": t("members.categoryHopes"), "أكابر": t("members.categorySeniors"),
   };

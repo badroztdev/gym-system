@@ -54,10 +54,10 @@ function TimeSelect({ label, value, onChange, error, timeOptions }) {
 }
 
 const AGE_CATEGORIES = [
-  { value: "مدارس" },  { value: "كتاكيت" }, { value: "تلاميذ" },
-  { value: "براعم" },  { value: "أصاغر" },  { value: "ناشئين" },
-  { value: "أشبال" },  { value: "أواسط" },  { value: "أمال" },
-  { value: "أكابر" },
+  { value: "مدارس" },  { value: "كتاكيت" },
+  { value: "براعم" },  { value: "أصاغر" },
+  { value: "أشبال" },  { value: "أواسط" },
+  { value: "أمال" },   { value: "أكابر" },
 ];
 
 // ✅ إصلاح: .toISOString() يحوّل للتوقيت العالمي (UTC) لا المحلي
@@ -95,8 +95,7 @@ export default function SessionForm({ open, onClose, session, onSuccess }) {
   // لمطابقة ما يُخزَّن في قاعدة البيانات، فقط التسمية تُترجم
   const AGE_CATEGORY_LABELS = {
     "مدارس": t("members.categorySchools"), "كتاكيت": t("members.categoryChicks"),
-    "تلاميذ": t("members.categoryPupils"), "براعم": t("members.categoryBuds"),
-    "أصاغر": t("members.categoryYoungCubs"), "ناشئين": t("members.categoryMinimes"),
+    "براعم": t("members.categoryBuds"), "أصاغر": t("members.categoryYoungCubs"),
     "أشبال": t("members.categoryCubs"), "أواسط": t("members.categoryMids"),
     "أمال": t("members.categoryHopes"), "أكابر": t("members.categorySeniors"),
   };
