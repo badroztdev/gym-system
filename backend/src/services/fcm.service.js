@@ -7,9 +7,15 @@ import admin from "firebase-admin";
 
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "gym-pro-fe5fb";
 
+// ✅ يُطبَع فور تحميل هذا الملف من قِبَل Node.js — إذا لم يظهر هذا السطر
+// إطلاقاً في السجلات عند بدء تشغيل الخادم، فهذا يعني أن الملف الجديد لم
+// يُنشَر فعلياً على الخادم (رغم كل تأكيداتنا السابقة)
+console.log("📦 [FCM] fcm.service.js module loaded");
+
 let initialized = false;
 
 function ensureInitialized() {
+  console.log("🔧 [FCM] ensureInitialized() called — initialized so far:", initialized);
   if (initialized) return;
 
   let serviceAccount;
@@ -25,12 +31,22 @@ function ensureInitialized() {
     return;
   }
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    projectId: PROJECT_ID,
-  });
-  initialized = true;
-  console.log("✅ [FCM] Firebase Admin SDK initialized");
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      projectId: PROJECT_ID,
+    });
+    initialized = true;
+    console.log("✅ [FCM] Firebase Admin SDK initialized");
+  } catch (err) {
+    // ✅ إذا كان التطبيق مُهيَّأً مسبقاً (نادراً)، اعتبره ناجحاً بدل الفشل
+    if (err.code === "app/duplicate-app") {
+      initialized = true;
+      console.log("✅ [FCM] Firebase Admin SDK already initialized (reused)");
+    } else {
+      console.error("❌ [FCM] initializeApp failed:", err.message);
+    }
+  }
 }
 
 export const sendNotification = async ({ token, title, body, data = {} }) => {
