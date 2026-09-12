@@ -1,22 +1,21 @@
 // src/services/fcm.service.js
-// ✅ تحويل كامل لاستخدام مكتبة Firebase الرسمية (firebase-admin) بدل إعادة
-// تطبيق بروتوكول OAuth/JWT يدوياً — يُزيل أي احتمال لخطأ خفي في التطبيق اليدوي
-// السابق، ويعتمد كلياً على الكود المُختبَر رسمياً من جوجل نفسها
+// ✅ الإصلاح الجوهري النهائي: firebase-admin v14+ يتطلب "الاستيراد المُجزَّأ"
+// (Modular API) بدل النمط القديم (import admin from "firebase-admin" ثم
+// admin.credential.cert(...)) — النمط القديم كان يجعل admin.credential غير
+// معرَّف إطلاقاً (undefined) في هذا الإصدار، مسبِّباً فشل التهيئة صامتاً
+// من نوع "Cannot read properties of undefined (reading 'cert')"
 import { readFileSync } from "fs";
-import admin from "firebase-admin";
+import { initializeApp, cert, getApps } from "firebase-admin/app";
+import { getMessaging } from "firebase-admin/messaging";
 
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "gym-pro-fe5fb";
 
-// ✅ يُطبَع فور تحميل هذا الملف من قِبَل Node.js — إذا لم يظهر هذا السطر
-// إطلاقاً في السجلات عند بدء تشغيل الخادم، فهذا يعني أن الملف الجديد لم
-// يُنشَر فعلياً على الخادم (رغم كل تأكيداتنا السابقة)
 console.log("📦 [FCM] fcm.service.js module loaded");
 
-let initialized = false;
+let messagingInstance = null;
 
 function ensureInitialized() {
-  console.log("🔧 [FCM] ensureInitialized() called — initialized so far:", initialized);
-  if (initialized) return;
+  if (messagingInstance) return messagingInstance;
 
   let serviceAccount;
   try {
@@ -28,33 +27,30 @@ function ensureInitialized() {
     }
   } catch (err) {
     console.warn("⚠️  Firebase Service Account not found — notifications disabled:", err.message);
-    return;
+    return null;
   }
 
   try {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      projectId: PROJECT_ID,
-    });
-    initialized = true;
-    console.log("✅ [FCM] Firebase Admin SDK initialized");
+    // ✅ تجنّب تهيئة مضاعفة إن استُدعيت هذه الدالة أكثر من مرة
+    const app = getApps().length
+      ? getApps()[0]
+      : initializeApp({ credential: cert(serviceAccount), projectId: PROJECT_ID });
+
+    messagingInstance = getMessaging(app);
+    console.log("✅ [FCM] Firebase Admin SDK initialized (modular API)");
+    return messagingInstance;
   } catch (err) {
-    // ✅ إذا كان التطبيق مُهيَّأً مسبقاً (نادراً)، اعتبره ناجحاً بدل الفشل
-    if (err.code === "app/duplicate-app") {
-      initialized = true;
-      console.log("✅ [FCM] Firebase Admin SDK already initialized (reused)");
-    } else {
-      console.error("❌ [FCM] initializeApp failed:", err.message);
-    }
+    console.error("❌ [FCM] initializeApp failed:", err.message);
+    return null;
   }
 }
 
 export const sendNotification = async ({ token, title, body, data = {} }) => {
-  ensureInitialized();
-  if (!initialized) return { success: false, error: "Firebase Service Account not configured" };
+  const messaging = ensureInitialized();
+  if (!messaging) return { success: false, error: "Firebase Service Account not configured" };
 
   try {
-    const messageId = await admin.messaging().send({
+    const messageId = await messaging.send({
       token,
       notification: { title, body },
       data: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])),
@@ -65,7 +61,6 @@ export const sendNotification = async ({ token, title, body, data = {} }) => {
     });
     return { success: true, messageId };
   } catch (err) {
-    // ✅ رسالة الخطأ الآن تأتي مباشرة من مكتبة Google الرسمية — أكثر دقة ووضوحاً
     console.error("❌ [FCM] send error:", err.code || err.message, "—", err.message);
     return { success: false, error: err.message };
   }
