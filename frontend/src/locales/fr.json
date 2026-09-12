@@ -278,7 +278,11 @@
     "colMethod": "Méthode",
     "colTime": "Heure",
     "colChange": "Modifier",
-    "deleteSession": "Supprimer la séance"
+    "deleteSession": "Supprimer la séance",
+    "deleteSeries": "Supprimer toute la série récurrente",
+    "deleteSeriesTitle": "⚠️ Supprimer toute la série récurrente",
+    "deleteSeriesMessage": "Toutes les séances futures (à partir d'aujourd'hui) de cette série récurrente seront supprimées définitivement. Les séances passées et leurs présences resteront conservées. Action totalement irréversible.",
+    "toastSeriesDeleted": "Série récurrente supprimée définitivement"
   },
   "sessionForm": {
     "addTitle": "Nouvelle séance",

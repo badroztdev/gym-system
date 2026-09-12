@@ -8,4 +8,7 @@ export const sessionsService = {
   create:  (data)   => api.post("/sessions", data)           .then(r => r.data),
   update:  (id, d)  => api.patch(`/sessions/${id}`, d)       .then(r => r.data),
   cancel:  (id, reason) => api.delete(`/sessions/${id}`, { data: { reason } }),
+
+  // ✅ حذف نهائي لكل السلسلة المتكررة (الحصص القادمة فقط، الماضية تبقى محفوظة)
+  deleteSeries: (id) => api.delete(`/sessions/${id}/series`).then(r => r.data),
 };

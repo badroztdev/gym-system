@@ -66,6 +66,7 @@ function ScheduleTab() {
   const [showForm, setShowForm] = useState(false);
   const [editSession, setEditSession] = useState(null);
   const [cancelId, setCancelId] = useState(null);
+  const [deleteSeriesId, setDeleteSeriesId] = useState(null);
 
   const weekDates = useMemo(() => {
     const base = getWeekDates(); // أيام الأسبوع الحالي
@@ -88,6 +89,16 @@ function ScheduleTab() {
       toast.success(t("sessions.toastSessionCancelled"));
       qc.invalidateQueries({ queryKey: ["sessions-week"], exact: false });
       setCancelId(null);
+    },
+  });
+
+  // ✅ حذف نهائي لكل السلسلة المتكررة (الحصص القادمة فقط)
+  const deleteSeriesMutation = useMutation({
+    mutationFn: (id) => sessionsService.deleteSeries(id),
+    onSuccess: (res) => {
+      toast.success(res.data?.message || t("sessions.toastSeriesDeleted"));
+      qc.invalidateQueries({ queryKey: ["sessions-week"], exact: false });
+      setDeleteSeriesId(null);
     },
   });
 
@@ -175,7 +186,7 @@ function ScheduleTab() {
         👥 {s.present_count}/{s.enrolled_count}
       </div>
 
-      {/* زر الحذف — يفتح نافذة تأكيد قبل الإلغاء الفعلي */}
+      {/* زر الحذف — يفتح نافذة تأكيد قبل الإلغاء الفعلي (هذه الحصة فقط) */}
       <button
         onClick={(e) => { e.stopPropagation(); setCancelId(s.id); }}
         title={t("sessions.deleteSession")}
@@ -188,6 +199,22 @@ function ScheduleTab() {
         onMouseEnter={e => e.currentTarget.style.opacity = 1}
         onMouseLeave={e => e.currentTarget.style.opacity = 0.7}
       >🗑️</button>
+
+      {/* ✅ زر حذف نهائي لكل السلسلة المتكررة — يظهر فقط للحصص المتكررة */}
+      {s.is_recurring && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setDeleteSeriesId(s.id); }}
+          title={t("sessions.deleteSeries")}
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            color: "var(--danger)", fontSize: compact ? 13 : 15,
+            padding: compact ? 2 : 4, flexShrink: 0, lineHeight: 1,
+            opacity: 0.7,
+          }}
+          onMouseEnter={e => e.currentTarget.style.opacity = 1}
+          onMouseLeave={e => e.currentTarget.style.opacity = 0.7}
+        >🗑️🔁</button>
+      )}
     </div>
   );
 
@@ -311,6 +338,16 @@ function ScheduleTab() {
         loading={cancelMutation.isPending}
         title={t("sessions.cancelSessionTitle")}
         message={t("sessions.cancelSessionMessage")}
+      />
+
+      {/* ✅ تأكيد حذف السلسلة المتكررة بالكامل — تحذير أقوى بسبب نطاقه الواسع */}
+      <Confirm
+        open={!!deleteSeriesId}
+        onClose={() => setDeleteSeriesId(null)}
+        onConfirm={() => deleteSeriesMutation.mutate(deleteSeriesId)}
+        loading={deleteSeriesMutation.isPending}
+        title={t("sessions.deleteSeriesTitle")}
+        message={t("sessions.deleteSeriesMessage")}
       />
     </>
   );
