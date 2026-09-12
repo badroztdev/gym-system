@@ -1,99 +1,56 @@
 // src/services/fcm.service.js
+// ✅ تحويل كامل لاستخدام مكتبة Firebase الرسمية (firebase-admin) بدل إعادة
+// تطبيق بروتوكول OAuth/JWT يدوياً — يُزيل أي احتمال لخطأ خفي في التطبيق اليدوي
+// السابق، ويعتمد كلياً على الكود المُختبَر رسمياً من جوجل نفسها
 import { readFileSync } from "fs";
-import { createSign } from "crypto";
+import admin from "firebase-admin";
 
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "gym-pro-fe5fb";
-const FCM_URL = `https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`;
 
-let serviceAccount = null;
-let cachedToken = null;
-let tokenExpiry = 0;
+let initialized = false;
 
-function getServiceAccount() {
-  if (serviceAccount) return serviceAccount;
+function ensureInitialized() {
+  if (initialized) return;
+
+  let serviceAccount;
   try {
-    // ✅ الإصلاح الجوهري: الطريقة المفضّلة الآن هي قراءة بيانات الاعتماد
-    // من متغيّر بيئي (Environment Variable) يحتوي محتوى ملف JSON كاملاً كنص —
-    // أكثر أماناً وموثوقية على منصات مثل Railway، لأنها لا تعتمد على وجود
-    // ملف فعلي على القرص (الذي لا يُرفَع أبداً لمستودع Git لأسباب أمنية،
-    // وبالتالي كان غائباً تماماً عن الخادم المنشور، مما أفشل كل محاولة إرسال صامتاً)
     if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
       serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-      return serviceAccount;
+    } else {
+      const path = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || "./firebase-service-account.json";
+      serviceAccount = JSON.parse(readFileSync(path, "utf8"));
     }
-    // احتياطي: قراءة من ملف محلي (يبقى مفيداً للتطوير على جهازك الشخصي فقط)
-    const path = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || "./firebase-service-account.json";
-    serviceAccount = JSON.parse(readFileSync(path, "utf8"));
-    return serviceAccount;
   } catch (err) {
     console.warn("⚠️  Firebase Service Account not found — notifications disabled:", err.message);
-    return null;
+    return;
   }
-}
 
-async function getAccessToken() {
-  // ⚠️ تعطيل مؤقت للتخزين المؤقت للتشخيص: كان الرمز القديم (ربما بصلاحيات
-  // غير كافية) يبقى محفوظاً حتى 58 دقيقة، فيُعاد استخدامه بغض النظر عن أي
-  // تعديل صلاحيات لاحق في Google Cloud (لأن تعديل IAM لا يُعيد تشغيل الخادم)
-  // TODO: أعد تفعيل هذا السطر بعد التأكد من نجاح الإرسال فعلياً
-  // if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
-
-  const sa = getServiceAccount();
-  if (!sa) throw new Error("Firebase Service Account not configured");
-
-  const now = Math.floor(Date.now() / 1000);
-  const header  = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(JSON.stringify({
-    iss: sa.client_email, sub: sa.client_email,
-    aud: "https://oauth2.googleapis.com/token",
-    iat: now, exp: now + 3600,
-    scope: "https://www.googleapis.com/auth/firebase.messaging",
-  })).toString("base64url");
-
-  const sign = createSign("RSA-SHA256");
-  sign.update(`${header}.${payload}`);
-  const jwt = `${header}.${payload}.${sign.sign(sa.private_key, "base64url")}`;
-
-  const res  = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    projectId: PROJECT_ID,
   });
-  const data = await res.json();
-  if (!data.access_token) throw new Error("FCM auth failed");
-
-  cachedToken = data.access_token;
-  tokenExpiry = Date.now() + 3500 * 1000;
-  return cachedToken;
+  initialized = true;
+  console.log("✅ [FCM] Firebase Admin SDK initialized");
 }
 
 export const sendNotification = async ({ token, title, body, data = {} }) => {
+  ensureInitialized();
+  if (!initialized) return { success: false, error: "Firebase Service Account not configured" };
+
   try {
-    const accessToken = await getAccessToken();
-    const res = await fetch(FCM_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: {
-          token,
-          notification: { title, body },
-          data: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])),
-          webpush: {
-            notification: { title, body, icon: "/icon-192.png", dir: "rtl", lang: "ar" },
-            fcm_options: { link: "/" },
-          },
-        },
-      }),
+    const messageId = await admin.messaging().send({
+      token,
+      notification: { title, body },
+      data: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])),
+      webpush: {
+        notification: { title, body, icon: "/icon-192.png" },
+        fcmOptions: { link: "/" },
+      },
     });
-    const result = await res.json();
-    if (result.error) {
-      // ✅ إضافة: كان الخطأ يُخفى تماماً سابقاً — الآن يظهر في سجلات Railway
-      console.error("❌ [FCM] send error:", JSON.stringify(result.error));
-      return { success: false, error: result.error };
-    }
-    return { success: true, messageId: result.name };
+    return { success: true, messageId };
   } catch (err) {
-    console.error("❌ [FCM] sendNotification exception:", err.message);
+    // ✅ رسالة الخطأ الآن تأتي مباشرة من مكتبة Google الرسمية — أكثر دقة ووضوحاً
+    console.error("❌ [FCM] send error:", err.code || err.message, "—", err.message);
     return { success: false, error: err.message };
   }
 };
