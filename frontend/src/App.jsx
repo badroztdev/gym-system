@@ -60,6 +60,19 @@ function useFcmSetup(token, user) {
   useEffect(() => {
     if (!token || !user) return;
 
+    // ✅ تسجيل تشخيصي مؤقت — يُرسَل مباشرة لسجلات الخادم على Railway
+    // (بدل الحاجة لتوصيل الهاتف بالحاسوب لرؤية سجلات Flutter)
+    // يكشف هل يوجد جسر FlutterAuthBridge فعلاً في هذه اللحظة أم لا
+    fetch(`${import.meta.env.VITE_API_URL}/api/debug-log`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "useFcmSetup fired",
+        hasFlutterBridge: !!window.FlutterAuthBridge,
+        userId: user?.id,
+      }),
+    }).catch(() => {});
+
     // ✅ داخل تطبيق SGMS Athlete (Flutter WebView): مرّر رمز الدخول (JWT)
     // للتطبيق الأصلي عبر الجسر، ليُسجِّل هو نفسه توكن Firebase الأصلي
     // (أكثر موثوقية من web push داخل WebView)

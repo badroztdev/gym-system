@@ -65,6 +65,14 @@ app.use(rateLimit({ windowMs: 60 * 1000, max: 400 }));
 // ── Body parser ───────────────────────────────────────────────
 app.use(express.json({ limit: "10mb" }));
 
+// ── ✅ نقطة تشخيص مؤقتة: تستقبل رسائل تصحيح من الواجهة الأمامية وتطبعها
+// مباشرة في سجلات الخادم — تُستخدم فقط لتتبّع مشكلة تسجيل توكن الإشعارات
+// TODO: احذف هذا المسار بعد انتهاء التشخيص
+app.post("/api/debug-log", express.json(), (req, res) => {
+  console.log("🐛 [DEBUG]", JSON.stringify(req.body));
+  res.json({ received: true });
+});
+
 // ── Routes ────────────────────────────────────────────────────
 app.use("/api", router);
 
