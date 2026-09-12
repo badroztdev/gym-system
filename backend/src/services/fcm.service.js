@@ -32,7 +32,11 @@ function getServiceAccount() {
 }
 
 async function getAccessToken() {
-  if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
+  // ⚠️ تعطيل مؤقت للتخزين المؤقت للتشخيص: كان الرمز القديم (ربما بصلاحيات
+  // غير كافية) يبقى محفوظاً حتى 58 دقيقة، فيُعاد استخدامه بغض النظر عن أي
+  // تعديل صلاحيات لاحق في Google Cloud (لأن تعديل IAM لا يُعيد تشغيل الخادم)
+  // TODO: أعد تفعيل هذا السطر بعد التأكد من نجاح الإرسال فعلياً
+  // if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
 
   const sa = getServiceAccount();
   if (!sa) throw new Error("Firebase Service Account not configured");
