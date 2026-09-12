@@ -12,7 +12,7 @@ import { getPlans, createPlan, updatePlan, deletePlan } from "../controllers/pla
 import { getSubscriptions, getSubscription, createSubscription, updateSubscription, deleteSubscription, getSubscriptionStats } from "../controllers/subscriptions.controller.js";
 import { getPayments, createPayment, deletePayment, getPaymentsStats } from "../controllers/payments.controller.js";
 import { getRooms, createRoom, updateRoom, deleteRoom, regenerateQR } from "../controllers/rooms.controller.js";
-import { getSessions, getSession, createSession, updateSession, cancelSession, getTodaySessions } from "../controllers/sessions.controller.js";
+import { getSessions, getSession, createSession, updateSession, cancelSession, deleteRecurringSeries, getTodaySessions } from "../controllers/sessions.controller.js";
 import { scanQR, getSessionAttendance, manualAttendance, getAthleteAttendance, getAttendanceOverview, getAttendanceTrend, getAttendanceLeaderboard, getAttendanceByCategory, getRecentSessionsAttendance } from "../controllers/attendance.controller.js";
 import { saveToken, getNotifications, markRead, sendManual, notifyExpiringSubscriptions } from "../controllers/notifications.controller.js";
 import { getMyAthletes, getDashboard, getSchedule, getAttendanceHistory, getSubscriptionHistory, scanAttendance } from "../controllers/portal.controller.js";
@@ -132,6 +132,7 @@ router.post  ("/sessions",        authenticate, coachAndAbove, [
 ], createSession);
 router.patch ("/sessions/:id",    authenticate, coachAndAbove, updateSession);
 router.delete("/sessions/:id",    authenticate, coachAndAbove, cancelSession);
+router.delete("/sessions/:id/series", authenticate, ownerOnly, deleteRecurringSeries);
 
 // ── Attendance ────────────────────────────────────────────────
 router.post("/attendance/scan",                   authenticate, [

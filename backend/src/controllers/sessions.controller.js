@@ -164,7 +164,6 @@ export const updateSession = async (req, res) => {
       isCancelled, cancelReason
     } = req.body;
 
-    // undefined = لم يُرسَل من الفورم (لا تغيير) | [] أو غير مُرسَل بقيمة = يمسح الفئات (كل الأعمار)
     const ageCats = ageCategories === undefined
       ? null
       : (Array.isArray(ageCategories) && ageCategories.length ? ageCategories : []);
@@ -207,7 +206,7 @@ export const updateSession = async (req, res) => {
   } catch (err) { serverError(res, err); }
 };
 
-// ── DELETE /api/sessions/:id ───────────────────────────────────
+// ── DELETE /api/sessions/:id  (إلغاء حصة واحدة فقط - soft) ──────
 export const cancelSession = async (req, res) => {
   try {
     const { rows } = await query(
@@ -217,6 +216,61 @@ export const cancelSession = async (req, res) => {
     );
     if (!rows.length) return notFound(res, "الحصة غير موجودة");
     return noContent(res);
+  } catch (err) { serverError(res, err); }
+};
+
+// ── DELETE /api/sessions/:id/series  (حذف نهائي لكل السلسلة المتكررة) ──
+// ✅ جديد: يحذف نهائياً كل الحصص القادمة (من اليوم فصاعداً) التي تنتمي لنفس
+// سلسلة التكرار (نفس العنوان، المدرب، الوقت، أيام التكرار، وتاريخ الانتهاء) —
+// الحصص الماضية وسجلات حضورها التاريخية تبقى محفوظة كما هي دون أي تغيير
+export const deleteRecurringSeries = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const gymId = req.user.gym_id;
+
+    const sessionRes = await query(
+      `SELECT title, coach_id, room_id, category_id, start_time, end_time,
+              recurrence_days, recurrence_end, is_recurring
+       FROM sessions WHERE id = $1 AND gym_id = $2`,
+      [id, gymId]
+    );
+    if (!sessionRes.rows.length) return notFound(res, "الحصة غير موجودة");
+    const s = sessionRes.rows[0];
+
+    // إذا لم تكن الحصة متكررة أصلاً، احذف هذه الحصة فقط نهائياً
+    if (!s.is_recurring) {
+      await transaction(async (client) => {
+        await client.query("DELETE FROM attendance WHERE session_id = $1", [id]);
+        await client.query("DELETE FROM session_enrollments WHERE session_id = $1", [id]);
+        await client.query("DELETE FROM sessions WHERE id = $1", [id]);
+      });
+      return ok(res, { message: "تم حذف الحصة نهائياً", deletedCount: 1 });
+    }
+
+    // ✅ ابحث عن كل حصص نفس السلسلة القادمة فقط (من اليوم فصاعداً)
+    const matching = await query(
+      `SELECT id FROM sessions
+       WHERE gym_id = $1 AND coach_id = $2 AND title = $3
+         AND start_time = $4 AND end_time = $5
+         AND recurrence_days = $6 AND recurrence_end = $7
+         AND is_recurring = TRUE
+         AND session_date >= CURRENT_DATE
+         AND COALESCE(room_id::text,'')     = COALESCE($8::text,'')
+         AND COALESCE(category_id::text,'') = COALESCE($9::text,'')`,
+      [gymId, s.coach_id, s.title, s.start_time, s.end_time,
+       s.recurrence_days, s.recurrence_end, s.room_id, s.category_id]
+    );
+
+    const ids = matching.rows.map(r => r.id);
+    if (!ids.length) return notFound(res, "لا توجد حصص قادمة مطابقة لهذه السلسلة");
+
+    await transaction(async (client) => {
+      await client.query("DELETE FROM attendance WHERE session_id = ANY($1::uuid[])", [ids]);
+      await client.query("DELETE FROM session_enrollments WHERE session_id = ANY($1::uuid[])", [ids]);
+      await client.query("DELETE FROM sessions WHERE id = ANY($1::uuid[])", [ids]);
+    });
+
+    return ok(res, { message: `تم حذف ${ids.length} حصة نهائياً`, deletedCount: ids.length });
   } catch (err) { serverError(res, err); }
 };
 
