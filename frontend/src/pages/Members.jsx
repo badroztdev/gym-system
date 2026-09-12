@@ -6,6 +6,7 @@ import { membersService } from "@/services/members.service";
 import { useAuthStore } from "@/store/authStore";
 import PageHeader from "@/components/layout/PageHeader";
 import MemberForm from "@/components/members/MemberForm";
+import MemberDetail from "@/components/members/MemberDetail";
 import { Button, Badge, Spinner, Empty, Confirm, Modal } from "@/components/ui";
 import toast from "react-hot-toast";
 
@@ -154,6 +155,7 @@ export default function MembersPage() {
   const [showForm, setShowForm] = useState(false);
   const [editMember, setEditMember] = useState(null);
   const [deleteId,  setDeleteId]  = useState(null);
+  const [detailId,  setDetailId]  = useState(null);
   const [permanentDeleteId, setPermanentDeleteId] = useState(null);
   const [resetId,   setResetId]   = useState(null);
   const [resetModal, setResetModal] = useState(false);
@@ -249,10 +251,10 @@ export default function MembersPage() {
                 const s = subStatus(m, t);
                 const roleMap = { athlete: t("members.roleAthlete"), guardian: t("members.roleGuardian") };
                 return (
-                  <div key={m.id} className="fade-in" style={{
+                  <div key={m.id} className="fade-in" onClick={() => setDetailId(m.id)} style={{
                     background: "var(--surface)", border: "1px solid var(--border)",
                     borderRadius: "var(--radius-sm)", padding: 14,
-                    opacity: m.is_active ? 1 : 0.5,
+                    opacity: m.is_active ? 1 : 0.5, cursor: "pointer",
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                       <div style={{
@@ -287,18 +289,18 @@ export default function MembersPage() {
                     )}
 
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-                      <Button variant="secondary" size="sm" onClick={() => openEdit(m)} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--accent2)" }}>{t("members.actionEdit")}</Button>
+                      <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(m); }} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--accent2)" }}>{t("members.actionEdit")}</Button>
                       {isOwner && (
-                        <Button variant="secondary" size="sm" onClick={() => { setResetId(m.id); setCustomPass(""); setResetModal(true); }} style={{ color: "var(--accent3)" }}>🔑</Button>
+                        <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); setResetId(m.id); setCustomPass(""); setResetModal(true); }} style={{ color: "var(--accent3)" }}>🔑</Button>
                       )}
                       {isOwner && m.is_active && (
                         <>
-                          <Button variant="secondary" size="sm" onClick={() => setDeleteId(m.id)} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--danger)" }}>{t("members.actionDelete")}</Button>
-                          <Button variant="secondary" size="sm" onClick={() => setPermanentDeleteId(m.id)} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "#fff", background: "var(--danger)" }}>{t("members.actionPermanentDelete")}</Button>
+                          <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); setDeleteId(m.id); }} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--danger)" }}>{t("members.actionDelete")}</Button>
+                          <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); setPermanentDeleteId(m.id); }} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "#fff", background: "var(--danger)" }}>{t("members.actionPermanentDelete")}</Button>
                         </>
                       )}
                       {isOwner && !m.is_active && (
-                        <Button variant="secondary" size="sm" onClick={() => reactivateMutation.mutate(m.id)} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--accent)" }}>{t("members.actionActivate")}</Button>
+                        <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); reactivateMutation.mutate(m.id); }} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--accent)" }}>{t("members.actionActivate")}</Button>
                       )}
                     </div>
                   </div>
@@ -320,10 +322,10 @@ export default function MembersPage() {
                     const s = subStatus(m, t);
                     const roleMap = { athlete: t("members.roleAthlete"), guardian: t("members.roleGuardian") };
                     return (
-                      <tr key={m.id} className="fade-in"
+                      <tr key={m.id} className="fade-in" onClick={() => setDetailId(m.id)}
                         style={{
                           borderTop: "1px solid var(--border)", transition: "background 0.12s",
-                          opacity: m.is_active ? 1 : 0.5,
+                          opacity: m.is_active ? 1 : 0.5, cursor: "pointer",
                         }}
                         onMouseEnter={e => e.currentTarget.style.background = "var(--surface)"}
                         onMouseLeave={e => e.currentTarget.style.background = "transparent"}
@@ -387,18 +389,18 @@ export default function MembersPage() {
                         </td>
                         <td style={{ padding: "12px 16px" }}>
                           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                            <Button variant="ghost" size="sm" onClick={() => openEdit(m)} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--accent2)" }}>{t("members.actionEdit")}</Button>
+                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(m); }} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--accent2)" }}>{t("members.actionEdit")}</Button>
                             {isOwner && (
-                              <Button variant="ghost" size="sm" onClick={() => { setResetId(m.id); setCustomPass(""); setResetModal(true); }} style={{ color: "var(--accent3)" }}>🔑</Button>
+                              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setResetId(m.id); setCustomPass(""); setResetModal(true); }} style={{ color: "var(--accent3)" }}>🔑</Button>
                             )}
                             {isOwner && m.is_active && (
                               <>
-                                <Button variant="ghost" size="sm" onClick={() => setDeleteId(m.id)} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--danger)" }}>{t("members.actionDelete")}</Button>
-                                <Button variant="ghost" size="sm" onClick={() => setPermanentDeleteId(m.id)} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--danger)", fontWeight: 700 }}>{t("members.actionPermanentDelete")}</Button>
+                                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setDeleteId(m.id); }} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--danger)" }}>{t("members.actionDelete")}</Button>
+                                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setPermanentDeleteId(m.id); }} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--danger)", fontWeight: 700 }}>{t("members.actionPermanentDelete")}</Button>
                               </>
                             )}
                             {isOwner && !m.is_active && (
-                              <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(m.id)} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--accent)" }}>{t("members.actionActivate")}</Button>
+                              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); reactivateMutation.mutate(m.id); }} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--accent)" }}>{t("members.actionActivate")}</Button>
                             )}
                           </div>
                         </td>
@@ -490,6 +492,13 @@ export default function MembersPage() {
         loading={permanentDeleteMutation.isPending}
         title={t("members.permanentDeleteConfirmTitle")}
         message={t("members.permanentDeleteConfirmMessage")}
+      />
+
+      {/* ✅ نافذة تفاصيل العضو الكاملة — تُفتح عند النقر على أي سطر في الجدول */}
+      <MemberDetail
+        open={!!detailId}
+        onClose={() => setDetailId(null)}
+        memberId={detailId}
       />
     </>
   );
