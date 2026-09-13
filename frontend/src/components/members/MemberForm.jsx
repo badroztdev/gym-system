@@ -76,6 +76,7 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
   const [errors,  setErrors]  = useState({});
   const [form,    setForm]    = useState(EMPTY_FORM);
   const [avatarPreview, setAvatarPreview] = useState(null);
+  const [avatarFile, setAvatarFile] = useState(null); // ✅ يُحفَظ للرفع بعد إنشاء عضو جديد
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // ── المشكلة كانت هنا: useState لا يتحدث عند تغيير member ──
@@ -102,6 +103,7 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
     }
     setErrors({});
     setAvatarPreview(null);
+    setAvatarFile(null);
   }, [open, member]);
 
   // ── عند التعديل: جلب بيانات العضو الكاملة لمعرفة ولي الأمر الحالي ──
@@ -139,8 +141,9 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
     if (!file) return;
 
     setAvatarPreview(URL.createObjectURL(file));
+    setAvatarFile(file); // ✅ يُحفَظ دائماً، يُستخدَم لاحقاً عند الإضافة الجديدة
 
-    if (!isEdit) return; // العضو الجديد: تُرفَع الصورة بعد الإنشاء، وليس الآن
+    if (!isEdit) return; // العضو الجديد: تُرفَع الصورة تلقائياً بعد نجاح الإنشاء أدناه
 
     setUploadingAvatar(true);
     try {
@@ -178,8 +181,20 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
         await membersService.update(member.id, payload);
         toast.success(t("memberForm.toastUpdated"));
       } else {
-        await membersService.create(payload);
+        const result = await membersService.create(payload);
         toast.success(t("memberForm.toastCreated"));
+
+        // ✅ إذا اختار المستخدم صورة قبل الحفظ، ارفعها تلقائياً الآن
+        // باستخدام معرّف العضو الجديد الذي أرجعه الخادم للتو
+        const newMemberId = result?.data?.id;
+        if (avatarFile && newMemberId) {
+          try {
+            await membersService.uploadAvatar(newMemberId, avatarFile);
+          } catch {
+            // لا نمنع إغلاق النموذج إن فشل رفع الصورة تحديداً؛ العضو أُنشئ بنجاح على أي حال
+            toast.error(t("memberForm.toastAvatarUploadFailedAfterCreate"));
+          }
+        }
       }
       onSuccess?.();
       onClose();
@@ -224,12 +239,6 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
             <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: "none" }} disabled={uploadingAvatar} />
           </label>
         </div>
-        {!isEdit && (
-          <p style={{ fontSize: 10, color: "var(--muted)", textAlign: "center", marginTop: -8 }}>
-            {t("memberForm.avatarAfterCreateHint")}
-          </p>
-        )}
-
         <Section title={t("memberForm.sectionBasic")} />
 
         <Input

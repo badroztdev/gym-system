@@ -127,7 +127,8 @@
     "addMember": "إضافة العضو",
     "groupLabel": "الفوج {{num}}",
     "toastAvatarUpdated": "تم تحديث الصورة ✅",
-    "avatarAfterCreateHint": "💡 يمكنك إضافة صورة بعد إنشاء العضو، من نافذة التعديل"
+    "avatarAfterCreateHint": "💡 يمكنك إضافة صورة بعد إنشاء العضو، من نافذة التعديل",
+    "toastAvatarUploadFailedAfterCreate": "تم إضافة العضو لكن فشل رفع الصورة، حاول رفعها من نافذة التعديل"
   },
   "subscriptions": {
     "pageTitle": "الاشتراكات والمدفوعات",

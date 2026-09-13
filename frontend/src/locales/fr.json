@@ -127,7 +127,8 @@
     "addMember": "Ajouter le membre",
     "groupLabel": "Groupe {{num}}",
     "toastAvatarUpdated": "Photo mise à jour ✅",
-    "avatarAfterCreateHint": "💡 Vous pourrez ajouter une photo après la création du membre, depuis la fenêtre de modification"
+    "avatarAfterCreateHint": "💡 Vous pourrez ajouter une photo après la création du membre, depuis la fenêtre de modification",
+    "toastAvatarUploadFailedAfterCreate": "Membre ajouté mais l'envoi de la photo a échoué, réessayez depuis la modification"
   },
   "subscriptions": {
     "pageTitle": "Abonnements et paiements",

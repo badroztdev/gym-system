@@ -76,12 +76,17 @@ export default function PortalProfile() {
         background: "var(--card)", border: "1px solid var(--border)",
         borderRadius: 18, padding: 20, marginBottom: 20, textAlign: "center",
       }}>
+        {/* ✅ صورة الرياضي الحقيقية إن وُجدت، وإلا الحرف الأول كسابقاً */}
         <div style={{
-          width: 72, height: 72, borderRadius: "50%", margin: "0 auto 12px",
+          width: 72, height: 72, borderRadius: "50%", margin: "0 auto 12px", overflow: "hidden",
           background: "linear-gradient(135deg, var(--accent), var(--accent2))",
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 28, fontWeight: 700, color: "#0d0f14",
-        }}>{athlete.full_name?.[0]}</div>
+        }}>
+          {athlete.avatar_url
+            ? <img src={athlete.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            : athlete.full_name?.[0]}
+        </div>
         <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{athlete.full_name}</div>
         <div className="mono" style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{athlete.phone}</div>
 
