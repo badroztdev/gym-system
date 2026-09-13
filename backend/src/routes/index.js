@@ -1,11 +1,12 @@
 // src/routes/index.js
 import { Router } from "express";
+import multer from "multer";
 import { body } from "express-validator";
 import { validate } from "../middleware/validate.js";
 import { authenticate, staffOnly, coachAndAbove, ownerOnly, authorize } from "../middleware/auth.js";
 
 import { login, me } from "../controllers/auth.controller.js";
-import { getMembers, getMember, createMember, updateMember, deleteMember, deleteMemberPermanently, getMembersStats, resetPassword } from "../controllers/members.controller.js";
+import { getMembers, getMember, createMember, updateMember, deleteMember, deleteMemberPermanently, getMembersStats, resetPassword, uploadMemberAvatar } from "../controllers/members.controller.js";
 import { getCategories, createCategory, updateCategory, deleteCategory } from "../controllers/categories.controller.js";
 import { getStaff, getStaffMember, createStaff, updateStaff, deleteStaff } from "../controllers/staff.controller.js";
 import { getPlans, createPlan, updatePlan, deletePlan } from "../controllers/plans.controller.js";
@@ -24,6 +25,17 @@ import { getAllGyms, getPlatformOverview, updateGymStatus, updateGymPlan, getGym
 
 const router = Router();
 
+// ✅ multer: يستقبل الملف في الذاكرة (Buffer) مباشرة، دون حفظه على القرص أبداً
+// (متوافق مع طبيعة Railway اللا-دائمة)، بحد أقصى 5 ميجابايت، وصور فقط
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) cb(null, true);
+    else cb(new Error("يُسمح فقط بملفات الصور"));
+  },
+});
+
 // حارس صلاحية خاص بالمطوّر فقط (Super Admin)
 const superAdminOnly = authorize("super_admin");
 
@@ -41,6 +53,7 @@ router.get("/auth/me", authenticate, me);
 // ── Members ───────────────────────────────────────────────────
 router.get   ("/members/stats",                authenticate, staffOnly,  getMembersStats);
 router.post  ("/members/:id/reset-password",   authenticate, ownerOnly,  resetPassword);
+router.post  ("/members/:id/avatar",          authenticate, staffOnly,  avatarUpload.single("avatar"), uploadMemberAvatar);
 router.get   ("/members",                       authenticate, staffOnly,  getMembers);
 router.get   ("/members/:id",                   authenticate, staffOnly,  getMember);
 router.post  ("/members",                       authenticate, staffOnly, [

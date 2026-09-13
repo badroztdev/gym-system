@@ -25,4 +25,13 @@ export const membersService = {
 
   resetPassword: (id, newPassword) =>
     api.post(`/members/${id}/reset-password`, { newPassword }).then((r) => r.data),
+
+  // ✅ جديد: رفع/تغيير صورة العضو — يُرسَل كـ FormData (multipart)
+  uploadAvatar: (id, file) => {
+    const formData = new FormData();
+    formData.append("avatar", file);
+    return api.post(`/members/${id}/avatar`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }).then((r) => r.data);
+  },
 };

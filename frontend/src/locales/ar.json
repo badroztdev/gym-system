@@ -125,7 +125,9 @@
     "helpGuardianAccess": "سيتمكن ولي الأمر من متابعة هذا الرياضي من حسابه.",
     "saveChanges": "حفظ التغييرات",
     "addMember": "إضافة العضو",
-    "groupLabel": "الفوج {{num}}"
+    "groupLabel": "الفوج {{num}}",
+    "toastAvatarUpdated": "تم تحديث الصورة ✅",
+    "avatarAfterCreateHint": "💡 يمكنك إضافة صورة بعد إنشاء العضو، من نافذة التعديل"
   },
   "subscriptions": {
     "pageTitle": "الاشتراكات والمدفوعات",

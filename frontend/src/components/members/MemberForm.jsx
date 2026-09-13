@@ -75,6 +75,8 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [errors,  setErrors]  = useState({});
   const [form,    setForm]    = useState(EMPTY_FORM);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // ── المشكلة كانت هنا: useState لا يتحدث عند تغيير member ──
   // الحل: useEffect يملأ الفورم في كل مرة يُفتح فيها النموذج
@@ -99,6 +101,7 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
       setForm(EMPTY_FORM);
     }
     setErrors({});
+    setAvatarPreview(null);
   }, [open, member]);
 
   // ── عند التعديل: جلب بيانات العضو الكاملة لمعرفة ولي الأمر الحالي ──
@@ -128,6 +131,28 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
   ];
 
   const set = (field) => (e) => setForm(f => ({ ...f, [field]: e.target.value }));
+
+  // ✅ عند اختيار صورة: عرض معاينة فورية، ثم رفع مباشر (فقط عند التعديل،
+  // بما أن الرفع يحتاج معرّف عضو موجود بالفعل في قاعدة البيانات)
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setAvatarPreview(URL.createObjectURL(file));
+
+    if (!isEdit) return; // العضو الجديد: تُرفَع الصورة بعد الإنشاء، وليس الآن
+
+    setUploadingAvatar(true);
+    try {
+      await membersService.uploadAvatar(member.id, file);
+      toast.success(t("memberForm.toastAvatarUpdated"));
+      onSuccess?.();
+    } catch {
+      // handled by interceptor
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const validate = () => {
     const errs = {};
@@ -173,6 +198,37 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
       width={520}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+        {/* ✅ صورة العضو — قابلة للنقر لاختيار/تغيير الصورة */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}>
+          <label style={{ position: "relative", cursor: "pointer" }}>
+            <div style={{
+              width: 84, height: 84, borderRadius: "50%", overflow: "hidden",
+              background: "var(--surface)", border: "2px solid var(--border)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 30, fontWeight: 700, color: "var(--muted)",
+              opacity: uploadingAvatar ? 0.5 : 1,
+            }}>
+              {avatarPreview || member?.avatar_url ? (
+                <img src={avatarPreview || member.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                form.fullName?.[0] || "?"
+              )}
+            </div>
+            <div style={{
+              position: "absolute", bottom: 0, left: 0, width: 26, height: 26, borderRadius: "50%",
+              background: "var(--accent)", color: "#0d0f14",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 13, border: "2px solid var(--card)",
+            }}>📷</div>
+            <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: "none" }} disabled={uploadingAvatar} />
+          </label>
+        </div>
+        {!isEdit && (
+          <p style={{ fontSize: 10, color: "var(--muted)", textAlign: "center", marginTop: -8 }}>
+            {t("memberForm.avatarAfterCreateHint")}
+          </p>
+        )}
 
         <Section title={t("memberForm.sectionBasic")} />
 

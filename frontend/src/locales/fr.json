@@ -125,7 +125,9 @@
     "helpGuardianAccess": "Le tuteur pourra suivre cet athlète depuis son compte.",
     "saveChanges": "Enregistrer",
     "addMember": "Ajouter le membre",
-    "groupLabel": "Groupe {{num}}"
+    "groupLabel": "Groupe {{num}}",
+    "toastAvatarUpdated": "Photo mise à jour ✅",
+    "avatarAfterCreateHint": "💡 Vous pourrez ajouter une photo après la création du membre, depuis la fenêtre de modification"
   },
   "subscriptions": {
     "pageTitle": "Abonnements et paiements",

@@ -48,11 +48,15 @@ export default function MemberDetail({ open, onClose, memberId }) {
           {/* رأس: الصورة الرمزية + الاسم + الحالة */}
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{
-              width: 56, height: 56, borderRadius: "50%", flexShrink: 0,
+              width: 56, height: 56, borderRadius: "50%", flexShrink: 0, overflow: "hidden",
               background: "var(--accent)20", color: "var(--accent)",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 22, fontWeight: 700,
-            }}>{m.full_name?.[0]}</div>
+            }}>
+              {m.avatar_url
+                ? <img src={m.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : m.full_name?.[0]}
+            </div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{m.full_name}</div>
               <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>

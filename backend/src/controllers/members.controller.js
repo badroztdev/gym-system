@@ -1,6 +1,7 @@
 // src/controllers/members.controller.js
 import bcrypt from "bcrypt";
 import { query, transaction } from "../utils/db.js";
+import { uploadAvatar } from "../services/cloudinary.service.js";
 import {
   ok, created, noContent,
   notFound, badRequest, serverError,
@@ -377,6 +378,31 @@ export const deleteMemberPermanently = async (req, res) => {
     });
 
     return ok(res, { message: "تم حذف العضو وكل بياناته المرتبطة نهائياً" });
+  } catch (err) {
+    serverError(res, err);
+  }
+};
+
+// ── POST /api/members/:id/avatar  (رفع/تغيير صورة العضو) ──────
+export const uploadMemberAvatar = async (req, res) => {
+  try {
+    if (!req.file) return badRequest(res, "لم يُرفَع أي ملف");
+
+    const check = await query(
+      "SELECT id FROM users WHERE id = $1 AND gym_id = $2",
+      [req.params.id, req.user.gym_id]
+    );
+    if (!check.rows.length) return notFound(res, "العضو غير موجود");
+
+    // ✅ معرّف فريد لكل عضو، يضمن استبدال صورته القديمة تلقائياً عند إعادة الرفع
+    const url = await uploadAvatar(req.file.buffer, `member-${req.params.id}`);
+
+    await query(
+      "UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2",
+      [url, req.params.id]
+    );
+
+    return ok(res, { avatarUrl: url });
   } catch (err) {
     serverError(res, err);
   }
