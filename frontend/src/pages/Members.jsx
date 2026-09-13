@@ -59,7 +59,7 @@ function StatsRow() {
 }
 
 // ── Filters bar ───────────────────────────────────────────────
-function FiltersBar({ search, status, ageCategory, showInactive, onSearch, onStatus, onAgeCategory, onToggleInactive }) {
+function FiltersBar({ search, status, ageCategory, showInactive, role, onSearch, onStatus, onAgeCategory, onToggleInactive, onRole }) {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
   const statuses = [
@@ -94,6 +94,23 @@ function FiltersBar({ search, status, ageCategory, showInactive, onSearch, onSta
             fontSize: 13, outline: "none", direction: "rtl",
           }}
         />
+      </div>
+      {/* ✅ فلتر الدور: الرياضيون / أولياء الأمور — الرياضيون افتراضياً */}
+      <div style={{ display: "flex", gap: 6 }}>
+        <button onClick={() => onRole("athlete")} style={{
+          padding: "8px 14px", fontSize: 12, borderRadius: "var(--radius-sm)",
+          border: "1px solid " + (role === "athlete" ? "var(--accent)" : "var(--border)"),
+          background: role === "athlete" ? "var(--accent)15" : "var(--card)",
+          color: role === "athlete" ? "var(--accent)" : "var(--muted)",
+          cursor: "pointer", fontFamily: "'Sora', sans-serif", fontWeight: 500, whiteSpace: "nowrap",
+        }}>{t("members.roleAthlete")}</button>
+        <button onClick={() => onRole("guardian")} style={{
+          padding: "8px 14px", fontSize: 12, borderRadius: "var(--radius-sm)",
+          border: "1px solid " + (role === "guardian" ? "var(--accent2)" : "var(--border)"),
+          background: role === "guardian" ? "var(--accent2)15" : "var(--card)",
+          color: role === "guardian" ? "var(--accent2)" : "var(--muted)",
+          cursor: "pointer", fontFamily: "'Sora', sans-serif", fontWeight: 500, whiteSpace: "nowrap",
+        }}>{t("members.roleGuardian")}</button>
       </div>
       {/* فلتر الفئة */}
       <select
@@ -148,6 +165,7 @@ export default function MembersPage() {
   const isMobile = useIsMobile();
 
   const [search,  setSearch]  = useState("");
+  const [role,    setRole]    = useState("athlete"); // ✅ افتراضياً: الرياضيون فقط، بدون أولياء الأمور
   const [status,  setStatus]  = useState("");
   const [ageCategory, setAgeCategory] = useState("");
   const [showInactive, setShowInactive] = useState(false);
@@ -162,8 +180,8 @@ export default function MembersPage() {
   const [customPass, setCustomPass] = useState("");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["members", { search, status, ageCategory, showInactive, page }],
-    queryFn:  () => membersService.getAll({ search, status, ageCategory, includeInactive: showInactive, page, limit: 15 }),
+    queryKey: ["members", { search, role, status, ageCategory, showInactive, page }],
+    queryFn:  () => membersService.getAll({ search, role, status, ageCategory, includeInactive: showInactive, page, limit: 15 }),
     keepPreviousData: true,
   });
 
@@ -215,6 +233,7 @@ export default function MembersPage() {
   const handleStatus      = useCallback((v) => { setStatus(v);      setPage(1); }, []);
   const handleAgeCategory = useCallback((v) => { setAgeCategory(v); setPage(1); }, []);
   const handleToggleInactive = useCallback(() => { setShowInactive(v => !v); setPage(1); }, []);
+  const handleRole = useCallback((v) => { setRole(v); setPage(1); }, []);
 
   const openEdit   = (m)  => { setEditMember(m); setShowForm(true); };
   const closeForm  = ()   => { setShowForm(false); setEditMember(null); };
@@ -234,7 +253,7 @@ export default function MembersPage() {
 
       <main style={{ padding: isMobile ? "14px 12px" : "24px 28px", flex: 1 }}>
         <StatsRow />
-        <FiltersBar search={search} status={status} ageCategory={ageCategory} showInactive={showInactive} onSearch={handleSearch} onStatus={handleStatus} onAgeCategory={handleAgeCategory} onToggleInactive={handleToggleInactive} />
+        <FiltersBar search={search} status={status} ageCategory={ageCategory} showInactive={showInactive} role={role} onSearch={handleSearch} onStatus={handleStatus} onAgeCategory={handleAgeCategory} onToggleInactive={handleToggleInactive} onRole={handleRole} />
 
         {/* Table */}
         <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
