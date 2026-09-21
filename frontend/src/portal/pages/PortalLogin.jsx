@@ -1,6 +1,6 @@
 // src/portal/pages/PortalLogin.jsx
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { usePortalStore } from "@/portal/store/portalStore";
 import { PORTAL_DARK_THEME, PORTAL_LIGHT_THEME } from "@/portal/portalTheme";
@@ -12,12 +12,22 @@ const ROLE_LABELS = { athlete: "رياضي", guardian: "ولي أمر" };
 export default function PortalLogin() {
   const navigate = useNavigate();
   const setAuth  = useAuthStore(s => s.setAuth);
+  const token    = useAuthStore(s => s.token);
+  const user     = useAuthStore(s => s.user);
   const [form, setForm] = useState({ phone: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [options, setOptions] = useState(null); // حالة نادرة: أكثر من حساب مطابق
   const { dark, toggleDark } = usePortalStore();
   const theme = dark ? PORTAL_DARK_THEME : PORTAL_LIGHT_THEME;
+
+  // ✅ إذا كان هناك توكن محفوظ وصالح لحساب رياضي/ولي أمر بالفعل، لا نعرض
+  // نموذج الدخول من جديد — نوجّهه مباشرة لبوابته، تماماً كما يفعل RootRedirect
+  // للوحة التحكم عند فتح "/". هذا هو سبب بقاء لوحة التحكم "مفتوحة" بينما كانت
+  // بوابة الرياضي تعرض شاشة الدخول دائماً رغم وجود جلسة صالحة.
+  if (token && ["athlete", "guardian"].includes(user?.role) && user?.gymSlug) {
+    return <Navigate to={`/portal/${user.gymSlug}/home`} replace />;
+  }
 
   const finishLogin = (data) => {
     if (!["athlete", "guardian"].includes(data.user.role)) {
