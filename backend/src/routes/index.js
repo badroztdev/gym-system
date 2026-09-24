@@ -7,7 +7,7 @@ import { authenticate, staffOnly, coachAndAbove, ownerOnly, authorize } from "..
 
 import { login, me } from "../controllers/auth.controller.js";
 import { getMembers, getMember, createMember, updateMember, deleteMember, deleteMemberPermanently, getMembersStats, resetPassword, uploadMemberAvatar } from "../controllers/members.controller.js";
-import { getCategories, createCategory, updateCategory, deleteCategory } from "../controllers/categories.controller.js";
+import { getCategories, createCategory, updateCategory, deleteCategory, deleteCategoryPermanently } from "../controllers/categories.controller.js";
 import { getStaff, getStaffMember, createStaff, updateStaff, deleteStaff } from "../controllers/staff.controller.js";
 import { getPlans, createPlan, updatePlan, deletePlan, deletePlanPermanently } from "../controllers/plans.controller.js";
 import { getSubscriptions, getSubscription, createSubscription, updateSubscription, deleteSubscription, getSubscriptionStats } from "../controllers/subscriptions.controller.js";
@@ -76,6 +76,7 @@ router.post  ("/categories",     authenticate, coachAndAbove, [
 ], createCategory);
 router.patch ("/categories/:id", authenticate, coachAndAbove, updateCategory);
 router.delete("/categories/:id", authenticate, ownerOnly,     deleteCategory);
+router.delete("/categories/:id/permanent", authenticate, ownerOnly, deleteCategoryPermanently);
 
 // ── Staff (المدربون والمساعدون) ─────────────────────────────────
 router.get   ("/staff",     authenticate, staffOnly, getStaff);

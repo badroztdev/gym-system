@@ -67,3 +67,42 @@ export const deleteCategory = async (req, res) => {
     return noContent(res);
   } catch (err) { serverError(res, err); }
 };
+
+// ── DELETE /api/categories/:id/permanent ─────────────────────────
+// ✅ حذف نهائي حقيقي من قاعدة البيانات — لا رجعة فيه.
+// يُسمح به فقط إذا لم تعد الفئة مرتبطة بأي خطة اشتراك أو حصة (سابقة أو حالية)،
+// لتفادي كسر سجلّات الخطط أو الحصص التي لا تزال تُشير لفئة محذوفة.
+export const deleteCategoryPermanently = async (req, res) => {
+  try {
+    const { rows: catRows } = await query(
+      `SELECT id FROM sport_categories WHERE id = $1 AND gym_id = $2`,
+      [req.params.id, req.user.gym_id]
+    );
+    if (!catRows.length) return notFound(res, "الفئة غير موجودة");
+
+    const { rows: planRows } = await query(
+      `SELECT COUNT(*)::int AS count FROM subscription_plans WHERE category_id = $1`,
+      [req.params.id]
+    );
+    const linkedPlans = planRows[0].count;
+
+    const { rows: sessionRows } = await query(
+      `SELECT COUNT(*)::int AS count FROM sessions WHERE category_id = $1`,
+      [req.params.id]
+    );
+    const linkedSessions = sessionRows[0].count;
+
+    if (linkedPlans > 0 || linkedSessions > 0) {
+      const parts = [];
+      if (linkedPlans > 0) parts.push(`${linkedPlans} خطة اشتراك`);
+      if (linkedSessions > 0) parts.push(`${linkedSessions} حصة`);
+      return badRequest(
+        res,
+        `لا يمكن حذف هذه الفئة نهائياً لأنها مرتبطة بـ ${parts.join(" و")}. يمكنك تعطيلها بدل حذفها، أو حذف/تعديل تلك العناصر أولاً.`
+      );
+    }
+
+    await query(`DELETE FROM sport_categories WHERE id = $1 AND gym_id = $2`, [req.params.id, req.user.gym_id]);
+    return noContent(res);
+  } catch (err) { serverError(res, err); }
+};

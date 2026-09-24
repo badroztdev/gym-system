@@ -377,7 +377,11 @@
     "toastCategoryDisabled": "Catégorie désactivée",
     "toastCategoryActivated": "Catégorie activée",
     "disableCategoryTitle": "Désactiver la catégorie",
-    "disableCategoryMessage": "Cette catégorie sportive sera désactivée. Les plans et séances qui y sont liés continueront normalement."
+    "disableCategoryMessage": "Cette catégorie sportive sera désactivée. Les plans et séances qui y sont liés continueront normalement.",
+    "categoryDeletePermanently": "Supprimer définitivement",
+    "categoryDeletePermanentlyTitle": "Supprimer définitivement la catégorie",
+    "categoryDeletePermanentlyMessage": "Cette catégorie sera définitivement supprimée de la base de données et cette action est irréversible. Êtes-vous sûr ?",
+    "toastCategoryDeletedPermanently": "Catégorie supprimée définitivement"
   },
   "categoryForm": {
     "addTitle": "Nouvelle catégorie sportive",

@@ -376,7 +376,11 @@
     "toastCategoryDisabled": "تم تعطيل الفئة",
     "toastCategoryActivated": "تم تفعيل الفئة",
     "disableCategoryTitle": "تعطيل الفئة",
-    "disableCategoryMessage": "سيتم تعطيل هذه الفئة الرياضية. الخطط والحصص المرتبطة بها تستمر بشكل طبيعي."
+    "disableCategoryMessage": "سيتم تعطيل هذه الفئة الرياضية. الخطط والحصص المرتبطة بها تستمر بشكل طبيعي.",
+    "categoryDeletePermanently": "حذف نهائي",
+    "categoryDeletePermanentlyTitle": "حذف الفئة نهائياً",
+    "categoryDeletePermanentlyMessage": "سيتم حذف هذه الفئة نهائياً من قاعدة البيانات ولا يمكن التراجع عن هذا الإجراء. هل أنت متأكد؟",
+    "toastCategoryDeletedPermanently": "تم حذف الفئة نهائياً"
   },
   "categoryForm": {
     "addTitle": "فئة رياضية جديدة",

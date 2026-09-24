@@ -141,6 +141,7 @@ function CategoriesTab() {
   const [showForm, setShowForm] = useState(false);
   const [editCategory, setEditCategory] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const [permanentDeleteId, setPermanentDeleteId] = useState(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["categories-page"],
@@ -161,6 +162,18 @@ function CategoriesTab() {
   const reactivateMutation = useMutation({
     mutationFn: (id) => categoriesService.update(id, { isActive: true }),
     onSuccess: () => { toast.success(t("team.toastCategoryActivated")); refresh(); },
+  });
+
+  const permanentDeleteMutation = useMutation({
+    mutationFn: categoriesService.removePermanent,
+    onSuccess: () => {
+      toast.success(t("team.toastCategoryDeletedPermanently"));
+      setPermanentDeleteId(null);
+      refresh();
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || t("common.errorGeneric"));
+    },
   });
 
   return (
@@ -195,12 +208,23 @@ function CategoriesTab() {
               </div>
 
               {isOwner && (
-                <div style={{ display: "flex", gap: 6 }}>
-                  <Button variant="secondary" size="sm" onClick={() => { setEditCategory(c); setShowForm(true); }} style={{ flex: 1, justifyContent: "center" }}>{t("team.categoryEdit")}</Button>
-                  {c.is_active ? (
-                    <Button variant="danger" size="sm" onClick={() => setDeleteId(c.id)} style={{ flex: 1, justifyContent: "center" }}>{t("team.categoryDisable")}</Button>
-                  ) : (
-                    <Button variant="secondary" size="sm" loading={reactivateMutation.isPending} onClick={() => reactivateMutation.mutate(c.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent)" }}>{t("team.categoryActivate")}</Button>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <Button variant="secondary" size="sm" onClick={() => { setEditCategory(c); setShowForm(true); }} style={{ flex: 1, justifyContent: "center" }}>{t("team.categoryEdit")}</Button>
+                    {c.is_active ? (
+                      <Button variant="danger" size="sm" onClick={() => setDeleteId(c.id)} style={{ flex: 1, justifyContent: "center" }}>{t("team.categoryDisable")}</Button>
+                    ) : (
+                      <Button variant="secondary" size="sm" loading={reactivateMutation.isPending} onClick={() => reactivateMutation.mutate(c.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent)" }}>{t("team.categoryActivate")}</Button>
+                    )}
+                  </div>
+                  {!c.is_active && (
+                    <Button
+                      variant="danger" size="sm"
+                      onClick={() => setPermanentDeleteId(c.id)}
+                      style={{ justifyContent: "center", background: "var(--danger)15", borderColor: "var(--danger)50" }}
+                    >
+                      🗑️ {t("team.categoryDeletePermanently")}
+                    </Button>
                   )}
                 </div>
               )}
@@ -218,6 +242,15 @@ function CategoriesTab() {
         loading={deleteMutation.isPending}
         title={t("team.disableCategoryTitle")}
         message={t("team.disableCategoryMessage")}
+      />
+
+      <Confirm
+        open={!!permanentDeleteId}
+        onClose={() => setPermanentDeleteId(null)}
+        onConfirm={() => permanentDeleteMutation.mutate(permanentDeleteId)}
+        loading={permanentDeleteMutation.isPending}
+        title={t("team.categoryDeletePermanentlyTitle")}
+        message={t("team.categoryDeletePermanentlyMessage")}
       />
     </>
   );
