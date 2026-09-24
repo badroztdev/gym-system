@@ -207,7 +207,12 @@
     "sessionsLabel": "Séances",
     "activeSubsCount": "{{count}} abonnements actifs",
     "disablePlanTitle": "Désactiver le plan",
-    "disablePlanMessage": "Ce plan sera désactivé. Les abonnements actuels qui y sont liés continueront normalement, mais aucun nouvel abonnement ne pourra être créé avec ce plan."
+    "disablePlanMessage": "Ce plan sera désactivé. Les abonnements actuels qui y sont liés continueront normalement, mais aucun nouvel abonnement ne pourra être créé avec ce plan.",
+    "planDeletePermanently": "Supprimer définitivement",
+    "planDeletePermanentlyTitle": "Supprimer définitivement le plan",
+    "planDeletePermanentlyMessage": "Ce plan sera définitivement supprimé de la base de données et cette action est irréversible. Êtes-vous sûr ?",
+    "toastPlanDeletedPermanently": "Plan supprimé définitivement"
+
   },
   "sessions": {
     "pageTitle": "Séances et horaires",

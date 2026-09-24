@@ -207,7 +207,11 @@
     "sessionsLabel": "الحصص",
     "activeSubsCount": "{{count}} اشتراك نشط حالياً",
     "disablePlanTitle": "تعطيل الخطة",
-    "disablePlanMessage": "سيتم تعطيل هذه الخطة. الاشتراكات الحالية المرتبطة بها تستمر بشكل طبيعي، ولكن لن يمكن إنشاء اشتراكات جديدة بها."
+    "disablePlanMessage": "سيتم تعطيل هذه الخطة. الاشتراكات الحالية المرتبطة بها تستمر بشكل طبيعي، ولكن لن يمكن إنشاء اشتراكات جديدة بها.",
+    "planDeletePermanently": "حذف نهائي",
+    "planDeletePermanentlyTitle": "حذف الخطة نهائياً",
+    "planDeletePermanentlyMessage": "سيتم حذف هذه الخطة نهائياً من قاعدة البيانات ولا يمكن التراجع عن هذا الإجراء. هل أنت متأكد؟",
+    "toastPlanDeletedPermanently": "تم حذف الخطة نهائياً"
   },
   "sessions": {
     "pageTitle": "الحصص والجداول",

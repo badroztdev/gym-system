@@ -352,6 +352,7 @@ function PlansTab() {
   const [showForm, setShowForm] = useState(false);
   const [editPlan, setEditPlan] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const [permanentDeleteId, setPermanentDeleteId] = useState(null);
 
   const { data, isLoading } = useQuery({ queryKey: ["plans-page"], queryFn: () => plansService.getAll({ includeInactive: "true" }) });
   const plans = data?.data || [];
@@ -366,6 +367,18 @@ function PlansTab() {
   const reactivateMutation = useMutation({
     mutationFn: (id) => plansService.update(id, { isActive: true }),
     onSuccess: () => { toast.success(t("subscriptions.toastPlanActivated")); refresh(); },
+  });
+
+  const permanentDeleteMutation = useMutation({
+    mutationFn: plansService.removePermanent,
+    onSuccess: () => {
+      toast.success(t("subscriptions.toastPlanDeletedPermanently"));
+      setPermanentDeleteId(null);
+      refresh();
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || t("common.errorGeneric"));
+    },
   });
 
   return (
@@ -420,14 +433,25 @@ function PlansTab() {
                 {t("subscriptions.activeSubsCount", { count: p.active_subscriptions })}
               </div>
 
-              <div style={{ display: "flex", gap: 6, marginTop: 4, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-                <Button variant="secondary" size="sm" onClick={() => { setEditPlan(p); setShowForm(true); }} style={{ flex: 1, justifyContent: "center" }}>{t("subscriptions.planEdit")}</Button>
-                {isOwner && (
-                  p.is_active ? (
-                    <Button variant="danger" size="sm" onClick={() => setDeleteId(p.id)} style={{ flex: 1, justifyContent: "center" }}>{t("subscriptions.planDisable")}</Button>
-                  ) : (
-                    <Button variant="secondary" size="sm" loading={reactivateMutation.isPending} onClick={() => reactivateMutation.mutate(p.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent)" }}>{t("subscriptions.planActivate")}</Button>
-                  )
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <Button variant="secondary" size="sm" onClick={() => { setEditPlan(p); setShowForm(true); }} style={{ flex: 1, justifyContent: "center" }}>{t("subscriptions.planEdit")}</Button>
+                  {isOwner && (
+                    p.is_active ? (
+                      <Button variant="danger" size="sm" onClick={() => setDeleteId(p.id)} style={{ flex: 1, justifyContent: "center" }}>{t("subscriptions.planDisable")}</Button>
+                    ) : (
+                      <Button variant="secondary" size="sm" loading={reactivateMutation.isPending} onClick={() => reactivateMutation.mutate(p.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent)" }}>{t("subscriptions.planActivate")}</Button>
+                    )
+                  )}
+                </div>
+                {isOwner && !p.is_active && (
+                  <Button
+                    variant="danger" size="sm"
+                    onClick={() => setPermanentDeleteId(p.id)}
+                    style={{ justifyContent: "center", background: "var(--danger)15", borderColor: "var(--danger)50" }}
+                  >
+                    🗑️ {t("subscriptions.planDeletePermanently")}
+                  </Button>
                 )}
               </div>
             </div>
@@ -444,6 +468,15 @@ function PlansTab() {
         loading={deleteMutation.isPending}
         title={t("subscriptions.disablePlanTitle")}
         message={t("subscriptions.disablePlanMessage")}
+      />
+
+      <Confirm
+        open={!!permanentDeleteId}
+        onClose={() => setPermanentDeleteId(null)}
+        onConfirm={() => permanentDeleteMutation.mutate(permanentDeleteId)}
+        loading={permanentDeleteMutation.isPending}
+        title={t("subscriptions.planDeletePermanentlyTitle")}
+        message={t("subscriptions.planDeletePermanentlyMessage")}
       />
     </>
   );

@@ -103,3 +103,34 @@ export const deletePlan = async (req, res) => {
     serverError(res, err);
   }
 };
+
+// ── DELETE /api/plans/:id/permanent ────────────────────────────
+// ✅ حذف نهائي حقيقي من قاعدة البيانات — لا رجعة فيه.
+// يُسمح به فقط إذا لم تعد الخطة مرتبطة بأي اشتراك (سابق أو حالي)، لتفادي
+// كسر سجلّات الاشتراكات والمدفوعات التاريخية.
+export const deletePlanPermanently = async (req, res) => {
+  try {
+    const { rows: planRows } = await query(
+      `SELECT id FROM subscription_plans WHERE id = $1 AND gym_id = $2`,
+      [req.params.id, req.user.gym_id]
+    );
+    if (!planRows.length) return notFound(res, "الخطة غير موجودة");
+
+    const { rows: subRows } = await query(
+      `SELECT COUNT(*)::int AS count FROM subscriptions WHERE plan_id = $1`,
+      [req.params.id]
+    );
+    const linkedSubs = subRows[0].count;
+    if (linkedSubs > 0) {
+      return badRequest(
+        res,
+        `لا يمكن حذف هذه الخطة نهائياً لأنها مرتبطة بـ ${linkedSubs} اشتراك (سابق أو حالي). يمكنك تعطيلها بدل حذفها، أو حذف تلك الاشتراكات أولاً.`
+      );
+    }
+
+    await query(`DELETE FROM subscription_plans WHERE id = $1 AND gym_id = $2`, [req.params.id, req.user.gym_id]);
+    return noContent(res);
+  } catch (err) {
+    serverError(res, err);
+  }
+};

@@ -9,7 +9,7 @@ import { login, me } from "../controllers/auth.controller.js";
 import { getMembers, getMember, createMember, updateMember, deleteMember, deleteMemberPermanently, getMembersStats, resetPassword, uploadMemberAvatar } from "../controllers/members.controller.js";
 import { getCategories, createCategory, updateCategory, deleteCategory } from "../controllers/categories.controller.js";
 import { getStaff, getStaffMember, createStaff, updateStaff, deleteStaff } from "../controllers/staff.controller.js";
-import { getPlans, createPlan, updatePlan, deletePlan } from "../controllers/plans.controller.js";
+import { getPlans, createPlan, updatePlan, deletePlan, deletePlanPermanently } from "../controllers/plans.controller.js";
 import { getSubscriptions, getSubscription, createSubscription, updateSubscription, deleteSubscription, getSubscriptionStats } from "../controllers/subscriptions.controller.js";
 import { getPayments, createPayment, deletePayment, getPaymentsStats } from "../controllers/payments.controller.js";
 import { getRooms, createRoom, updateRoom, deleteRoom, deleteRoomPermanently, regenerateQR } from "../controllers/rooms.controller.js";
@@ -99,6 +99,7 @@ router.post  ("/plans",     authenticate, coachAndAbove, [
 ], createPlan);
 router.patch ("/plans/:id", authenticate, coachAndAbove, updatePlan);
 router.delete("/plans/:id", authenticate, ownerOnly,     deletePlan);
+router.delete("/plans/:id/permanent", authenticate, ownerOnly, deletePlanPermanently);
 
 // ── Subscriptions ─────────────────────────────────────────────
 router.get   ("/subscriptions/stats", authenticate, staffOnly, getSubscriptionStats);

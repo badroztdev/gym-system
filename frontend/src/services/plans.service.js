@@ -13,4 +13,7 @@ export const plansService = {
 
   remove: (id) =>
     api.delete(`/plans/${id}`),
+
+  removePermanent: (id) =>
+    api.delete(`/plans/${id}/permanent`),
 };
