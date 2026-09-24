@@ -285,7 +285,11 @@
     "deleteSeries": "حذف السلسلة المتكررة بالكامل",
     "deleteSeriesTitle": "⚠️ حذف السلسلة المتكررة بالكامل",
     "deleteSeriesMessage": "سيُحذف نهائياً كل الحصص القادمة (من اليوم فصاعداً) التابعة لهذه السلسلة المتكررة. الحصص الماضية وسجلات حضورها ستبقى محفوظة كما هي. هذا الإجراء لا يمكن التراجع عنه إطلاقاً.",
-    "toastSeriesDeleted": "تم حذف السلسلة المتكررة نهائياً"
+    "toastSeriesDeleted": "تم حذف السلسلة المتكررة نهائياً",
+    "roomDeletePermanently": "حذف نهائي",
+    "roomDeletePermanentlyTitle": "حذف القاعة نهائياً",
+    "roomDeletePermanentlyMessage": "سيتم حذف قاعة \"{{name}}\" نهائياً من قاعدة البيانات ولا يمكن التراجع عن هذا الإجراء. هل أنت متأكد؟",
+    "toastRoomDeletedPermanently": "تم حذف القاعة نهائياً"
   },
   "sessionForm": {
     "addTitle": "حصة جديدة",

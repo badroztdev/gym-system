@@ -54,6 +54,7 @@ export const updateRoom = async (req, res) => {
 };
 
 // ── DELETE /api/rooms/:id ──────────────────────────────────────
+// تعطيل فقط (soft delete) — القاعة تبقى في قاعدة البيانات وتُخفى من الاستخدام النشط
 export const deleteRoom = async (req, res) => {
   try {
     const { rows } = await query(
@@ -61,6 +62,35 @@ export const deleteRoom = async (req, res) => {
       [req.params.id, req.user.gym_id]
     );
     if (!rows.length) return notFound(res, "القاعة غير موجودة");
+    return noContent(res);
+  } catch (err) { serverError(res, err); }
+};
+
+// ── DELETE /api/rooms/:id/permanent ────────────────────────────
+// ✅ حذف نهائي حقيقي من قاعدة البيانات — لا رجعة فيه.
+// يُسمح به فقط إذا لم تعد القاعة مرتبطة بأي حصة (سابقة أو حالية)، لتفادي
+// كسر سجلّات الحضور التاريخية أو حصص لا تزال تُشير لقاعة محذوفة.
+export const deleteRoomPermanently = async (req, res) => {
+  try {
+    const { rows: roomRows } = await query(
+      `SELECT id FROM rooms WHERE id = $1 AND gym_id = $2`,
+      [req.params.id, req.user.gym_id]
+    );
+    if (!roomRows.length) return notFound(res, "القاعة غير موجودة");
+
+    const { rows: sessionRows } = await query(
+      `SELECT COUNT(*)::int AS count FROM sessions WHERE room_id = $1`,
+      [req.params.id]
+    );
+    const linkedSessions = sessionRows[0].count;
+    if (linkedSessions > 0) {
+      return badRequest(
+        res,
+        `لا يمكن حذف هذه القاعة نهائياً لأنها مرتبطة بـ ${linkedSessions} حصة (سابقة أو حالية). يمكنك تعطيلها بدل حذفها، أو حذف/تعديل تلك الحصص أولاً.`
+      );
+    }
+
+    await query(`DELETE FROM rooms WHERE id = $1 AND gym_id = $2`, [req.params.id, req.user.gym_id]);
     return noContent(res);
   } catch (err) { serverError(res, err); }
 };

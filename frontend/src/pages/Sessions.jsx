@@ -366,6 +366,7 @@ function RoomsTab() {
   const [showForm, setShowForm] = useState(false);
   const [editRoom, setEditRoom] = useState(null);
   const [qrRoom, setQrRoom] = useState(null);
+  const [permanentDeleteRoom, setPermanentDeleteRoom] = useState(null);
 
   const { data, isLoading } = useQuery({ queryKey: ["rooms"], queryFn: roomsService.getAll });
   const rooms = data?.data || [];
@@ -380,6 +381,19 @@ function RoomsTab() {
   const deleteMutation = useMutation({
     mutationFn: roomsService.remove,
     onSuccess: () => { toast.success(t("sessions.toastRoomDisabled")); refresh(); },
+  });
+
+  // ✅ حذف نهائي حقيقي — يزيل القاعة كلياً من قاعدة البيانات، لا رجعة فيه
+  const permanentDeleteMutation = useMutation({
+    mutationFn: roomsService.removePermanent,
+    onSuccess: () => {
+      toast.success(t("sessions.toastRoomDeletedPermanently"));
+      setPermanentDeleteRoom(null);
+      refresh();
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || t("sessions.errorGeneric"));
+    },
   });
 
   return (
@@ -427,10 +441,23 @@ function RoomsTab() {
               </div>
 
               {isOwner && (
-                <div style={{ display: "flex", gap: 6 }}>
-                  <Button variant="secondary" size="sm" onClick={() => { setEditRoom(r); setShowForm(true); }} style={{ flex: 1, justifyContent: "center" }}>{t("sessions.roomEdit")}</Button>
-                  <Button variant="secondary" size="sm" loading={regenMutation.isPending} onClick={() => regenMutation.mutate(r.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent2)" }}>{t("sessions.roomRegenQR")}</Button>
-                  {r.is_active && <Button variant="danger" size="sm" onClick={() => deleteMutation.mutate(r.id)} style={{ flex: 1, justifyContent: "center" }}>{t("sessions.roomDisable")}</Button>}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <Button variant="secondary" size="sm" onClick={() => { setEditRoom(r); setShowForm(true); }} style={{ flex: 1, justifyContent: "center" }}>{t("sessions.roomEdit")}</Button>
+                    <Button variant="secondary" size="sm" loading={regenMutation.isPending} onClick={() => regenMutation.mutate(r.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent2)" }}>{t("sessions.roomRegenQR")}</Button>
+                    {r.is_active && <Button variant="danger" size="sm" onClick={() => deleteMutation.mutate(r.id)} style={{ flex: 1, justifyContent: "center" }}>{t("sessions.roomDisable")}</Button>}
+                  </div>
+                  {/* ✅ الحذف النهائي يظهر فقط بعد تعطيل القاعة أولاً — خطوتان
+                      متعمّدتان لتفادي حذف قاعة نشطة بالخطأ */}
+                  {!r.is_active && (
+                    <Button
+                      variant="danger" size="sm"
+                      onClick={() => setPermanentDeleteRoom(r)}
+                      style={{ justifyContent: "center", background: "var(--danger)15", borderColor: "var(--danger)50" }}
+                    >
+                      🗑️ {t("sessions.roomDeletePermanently")}
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -462,6 +489,16 @@ function RoomsTab() {
           </div>
         )}
       </Modal>
+
+      {/* ✅ تأكيد الحذف النهائي — تحذير قوي لأن الإجراء لا رجعة فيه */}
+      <Confirm
+        open={!!permanentDeleteRoom}
+        onClose={() => setPermanentDeleteRoom(null)}
+        onConfirm={() => permanentDeleteMutation.mutate(permanentDeleteRoom.id)}
+        loading={permanentDeleteMutation.isPending}
+        title={t("sessions.roomDeletePermanentlyTitle")}
+        message={t("sessions.roomDeletePermanentlyMessage", { name: permanentDeleteRoom?.name })}
+      />
     </>
   );
 }

@@ -12,7 +12,7 @@ import { getStaff, getStaffMember, createStaff, updateStaff, deleteStaff } from 
 import { getPlans, createPlan, updatePlan, deletePlan } from "../controllers/plans.controller.js";
 import { getSubscriptions, getSubscription, createSubscription, updateSubscription, deleteSubscription, getSubscriptionStats } from "../controllers/subscriptions.controller.js";
 import { getPayments, createPayment, deletePayment, getPaymentsStats } from "../controllers/payments.controller.js";
-import { getRooms, createRoom, updateRoom, deleteRoom, regenerateQR } from "../controllers/rooms.controller.js";
+import { getRooms, createRoom, updateRoom, deleteRoom, deleteRoomPermanently, regenerateQR } from "../controllers/rooms.controller.js";
 import { getSessions, getSession, createSession, updateSession, cancelSession, deleteRecurringSeries, getTodaySessions } from "../controllers/sessions.controller.js";
 import { scanQR, getSessionAttendance, manualAttendance, getAthleteAttendance, getAttendanceOverview, getAttendanceTrend, getAttendanceLeaderboard, getAttendanceByCategory, getRecentSessionsAttendance } from "../controllers/attendance.controller.js";
 import { saveToken, getNotifications, markRead, sendManual, notifyExpiringSubscriptions } from "../controllers/notifications.controller.js";
@@ -129,6 +129,7 @@ router.post  ("/rooms",                   authenticate, ownerOnly, [
 ], createRoom);
 router.patch ("/rooms/:id",               authenticate, ownerOnly, updateRoom);
 router.delete("/rooms/:id",               authenticate, ownerOnly, deleteRoom);
+router.delete("/rooms/:id/permanent",     authenticate, ownerOnly, deleteRoomPermanently);
 router.post  ("/rooms/:id/regenerate-qr", authenticate, ownerOnly, regenerateQR);
 
 // ── Sessions ──────────────────────────────────────────────────
