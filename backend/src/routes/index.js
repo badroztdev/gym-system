@@ -21,7 +21,7 @@ import { getAthleteProgress, createProgress, updateProgress, deleteProgress, cha
 import { getGymSettings, updateGymSettings, updateGymPreferences, getMyProfile, updateMyProfile, changeMyPassword } from "../controllers/settings.controller.js";
 import { getOverview, getRevenueChart, getAttendanceChart, getMembersGrowth, getTopCoaches, getAgeCategoryDistribution, getRecentActivity } from "../controllers/dashboard.controller.js";
 import { registerGym, checkSlugAvailability, getGymBySlug } from "../controllers/onboarding.controller.js";
-import { getAllGyms, getPlatformOverview, updateGymStatus, updateGymPlan, getGymDetail, sendNotificationToOwners } from "../controllers/superadmin.controller.js";
+import { getAllGyms, getPlatformOverview, updateGymStatus, updateGymPlan, getGymDetail, deleteGymPermanently, sendNotificationToOwners } from "../controllers/superadmin.controller.js";
 
 const router = Router();
 
@@ -254,6 +254,10 @@ router.patch("/superadmin/gyms/:id/status",    authenticate, superAdminOnly, [
   validate,
 ], updateGymStatus);
 router.patch("/superadmin/gyms/:id/plan",      authenticate, superAdminOnly, updateGymPlan);
+router.delete("/superadmin/gyms/:id",          authenticate, superAdminOnly, [
+  body("confirmSlug").notEmpty().withMessage("يجب كتابة رابط الصالة (slug) لتأكيد الحذف"),
+  validate,
+], deleteGymPermanently);
 router.post ("/superadmin/notify",             authenticate, superAdminOnly, [
   body("title").notEmpty().withMessage("العنوان مطلوب"),
   body("body").notEmpty().withMessage("نص الإشعار مطلوب"),

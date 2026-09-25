@@ -23,7 +23,97 @@ function StatCard({ label, value, color }) {
   );
 }
 
-function GymDetailModal({ gymId, onClose }) {
+// ── نافذة تأكيد الحذف النهائي للصالة ───────────────────────────
+// ✅ حماية إضافية: يجب كتابة رابط الصالة (slug) بدقة قبل تفعيل زر الحذف،
+// لأن هذا الإجراء لا رجعة فيه ويحذف كل بيانات الصالة نهائياً.
+function DeleteGymModal({ gym, onClose, onDeleted }) {
+  const [confirmText, setConfirmText] = useState("");
+
+  useEffect(() => { setConfirmText(""); }, [gym]);
+
+  const mutation = useMutation({
+    mutationFn: () => superadminService.deleteGymPermanently(gym.id, confirmText.trim()),
+    onSuccess: () => {
+      toast.success(`تم حذف صالة "${gym.name}" نهائياً`);
+      onDeleted();
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "تعذّر حذف الصالة");
+    },
+  });
+
+  if (!gym) return null;
+  const matches = confirmText.trim() === gym.slug;
+
+  return (
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.75)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: "100%", maxWidth: 440,
+        background: "var(--card)", border: "1px solid var(--danger)40",
+        borderRadius: 18, padding: 24,
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--danger)" }}>🗑️ حذف الصالة نهائياً</div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 18, cursor: "pointer" }}>✕</button>
+        </div>
+
+        <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.7, marginBottom: 6 }}>
+          سيتم حذف صالة <strong>{gym.name}</strong> (<span className="mono">/{gym.slug}</span>) نهائياً من قاعدة البيانات،
+          بكل ما تحتويه من أعضاء ومدربين وحصص واشتراكات ومدفوعات. <strong>لا يمكن التراجع عن هذا الإجراء إطلاقاً.</strong>
+        </div>
+
+        <div style={{
+          background: "var(--danger)10", border: "1px solid var(--danger)30",
+          borderRadius: "var(--radius-sm)", padding: "10px 12px", fontSize: 12,
+          color: "var(--danger)", marginBottom: 16,
+        }}>
+          ننصح بشدة بتعليق الصالة (تعطيل الاشتراك) بدل حذفها، إلا إذا كنت متأكداً تماماً.
+        </div>
+
+        <label style={{ fontSize: 12, color: "var(--muted-lt)", fontWeight: 500, display: "block", marginBottom: 6 }}>
+          للتأكيد، اكتب رابط الصالة بدقة: <span className="mono" style={{ color: "var(--text)" }}>{gym.slug}</span>
+        </label>
+        <input
+          value={confirmText}
+          onChange={e => setConfirmText(e.target.value)}
+          placeholder={gym.slug}
+          className="mono"
+          style={{
+            width: "100%", padding: "10px 14px", background: "var(--surface)",
+            border: `1px solid ${confirmText && !matches ? "var(--danger)" : "var(--border)"}`,
+            borderRadius: "var(--radius-sm)", color: "var(--text)",
+            fontSize: 14, outline: "none", direction: "ltr", marginBottom: 16,
+          }}
+        />
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={onClose} style={{
+            flex: 1, padding: "11px", background: "var(--surface)", border: "1px solid var(--border)",
+            borderRadius: "var(--radius-sm)", color: "var(--text)", fontSize: 13, fontWeight: 600,
+            cursor: "pointer", fontFamily: "'Sora', sans-serif",
+          }}>إلغاء</button>
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={!matches || mutation.isPending}
+            style={{
+              flex: 1, padding: "11px", background: matches ? "var(--danger)" : "var(--danger)30",
+              border: "none", borderRadius: "var(--radius-sm)", color: "#fff", fontSize: 13, fontWeight: 700,
+              cursor: matches && !mutation.isPending ? "pointer" : "not-allowed",
+              opacity: mutation.isPending ? 0.7 : 1, fontFamily: "'Sora', sans-serif",
+            }}
+          >
+            {mutation.isPending ? "جاري الحذف..." : "🗑️ حذف نهائي"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GymDetailModal({ gymId, onClose, onRequestDelete }) {
   const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["gym-detail", gymId],
@@ -103,7 +193,7 @@ function GymDetailModal({ gymId, onClose }) {
             </div>
 
             {gym.activity?.length > 0 && (
-              <div>
+              <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>آخر الأنشطة</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {gym.activity.slice(0, 8).map((a, i) => (
@@ -115,6 +205,21 @@ function GymDetailModal({ gymId, onClose }) {
                 </div>
               </div>
             )}
+
+            {/* ✅ منطقة خطرة — حذف نهائي لكامل حساب الصالة */}
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+              <button
+                onClick={() => onRequestDelete(gym)}
+                style={{
+                  width: "100%", padding: "11px", background: "var(--danger)15",
+                  border: "1px solid var(--danger)50", borderRadius: "var(--radius-sm)",
+                  color: "var(--danger)", fontSize: 13, fontWeight: 700,
+                  cursor: "pointer", fontFamily: "'Sora', sans-serif",
+                }}
+              >
+                🗑️ حذف الصالة نهائياً
+              </button>
+            </div>
           </>
         )}
       </div>
@@ -374,9 +479,11 @@ export default function SuperAdminPage() {
     return <Navigate to="/dashboard" replace />;
   }
 
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [selectedGymId, setSelectedGymId] = useState(null);
+  const [deleteGym, setDeleteGym] = useState(null); // الصالة المطلوب حذفها نهائياً
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showNotifyModal, setShowNotifyModal] = useState(false);
   const [notifyPreselectGymId, setNotifyPreselectGymId] = useState(null);
@@ -393,6 +500,13 @@ export default function SuperAdminPage() {
   const handleLogout = () => {
     logout();
     navigate("/login");
+  };
+
+  const handleGymDeleted = () => {
+    setDeleteGym(null);
+    setSelectedGymId(null);
+    qc.invalidateQueries({ queryKey: ["superadmin-gyms"] });
+    qc.invalidateQueries({ queryKey: ["superadmin-overview"] });
   };
 
   return (
@@ -483,7 +597,7 @@ export default function SuperAdminPage() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--surface)" }}>
-                    {["الصالة", "المالك", "الحالة", "رياضيون", "فريق", "أُنشئت", "تذكير"].map(h => (
+                    {["الصالة", "المالك", "الحالة", "رياضيون", "فريق", "أُنشئت", "إجراءات"].map(h => (
                       <th key={h} style={{ padding: "10px 14px", fontSize: 11, color: "var(--muted)", textAlign: "right" }}>{h}</th>
                     ))}
                   </tr>
@@ -522,11 +636,20 @@ export default function SuperAdminPage() {
                           </span>
                         </td>
                         <td style={{ padding: "12px 14px" }} onClick={e => e.stopPropagation()}>
-                          <button onClick={() => { setNotifyPreselectGymId(g.id); setShowNotifyModal(true); }} style={{
-                            fontSize: 11, padding: "5px 10px", background: "var(--accent)10",
-                            border: "1px solid var(--accent)30", borderRadius: "var(--radius-sm)",
-                            color: "var(--accent)", cursor: "pointer", fontFamily: "'Sora', sans-serif",
-                          }}>📤 إشعار</button>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button onClick={() => { setNotifyPreselectGymId(g.id); setShowNotifyModal(true); }} style={{
+                              fontSize: 11, padding: "5px 10px", background: "var(--accent)10",
+                              border: "1px solid var(--accent)30", borderRadius: "var(--radius-sm)",
+                              color: "var(--accent)", cursor: "pointer", fontFamily: "'Sora', sans-serif",
+                              whiteSpace: "nowrap",
+                            }}>📤 إشعار</button>
+                            <button onClick={() => setDeleteGym(g)} style={{
+                              fontSize: 11, padding: "5px 10px", background: "var(--danger)10",
+                              border: "1px solid var(--danger)30", borderRadius: "var(--radius-sm)",
+                              color: "var(--danger)", cursor: "pointer", fontFamily: "'Sora', sans-serif",
+                              whiteSpace: "nowrap",
+                            }}>🗑️ حذف نهائي</button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -538,7 +661,16 @@ export default function SuperAdminPage() {
         </div>
       </div>
 
-      <GymDetailModal gymId={selectedGymId} onClose={() => setSelectedGymId(null)} />
+      <GymDetailModal
+        gymId={selectedGymId}
+        onClose={() => setSelectedGymId(null)}
+        onRequestDelete={(gym) => setDeleteGym(gym)}
+      />
+      <DeleteGymModal
+        gym={deleteGym}
+        onClose={() => setDeleteGym(null)}
+        onDeleted={handleGymDeleted}
+      />
       <ChangePasswordModal open={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
       <NotifyOwnersModal
         open={showNotifyModal}

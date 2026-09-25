@@ -1,7 +1,7 @@
 // src/controllers/superadmin.controller.js
 // لوحة تحكم المطوّر — إدارة كل الصالات المسجَّلة على المنصة
 import { query } from "../utils/db.js";
-import { ok, notFound, badRequest, serverError, paginate } from "../utils/response.js";
+import { ok, noContent, notFound, badRequest, serverError, paginate } from "../utils/response.js";
 import { sendMulticast } from "../services/fcm.service.js";
 
 // ── GET /api/superadmin/gyms ──────────────────────────────────
@@ -168,6 +168,43 @@ export const getGymDetail = async (req, res) => {
       activity: activity.rows,
       counts: counts.rows[0],
     });
+  } catch (err) { serverError(res, err); }
+};
+
+// ── DELETE /api/superadmin/gyms/:id ────────────────────────────
+// ✅ حذف نهائي وحقيقي لحساب الصالة (subdomain) بأكمله من قاعدة البيانات.
+// هذا إجراء لا رجعة فيه إطلاقاً: يحذف الصالة وكل بياناتها المرتبطة
+// (الأعضاء، المدربين، الحصص، الاشتراكات، المدفوعات...) اعتماداً على قيود
+// ON DELETE CASCADE المُعرَّفة في قاعدة البيانات على الجداول التي تُشير
+// إلى gyms(id) أو users(id).
+// حماية إضافية: يُشترط إرسال "confirmSlug" مطابقاً تماماً لرابط الصالة (slug)
+// حتى لا يُحذف حساب صالة بالخطأ من ضغطة زر عرضية.
+export const deleteGymPermanently = async (req, res) => {
+  try {
+    const { confirmSlug } = req.body;
+
+    const { rows: gymRows } = await query(`SELECT id, name, slug FROM gyms WHERE id = $1`, [req.params.id]);
+    if (!gymRows.length) return notFound(res, "الصالة غير موجودة");
+    const gym = gymRows[0];
+
+    if (!confirmSlug || confirmSlug !== gym.slug) {
+      return badRequest(res, "رابط الصالة (slug) المُدخَل غير مطابق. يرجى كتابة الرابط بدقة لتأكيد الحذف النهائي.");
+    }
+
+    try {
+      await query(`DELETE FROM gyms WHERE id = $1`, [gym.id]);
+    } catch (fkErr) {
+      // 23503 = foreign_key_violation في PostgreSQL
+      if (fkErr.code === "23503") {
+        return badRequest(
+          res,
+          "تعذّر حذف الصالة نهائياً لأن بعض بياناتها المرتبطة (مثل السجلات القديمة) تمنع الحذف على مستوى قاعدة البيانات. يرجى مراجعة المطوّر لضبط قواعد الحذف التسلسلي (ON DELETE CASCADE) على الجداول المرتبطة، أو حذف تلك البيانات يدوياً أولاً."
+        );
+      }
+      throw fkErr;
+    }
+
+    return noContent(res);
   } catch (err) { serverError(res, err); }
 };
 
