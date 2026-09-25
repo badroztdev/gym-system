@@ -1,6 +1,6 @@
 // src/controllers/superadmin.controller.js
 // لوحة تحكم المطوّر — إدارة كل الصالات المسجَّلة على المنصة
-import { query } from "../utils/db.js";
+import { query, transaction } from "../utils/db.js";
 import { ok, noContent, notFound, badRequest, serverError, paginate } from "../utils/response.js";
 import { sendMulticast } from "../services/fcm.service.js";
 
@@ -173,10 +173,11 @@ export const getGymDetail = async (req, res) => {
 
 // ── DELETE /api/superadmin/gyms/:id ────────────────────────────
 // ✅ حذف نهائي وحقيقي لحساب الصالة (subdomain) بأكمله من قاعدة البيانات.
-// هذا إجراء لا رجعة فيه إطلاقاً: يحذف الصالة وكل بياناتها المرتبطة
-// (الأعضاء، المدربين، الحصص، الاشتراكات، المدفوعات...) اعتماداً على قيود
-// ON DELETE CASCADE المُعرَّفة في قاعدة البيانات على الجداول التي تُشير
-// إلى gyms(id) أو users(id).
+// هذا إجراء لا رجعة فيه إطلاقاً: يحذف الصالة وكل بياناتها المرتبطة يدوياً
+// (لا توجد قيود ON DELETE CASCADE في هذه القاعدة)، بالترتيب الصحيح من
+// الجداول الفرعية إلى الجذر، داخل معاملة واحدة (transaction) — إما أن
+// يُحذف كل شيء بنجاح، أو لا يتغيّر شيء إطلاقاً عند أي خطأ.
+//
 // حماية إضافية: يُشترط إرسال "confirmSlug" مطابقاً تماماً لرابط الصالة (slug)
 // حتى لا يُحذف حساب صالة بالخطأ من ضغطة زر عرضية.
 export const deleteGymPermanently = async (req, res) => {
@@ -192,13 +193,127 @@ export const deleteGymPermanently = async (req, res) => {
     }
 
     try {
-      await query(`DELETE FROM gyms WHERE id = $1`, [gym.id]);
+      await transaction(async (client) => {
+        const gymId = gym.id;
+
+        // كل معرّفات المستخدمين التابعين لهذه الصالة (ملاك، مدربون، مساعدون، رياضيون، أولياء أمور)
+        const { rows: userRows } = await client.query(`SELECT id FROM users WHERE gym_id = $1`, [gymId]);
+        const userIds = userRows.map(r => r.id);
+
+        // كل معرّفات حصص هذه الصالة
+        const { rows: sessionRows } = await client.query(`SELECT id FROM sessions WHERE gym_id = $1`, [gymId]);
+        const sessionIds = sessionRows.map(r => r.id);
+
+        // كل معرّفات اشتراكات هذه الصالة (عبر athlete_id/created_by المنتميين لها)
+        const subRes = userIds.length
+          ? await client.query(
+              `SELECT id FROM subscriptions WHERE athlete_id = ANY($1::uuid[]) OR created_by = ANY($1::uuid[])`,
+              [userIds]
+            )
+          : { rows: [] };
+        const subscriptionIds = subRes.rows.map(r => r.id);
+
+        // 1) الحضور — يعتمد على الحصص والمستخدمين
+        if (sessionIds.length || userIds.length) {
+          await client.query(
+            `DELETE FROM attendance
+             WHERE session_id = ANY($1::uuid[]) OR athlete_id = ANY($2::uuid[]) OR recorded_by = ANY($2::uuid[])`,
+            [sessionIds, userIds]
+          );
+        }
+
+        // 2) تسجيلات الحصص
+        if (sessionIds.length || userIds.length) {
+          await client.query(
+            `DELETE FROM session_enrollments
+             WHERE session_id = ANY($1::uuid[]) OR athlete_id = ANY($2::uuid[])`,
+            [sessionIds, userIds]
+          );
+        }
+
+        // 3) سجلّ تغييرات الرتب
+        if (userIds.length) {
+          await client.query(
+            `DELETE FROM rank_history WHERE athlete_id = ANY($1::uuid[]) OR changed_by = ANY($1::uuid[])`,
+            [userIds]
+          );
+        }
+
+        // 4) متابعة التقدّم الرياضي
+        if (userIds.length) {
+          await client.query(
+            `DELETE FROM athlete_progress WHERE athlete_id = ANY($1::uuid[]) OR coach_id = ANY($1::uuid[])`,
+            [userIds]
+          );
+        }
+
+        // 5) روابط أولياء الأمور بالرياضيين
+        if (userIds.length) {
+          await client.query(
+            `DELETE FROM guardian_athlete WHERE athlete_id = ANY($1::uuid[]) OR guardian_id = ANY($1::uuid[])`,
+            [userIds]
+          );
+        }
+
+        // 6) الإشعارات
+        if (userIds.length) {
+          await client.query(`DELETE FROM notifications WHERE user_id = ANY($1::uuid[])`, [userIds]);
+        }
+
+        // 7) توكنات إشعارات الجوال (FCM)
+        if (userIds.length) {
+          await client.query(`DELETE FROM user_fcm_tokens WHERE user_id = ANY($1::uuid[])`, [userIds]);
+        }
+
+        // 8) المدفوعات — تعتمد على الاشتراكات والمستخدمين
+        if (subscriptionIds.length || userIds.length) {
+          await client.query(
+            `DELETE FROM payments
+             WHERE subscription_id = ANY($1::uuid[]) OR recorded_by = ANY($2::uuid[])`,
+            [subscriptionIds, userIds]
+          );
+        }
+
+        // 9) الاشتراكات
+        if (subscriptionIds.length) {
+          await client.query(`DELETE FROM subscriptions WHERE id = ANY($1::uuid[])`, [subscriptionIds]);
+        }
+
+        // 10) الحصص (بعد حذف كل ما يعتمد عليها)
+        await client.query(`DELETE FROM sessions WHERE gym_id = $1`, [gymId]);
+
+        // 11) خطط الاشتراك
+        await client.query(`DELETE FROM subscription_plans WHERE gym_id = $1`, [gymId]);
+
+        // 12) القاعات
+        await client.query(`DELETE FROM rooms WHERE gym_id = $1`, [gymId]);
+
+        // 13) الفئات الرياضية
+        await client.query(`DELETE FROM sport_categories WHERE gym_id = $1`, [gymId]);
+
+        // 14) قوالب مقاييس التقدّم
+        await client.query(`DELETE FROM metric_templates WHERE gym_id = $1`, [gymId]);
+
+        // 15) قوالب الإشعارات
+        await client.query(`DELETE FROM notification_templates WHERE gym_id = $1`, [gymId]);
+
+        // 16) سجلّ نشاط الصالة
+        await client.query(`DELETE FROM gym_activity_log WHERE gym_id = $1`, [gymId]);
+
+        // 17) المستخدمون (ملاك، مدربون، مساعدون، رياضيون، أولياء أمور)
+        await client.query(`DELETE FROM users WHERE gym_id = $1`, [gymId]);
+
+        // 18) الصالة نفسها
+        await client.query(`DELETE FROM gyms WHERE id = $1`, [gymId]);
+      });
     } catch (fkErr) {
-      // 23503 = foreign_key_violation في PostgreSQL
+      // 23503 = foreign_key_violation في PostgreSQL — يعني وجود جدول آخر
+      // لم يُدرَج في ترتيب الحذف أعلاه ولا يزال يُشير لبيانات هذه الصالة.
+      // بفضل الـ transaction، لم يُحذف أي شيء عند هذا الخطأ (تراجع كامل تلقائي).
       if (fkErr.code === "23503") {
         return badRequest(
           res,
-          "تعذّر حذف الصالة نهائياً لأن بعض بياناتها المرتبطة (مثل السجلات القديمة) تمنع الحذف على مستوى قاعدة البيانات. يرجى مراجعة المطوّر لضبط قواعد الحذف التسلسلي (ON DELETE CASCADE) على الجداول المرتبطة، أو حذف تلك البيانات يدوياً أولاً."
+          `تعذّر حذف الصالة نهائياً بسبب قيد ربط في قاعدة البيانات لم يُؤخَذ بعين الاعتبار (${fkErr.table || fkErr.detail || "جدول غير معروف"}). لم يتم حذف أي بيانات (تراجع تلقائي كامل). يرجى إبلاغ المطوّر بهذه الرسالة لإضافة الجدول الناقص لترتيب الحذف.`
         );
       }
       throw fkErr;
