@@ -532,6 +532,7 @@ function PaymentsTab() {
   const [search, setSearch] = useState("");
   const [method, setMethod] = useState("");
   const [page, setPage] = useState(1);
+  const [hidden, toggleHidden] = useHiddenStats();
 
   const { data: statsData } = useQuery({ queryKey: ["payments-stats"], queryFn: paymentsService.getStats });
   const stats = statsData?.data || {};
@@ -558,17 +559,31 @@ function PaymentsTab() {
       {/* إحصائيات سريعة */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12, marginBottom: isMobile ? 14 : 20 }}>
         {[
-          { label: t("subscriptions.statToday"), value: stats.today, color: "var(--accent)" },
-          { label: t("subscriptions.statWeek"), value: stats.this_week, color: "var(--accent2)" },
-          { label: t("subscriptions.statMonth"), value: stats.this_month, color: "var(--accent3)" },
-        ].map((c, i) => (
-          <div key={i} className={`fade-up d-${i + 1}`} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? "12px 14px" : "16px 20px" }}>
-            <div className="mono" style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: c.color }}>
-              {stats.today === undefined ? "—" : `${Number(c.value ?? 0).toLocaleString()} دج`}
+          { key: "payToday", label: t("subscriptions.statToday"), value: stats.today, color: "var(--accent)" },
+          { key: "payWeek",  label: t("subscriptions.statWeek"),  value: stats.this_week, color: "var(--accent2)" },
+          { key: "payMonth", label: t("subscriptions.statMonth"), value: stats.this_month, color: "var(--accent3)" },
+        ].map((c, i) => {
+          const isHidden = hidden[c.key];
+          return (
+            <div key={i} className={`fade-up d-${i + 1}`} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? "12px 14px" : "16px 20px", position: "relative" }}>
+              <button
+                onClick={() => toggleHidden(c.key)}
+                title={isHidden ? t("subscriptions.showAmount") : t("subscriptions.hideAmount")}
+                style={{
+                  position: "absolute", top: 10, left: 10,
+                  background: "none", border: "none", cursor: "pointer",
+                  color: "var(--muted)", fontSize: 15, padding: 2, lineHeight: 1,
+                }}
+              >
+                {isHidden ? "🙈" : "👁️"}
+              </button>
+              <div className="mono" style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: c.color }}>
+                {stats.today === undefined ? "—" : isHidden ? "••••••" : `${Number(c.value ?? 0).toLocaleString()} دج`}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{c.label}</div>
             </div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{c.label}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* فلاتر */}
