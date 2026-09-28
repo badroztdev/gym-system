@@ -56,30 +56,70 @@ function paymentStatusInfo(s, t) {
   return { type: "expired", label: t("subscriptions.payUnpaid") };
 }
 
+// ✅ يقرأ/يحفظ حالة الإخفاء في localStorage حتى تبقى محفوظة بعد تحديث الصفحة
+function useHiddenStats() {
+  const [hidden, setHidden] = useState(() => {
+    try {
+      const saved = localStorage.getItem("sgms-hidden-money-stats");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+
+  const toggle = (key) => {
+    setHidden(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      try { localStorage.setItem("sgms-hidden-money-stats", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  return [hidden, toggle];
+}
+
 function StatsRow() {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
   const { data } = useQuery({ queryKey: ["subscriptions-stats"], queryFn: subscriptionsService.getStats });
   const s = data?.data || {};
+  const [hidden, toggleHidden] = useHiddenStats();
+
   const cards = [
-    { label: t("subscriptions.statActiveCount"),  value: s.active_count,   color: "var(--accent)" },
-    { label: t("subscriptions.statExpiringCount"), value: s.expiring_count, color: "var(--warning)" },
-    { label: t("subscriptions.statRevenueMonth"),  value: s.revenue_this_month, color: "var(--accent2)", suffix: " دج" },
-    { label: t("subscriptions.statTotalDue"),      value: s.total_due,      color: "var(--danger)",  suffix: " دج" },
+    { key: "activeCount",   label: t("subscriptions.statActiveCount"),   value: s.active_count,        color: "var(--accent)" },
+    { key: "expiringCount", label: t("subscriptions.statExpiringCount"), value: s.expiring_count,      color: "var(--warning)" },
+    { key: "revenueMonth",  label: t("subscriptions.statRevenueMonth"),  value: s.revenue_this_month,  color: "var(--accent2)", suffix: " دج", maskable: true },
+    { key: "totalDue",      label: t("subscriptions.statTotalDue"),      value: s.total_due,           color: "var(--danger)",  suffix: " دج", maskable: true },
   ];
+
   return (
     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 10 : 12, marginBottom: isMobile ? 14 : 20 }}>
-      {cards.map((c, i) => (
-        <div key={i} className={`fade-up d-${i + 1}`} style={{
-          background: "var(--card)", border: "1px solid var(--border)",
-          borderRadius: "var(--radius)", padding: isMobile ? "12px 14px" : "16px 20px",
-        }}>
-          <div className="mono" style={{ fontSize: isMobile ? 16 : 22, fontWeight: 700, color: c.color, overflowWrap: "break-word" }}>
-            {s.active_count === undefined ? "—" : `${Number(c.value ?? 0).toLocaleString()}${c.suffix || ""}`}
+      {cards.map((c, i) => {
+        const isHidden = c.maskable && hidden[c.key];
+        return (
+          <div key={i} className={`fade-up d-${i + 1}`} style={{
+            background: "var(--card)", border: "1px solid var(--border)",
+            borderRadius: "var(--radius)", padding: isMobile ? "12px 14px" : "16px 20px",
+            position: "relative",
+          }}>
+            {c.maskable && (
+              <button
+                onClick={() => toggleHidden(c.key)}
+                title={isHidden ? t("subscriptions.showAmount") : t("subscriptions.hideAmount")}
+                style={{
+                  position: "absolute", top: 10, left: 10,
+                  background: "none", border: "none", cursor: "pointer",
+                  color: "var(--muted)", fontSize: 15, padding: 2, lineHeight: 1,
+                }}
+              >
+                {isHidden ? "🙈" : "👁️"}
+              </button>
+            )}
+            <div className="mono" style={{ fontSize: isMobile ? 16 : 22, fontWeight: 700, color: c.color, overflowWrap: "break-word" }}>
+              {s.active_count === undefined ? "—" : isHidden ? "••••••" : `${Number(c.value ?? 0).toLocaleString()}${c.suffix || ""}`}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{c.label}</div>
           </div>
-          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{c.label}</div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
