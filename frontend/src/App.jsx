@@ -7,7 +7,6 @@ import { useAuthStore } from "@/store/authStore";
 import toast from "react-hot-toast";
 import "@/styles/globals.css";
 
-
 // Firebase - تهيئة الإشعارات
 import { requestNotificationPermission, onForegroundMessage } from "@/services/firebase.js";
 import { notificationsService } from "@/services/notifications.service";
@@ -38,7 +37,6 @@ import Progress      from "@/pages/Progress";
 import Settings      from "@/pages/Settings";
 import Dashboard     from "@/pages/Dashboard";
 import Attendance    from "@/pages/Attendance";
-import PrivacyPolicy from "@/pages/PrivacyPolicy";
 
 // Portal (الرياضي / ولي الأمر)
 import PortalLayout   from "@/portal/components/PortalLayout";
@@ -187,7 +185,6 @@ export default function App() {
         <Routes>
           {/* Public */}
           <Route path="/login"  element={<Login />} />
-          <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/subscription-required" element={<SubscriptionRequired />} />
           <Route path="/signup" element={<SignUp />} />
 
