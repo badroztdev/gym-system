@@ -23,6 +23,7 @@ function playNotificationSound() {
 import Layout from "@/components/layout/Layout";
 
 // Pages (لوحة التحكم)
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import Landing       from "@/pages/Landing";
 import Login         from "@/pages/Login";
 import SubscriptionRequired from "@/pages/SubscriptionRequired";
@@ -184,6 +185,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           {/* Public */}
+          <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/login"  element={<Login />} />
           <Route path="/subscription-required" element={<SubscriptionRequired />} />
           <Route path="/signup" element={<SignUp />} />
