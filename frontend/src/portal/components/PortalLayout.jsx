@@ -7,6 +7,7 @@ import { usePortalStore } from "@/portal/store/portalStore";
 import { portalService } from "@/portal/services/portal.service";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { PORTAL_DARK_THEME, PORTAL_LIGHT_THEME } from "@/portal/portalTheme";
+import { FONT_SCALES, getFontScale, saveFontScale, nextFontScale } from "@/portal/fontScale";
 
 const NAV = [
   { path: "home",       label: "الرئيسية", icon: "🏠" },
@@ -24,6 +25,13 @@ export default function PortalLayout() {
   const { selectedAthleteId, setSelectedAthlete, dark, toggleDark } = usePortalStore();
   const theme = dark ? PORTAL_DARK_THEME : PORTAL_LIGHT_THEME;
   const [showSwitcher, setShowSwitcher] = useState(false);
+  const [fontScale, setFontScale] = useState(getFontScale);
+  const cycleFontScale = () => {
+    const next = nextFontScale(fontScale);
+    setFontScale(next);
+    saveFontScale(next);
+  };
+  const fontLabel = FONT_SCALES.find(s => s.value === fontScale)?.label;
 
   const { data } = useQuery({
     queryKey: ["my-athletes"],
@@ -32,6 +40,7 @@ export default function PortalLayout() {
   const athletes = data?.data || [];
   const isGuardian = user?.role === "guardian";
 
+  // اختر أول رياضي تلقائياً إذا لم يوجد اختيار
   useEffect(() => {
     if (athletes.length && !selectedAthleteId) {
       setSelectedAthlete(athletes[0].id);
@@ -39,10 +48,11 @@ export default function PortalLayout() {
   }, [athletes, selectedAthleteId]);
 
   const currentAthlete = athletes.find(a => a.id === selectedAthleteId) || athletes[0];
+  // البنية الآن: /portal/{gymSlug}/{page} → الصفحة هي الجزء الرابع
   const activePage = location.pathname.split("/")[3] || "home";
 
   return (
-    <div style={{ ...theme, minHeight: "100vh", background: "var(--bg)", direction: "rtl", display: "flex", flexDirection: "column", transition: "background 0.2s ease" }}>
+    <div style={{ ...theme, zoom: fontScale, minHeight: `calc(100vh / ${fontScale})`, background: "var(--bg)", direction: "rtl", display: "flex", flexDirection: "column", transition: "background 0.2s ease" }}>
 
       {/* ── Top bar ──────────────────────────────────────────── */}
       <header style={{
@@ -51,12 +61,13 @@ export default function PortalLayout() {
         display: "flex", justifyContent: "space-between", alignItems: "center",
         position: "sticky", top: 0, zIndex: 20,
       }}>
+        {/* اختيار الرياضي (لولي الأمر فقط) */}
         {isGuardian && athletes.length > 0 ? (
           <button onClick={() => setShowSwitcher(true)} style={{
             display: "flex", alignItems: "center", gap: 8,
             background: "var(--card)", border: "1px solid var(--border)",
             borderRadius: "var(--radius-sm)", padding: "7px 12px",
-            cursor: "pointer", maxWidth: 200,
+            cursor: "pointer", maxWidth: 130,
           }}>
             <div style={{
               width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
@@ -70,13 +81,17 @@ export default function PortalLayout() {
             {athletes.length > 1 && <span style={{ fontSize: 10, color: "var(--muted)" }}>▼</span>}
           </button>
         ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <img src="/logo.png" alt="SGMS" style={{ width: 30, height: 30, borderRadius: "50%", display: "block" }} />
-          
-          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}><img src="/favicon.png" alt="SGMS" style={{ width: 30, height: 30 }} /></div>
         )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={cycleFontScale} aria-label={`حجم الخط: ${fontLabel}`} title={`حجم الخط: ${fontLabel}`} style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: "var(--card)", border: "1px solid var(--border)",
+            color: "var(--text)", cursor: "pointer", fontSize: 13, fontWeight: 700,
+            fontFamily: "'Sora', sans-serif",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>Aa</button>
           <button onClick={toggleDark} aria-label="تبديل الوضع" style={{
             width: 36, height: 36, borderRadius: 10,
             background: "var(--card)", border: "1px solid var(--border)",
@@ -117,7 +132,7 @@ export default function PortalLayout() {
               display: "flex", flexDirection: "column", alignItems: "center",
               gap: 3, background: "none", border: "none",
               color: active ? "var(--accent)" : "var(--muted)",
-              cursor: "pointer", fontSize: 10, fontFamily: "'Sora', sans-serif",
+              cursor: "pointer", fontSize: 11, fontFamily: "'Sora', sans-serif",
               fontWeight: active ? 700 : 400, flex: 1,
             }}>
               <span style={{ fontSize: 22 }}>{item.icon}</span>
@@ -158,7 +173,7 @@ export default function PortalLayout() {
                   }}>{a.full_name[0]}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{a.full_name}</div>
-                    {a.age_category && <div style={{ fontSize: 11, color: "var(--muted)" }}>{a.age_category}</div>}
+                    {a.age_category && <div style={{ fontSize: 12, color: "var(--muted)" }}>{a.age_category}</div>}
                   </div>
                   {a.id === selectedAthleteId && <span style={{ color: "var(--accent)" }}>✓</span>}
                 </button>
