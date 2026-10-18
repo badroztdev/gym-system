@@ -161,12 +161,13 @@ export default function PortalHome() {
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {d.recentNotifications.map(n => (
               <div key={n.id} style={{
-                background: "var(--card)", border: "1px solid var(--border)",
-                borderRadius: "var(--radius-sm)", padding: "10px 12px",
-                opacity: n.is_read ? 0.6 : 1,
+                background: "var(--card)",
+                // غير المقروء: حدّ بلون التمييز — المقروء: حدّ عادي. النص واضح في الحالتين (بدون شفافية)
+                border: `1px solid ${n.is_read ? "var(--border)" : "var(--accent)"}`,
+                borderRadius: "var(--radius-sm)", padding: "12px 14px",
               }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{n.title}</div>
-                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{n.body}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{n.title}</div>
+                <div style={{ fontSize: 13, color: "var(--text)", marginTop: 4, lineHeight: 1.6 }}>{n.body}</div>
               </div>
             ))}
           </div>
