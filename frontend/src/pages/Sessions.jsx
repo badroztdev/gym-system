@@ -138,6 +138,13 @@ function ScheduleTab() {
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* شارات */}
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: compact ? 2 : 4 }}>
+          {s.session_type === "competition" && (
+            <span style={{
+              fontSize: compact ? 9 : 10, fontWeight: 700,
+              padding: "1px 6px", borderRadius: 10,
+              background: "var(--warning)25", color: "var(--warning)",
+            }}>🏆 {t("sessions.badgeCompetition")}</span>
+          )}
           {s.category_name && (
             <span style={{
               fontSize: compact ? 9 : 10, fontWeight: 600,
@@ -329,6 +336,7 @@ function ScheduleTab() {
         onClose={() => { setShowForm(false); setEditSession(null); }}
         session={editSession}
         onSuccess={refresh}
+        onDelete={(sess) => { setShowForm(false); setEditSession(null); setCancelId(sess.id); }}
       />
 
       <Confirm

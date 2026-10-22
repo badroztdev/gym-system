@@ -2,6 +2,9 @@
 import { query, transaction } from "../utils/db.js";
 import { ok, created, noContent, notFound, badRequest, serverError } from "../utils/response.js";
 
+const SESSION_TYPES = ["training", "competition"];
+const MEDALS = ["gold", "silver", "bronze"];
+
 function generateRecurringDates(startDate, endDate, days) {
   const dates = [];
   const current = new Date(startDate);
@@ -41,6 +44,7 @@ export const getSessions = async (req, res) => {
          TO_CHAR(s.session_date, 'YYYY-MM-DD') AS session_date,
          s.start_time, s.end_time,
          s.capacity, s.is_recurring, s.recurrence_days, s.recurrence_end, s.is_cancelled,
+         s.session_type,
          u.id AS coach_id, u.full_name AS coach_name,
          r.id AS room_id, r.name AS room_name,
          c.id AS category_id, c.name AS category_name, c.color AS category_color,
@@ -98,8 +102,9 @@ export const createSession = async (req, res) => {
     const {
       title, description, sessionDate, startTime, endTime,
       capacity, coachId, roomId, categoryId, ageCategories,
-      isRecurring, recurrenceDays, recurrenceEnd,
+      isRecurring, recurrenceDays, recurrenceEnd, sessionType,
     } = req.body;
+    const type = SESSION_TYPES.includes(sessionType) ? sessionType : "training";
 
     const gymId = req.user.gym_id;
     const ageCats = Array.isArray(ageCategories) && ageCategories.length ? ageCategories : null;
@@ -114,11 +119,11 @@ export const createSession = async (req, res) => {
       const { rows } = await query(
         `INSERT INTO sessions
            (gym_id, coach_id, category_id, room_id, title, description,
-            session_date, start_time, end_time, capacity, is_recurring, age_category)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,FALSE,$11)
+            session_date, start_time, end_time, capacity, is_recurring, age_category, session_type)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,FALSE,$11,$12)
          RETURNING *`,
         [gymId, coachId, categoryId || null, roomId || null, title, description || null,
-         sessionDate, startTime, endTime, capacity || 20, ageCats]
+         sessionDate, startTime, endTime, capacity || 20, ageCats, type]
       );
       return created(res, rows[0]);
     }
@@ -136,12 +141,12 @@ export const createSession = async (req, res) => {
           `INSERT INTO sessions
              (gym_id, coach_id, category_id, room_id, title, description,
               session_date, start_time, end_time, capacity,
-              is_recurring, recurrence_days, recurrence_end, age_category)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,TRUE,$11,$12,$13)
+              is_recurring, recurrence_days, recurrence_end, age_category, session_type)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,TRUE,$11,$12,$13,$14)
            RETURNING id, session_date, title`,
           [gymId, coachId, categoryId || null, roomId || null, title, description || null,
            d, startTime, endTime, capacity || 20,
-           recurrenceDays, recurrenceEnd, ageCats]
+           recurrenceDays, recurrenceEnd, ageCats, type]
         );
         results.push(rows[0]);
       }
@@ -161,7 +166,7 @@ export const updateSession = async (req, res) => {
     const {
       title, description, sessionDate, startTime, endTime,
       capacity, coachId, roomId, categoryId, ageCategories,
-      isCancelled, cancelReason
+      isCancelled, cancelReason, sessionType
     } = req.body;
 
     const ageCats = ageCategories === undefined
@@ -182,8 +187,9 @@ export const updateSession = async (req, res) => {
          age_category = CASE WHEN $10::text[] IS NULL THEN age_category ELSE $10::text[] END,
          is_cancelled = COALESCE($11, is_cancelled),
          cancel_reason= COALESCE($12, cancel_reason),
+         session_type = COALESCE($13, session_type),
          updated_at   = NOW()
-       WHERE id = $13 AND gym_id = $14
+       WHERE id = $14 AND gym_id = $15
        RETURNING *`,
       [
         title       || null,
@@ -198,6 +204,7 @@ export const updateSession = async (req, res) => {
         ageCats,
         isCancelled ?? null,
         cancelReason || null,
+        SESSION_TYPES.includes(sessionType) ? sessionType : null,
         req.params.id, req.user.gym_id,
       ]
     );
@@ -240,6 +247,7 @@ export const deleteRecurringSeries = async (req, res) => {
     // إذا لم تكن الحصة متكررة أصلاً، احذف هذه الحصة فقط نهائياً
     if (!s.is_recurring) {
       await transaction(async (client) => {
+        await client.query("DELETE FROM session_results WHERE session_id = $1", [id]);
         await client.query("DELETE FROM attendance WHERE session_id = $1", [id]);
         await client.query("DELETE FROM session_enrollments WHERE session_id = $1", [id]);
         await client.query("DELETE FROM sessions WHERE id = $1", [id]);
@@ -265,6 +273,7 @@ export const deleteRecurringSeries = async (req, res) => {
     if (!ids.length) return notFound(res, "لا توجد حصص قادمة مطابقة لهذه السلسلة");
 
     await transaction(async (client) => {
+      await client.query("DELETE FROM session_results WHERE session_id = ANY($1::uuid[])", [ids]);
       await client.query("DELETE FROM attendance WHERE session_id = ANY($1::uuid[])", [ids]);
       await client.query("DELETE FROM session_enrollments WHERE session_id = ANY($1::uuid[])", [ids]);
       await client.query("DELETE FROM sessions WHERE id = ANY($1::uuid[])", [ids]);
@@ -282,7 +291,7 @@ export const getTodaySessions = async (req, res) => {
          s.id, s.title, s.age_category,
          TO_CHAR(s.session_date, 'YYYY-MM-DD') AS session_date,
          s.start_time, s.end_time,
-         s.capacity, s.is_cancelled,
+         s.capacity, s.is_cancelled, s.session_type,
          u.full_name AS coach_name,
          r.name AS room_name,
          c.color AS category_color,
@@ -299,5 +308,98 @@ export const getTodaySessions = async (req, res) => {
       [req.user.gym_id]
     );
     return ok(res, rows);
+  } catch (err) { serverError(res, err); }
+};
+
+// ── GET /api/sessions/:id/results ──────────────────────────────
+// نتائج المنافسة + قائمة رياضيي الصالة النشطين لاختيارهم في القائمة المنسدلة
+export const getSessionResults = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const gymId = req.user.gym_id;
+
+    const sessionRes = await query(
+      "SELECT id FROM sessions WHERE id = $1 AND gym_id = $2",
+      [id, gymId]
+    );
+    if (!sessionRes.rows.length) return notFound(res, "الحصة غير موجودة");
+
+    const results = await query(
+      `SELECT r.id, r.athlete_id, u.full_name AS athlete_name,
+              r.specialty, r.result, r.rank_position, r.medal
+       FROM session_results r
+       JOIN users u ON u.id = r.athlete_id
+       WHERE r.session_id = $1
+       ORDER BY r.sort_order, r.created_at`,
+      [id]
+    );
+
+    const athletes = await query(
+      `SELECT id, full_name FROM users
+       WHERE gym_id = $1 AND role = 'athlete' AND is_active = TRUE
+       ORDER BY full_name`,
+      [gymId]
+    );
+
+    return ok(res, { results: results.rows, athletes: athletes.rows });
+  } catch (err) { serverError(res, err); }
+};
+
+// ── PUT /api/sessions/:id/results ──────────────────────────────
+// يستبدل قائمة النتائج كاملةً داخل معاملة واحدة (إضافة/تعديل/حذف دفعة واحدة)
+export const saveSessionResults = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const gymId = req.user.gym_id;
+    const list = req.body?.results;
+    if (!Array.isArray(list)) return badRequest(res, "قائمة النتائج مطلوبة");
+    if (list.length > 200)    return badRequest(res, "عدد النتائج كبير جداً");
+
+    const sessionRes = await query(
+      "SELECT id FROM sessions WHERE id = $1 AND gym_id = $2",
+      [id, gymId]
+    );
+    if (!sessionRes.rows.length) return notFound(res, "الحصة غير موجودة");
+
+    const clean = [];
+    for (const [i, r] of list.entries()) {
+      if (!r?.athleteId) return badRequest(res, `الرياضي مطلوب في النتيجة رقم ${i + 1}`);
+      const rank = r.rank === "" || r.rank == null ? null : Number(r.rank);
+      if (rank !== null && (!Number.isInteger(rank) || rank < 1))
+        return badRequest(res, `الترتيب غير صحيح في النتيجة رقم ${i + 1}`);
+      const medal = r.medal ? String(r.medal) : null;
+      if (medal && !MEDALS.includes(medal))
+        return badRequest(res, `الميدالية غير صحيحة في النتيجة رقم ${i + 1}`);
+      clean.push({
+        athleteId: r.athleteId,
+        specialty: (r.specialty || "").trim().slice(0, 150) || null,
+        result:    (r.result || "").trim().slice(0, 150) || null,
+        rank, medal,
+      });
+    }
+
+    // كل الرياضيين يجب أن ينتموا لنفس الصالة
+    if (clean.length) {
+      const ids = [...new Set(clean.map(c => c.athleteId))];
+      const valid = await query(
+        "SELECT id FROM users WHERE id = ANY($1::uuid[]) AND gym_id = $2 AND role = 'athlete'",
+        [ids, gymId]
+      );
+      if (valid.rows.length !== ids.length) return badRequest(res, "أحد الرياضيين غير موجود في هذه الصالة");
+    }
+
+    await transaction(async (client) => {
+      await client.query("DELETE FROM session_results WHERE session_id = $1", [id]);
+      for (const [i, c] of clean.entries()) {
+        await client.query(
+          `INSERT INTO session_results
+             (session_id, athlete_id, specialty, result, rank_position, medal, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [id, c.athleteId, c.specialty, c.result, c.rank, c.medal, i]
+        );
+      }
+    });
+
+    return ok(res, { message: "تم حفظ النتائج", count: clean.length });
   } catch (err) { serverError(res, err); }
 };

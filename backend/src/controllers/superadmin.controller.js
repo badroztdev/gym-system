@@ -213,6 +213,15 @@ export const deleteGymPermanently = async (req, res) => {
           : { rows: [] };
         const subscriptionIds = subRes.rows.map(r => r.id);
 
+        // 0) نتائج المنافسات — تعتمد على الحصص والمستخدمين
+        if (sessionIds.length || userIds.length) {
+          await client.query(
+            `DELETE FROM session_results
+             WHERE session_id = ANY($1::uuid[]) OR athlete_id = ANY($2::uuid[])`,
+            [sessionIds, userIds]
+          );
+        }
+
         // 1) الحضور — يعتمد على الحصص والمستخدمين
         if (sessionIds.length || userIds.length) {
           await client.query(

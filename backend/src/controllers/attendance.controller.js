@@ -1,5 +1,5 @@
 // src/controllers/attendance.controller.js
-import { query } from "../utils/db.js";
+import { query, transaction } from "../utils/db.js";
 import { ok, created, notFound, badRequest, serverError } from "../utils/response.js";
 import { notifyAbsence } from "./notifications.controller.js";
 
@@ -23,45 +23,18 @@ export const scanQR = async (req, res) => {
     );
     if (!athleteRes.rows.length) return badRequest(res, "الرياضي غير موجود في هذه الصالة");
 
-    // ✅ الإصلاح الجوهري: نظام أولوية بمرحلتين لتحديد الحصة الصحيحة
-    // المشكلة السابقة: هامش تسامح ±30 دقيقة على كل حصة كان يجعل حصتين متتاليتين
-    // (مثلاً 17:00-18:30 و18:30-21:00) تتداخلان معاً عند المسح قرب نقطة التقائهما
-    // (مثلاً 18:45)، فيختار النظام خطأً الحصة الأقدم بدءاً بدل الحصة الجارية فعلياً
-
-    // المرحلة 1: حصة تجري فعلياً الآن — بدون أي هامش تسامح إطلاقاً (الأولوية القصوى)
-    let sessionRes = await query(
+    const sessionRes = await query(
       `SELECT s.id, s.title
        FROM sessions s
        WHERE s.room_id = $1
          AND s.session_date = (NOW() AT TIME ZONE 'Africa/Algiers')::date
-         AND s.start_time <= (NOW() AT TIME ZONE 'Africa/Algiers')::time
-         AND s.end_time   >= (NOW() AT TIME ZONE 'Africa/Algiers')::time
+         AND s.start_time <= (NOW() AT TIME ZONE 'Africa/Algiers')::time + INTERVAL '30 minutes'
+         AND s.end_time   >= (NOW() AT TIME ZONE 'Africa/Algiers')::time - INTERVAL '30 minutes'
          AND s.is_cancelled = FALSE
-       ORDER BY s.start_time DESC
+       ORDER BY s.start_time
        LIMIT 1`,
       [room.id]
     );
-
-    // المرحلة 2 (احتياطية فقط): لا توجد حصة دقيقة الآن — ابحث بهامش تسامح صغير
-    // (±15 دقيقة بدل 30، لتقليل احتمال التداخل)، ورتِّب حسب الأقرب زمنياً للحظة
-    // المسح (وليس الأقدم بدءاً) — يخدم حالة الوصول قبل البداية بقليل أو بعد النهاية بقليل
-    if (!sessionRes.rows.length) {
-      sessionRes = await query(
-        `SELECT s.id, s.title
-         FROM sessions s
-         WHERE s.room_id = $1
-           AND s.session_date = (NOW() AT TIME ZONE 'Africa/Algiers')::date
-           AND s.start_time <= (NOW() AT TIME ZONE 'Africa/Algiers')::time + INTERVAL '15 minutes'
-           AND s.end_time   >= (NOW() AT TIME ZONE 'Africa/Algiers')::time - INTERVAL '15 minutes'
-           AND s.is_cancelled = FALSE
-         ORDER BY
-           ABS(EXTRACT(EPOCH FROM (
-             (NOW() AT TIME ZONE 'Africa/Algiers')::time - s.start_time
-           )))
-         LIMIT 1`,
-        [room.id]
-      );
-    }
 
     if (!sessionRes.rows.length) {
       return badRequest(res, `لا توجد حصة جارية الآن في قاعة ${room.name}`);
@@ -92,6 +65,8 @@ export const scanQR = async (req, res) => {
 };
 
 // ── GET /api/attendance/session/:sessionId ─────────────────────
+// ✅ الإصلاح الجوهري: نعرض كل الرياضيين المؤهلين للحصة (حسب فئتها العمرية)
+// حتى لو لم يُسجَّل حضورهم بعد — بدل الاعتماد فقط على سجلات attendance الموجودة
 export const getSessionAttendance = async (req, res) => {
   try {
     const { sessionId } = req.params;
@@ -103,6 +78,8 @@ export const getSessionAttendance = async (req, res) => {
     if (!sessionCheck.rows.length) return notFound(res, "الحصة غير موجودة");
     const session = sessionCheck.rows[0];
 
+    // كل الرياضيين النشطين المؤهلين لهذه الحصة (بنفس فئتها العمرية، أو الجميع إذا لم تُحدَّد فئة)
+    // مع حالة حضورهم إن وُجدت (LEFT JOIN)، وافتراضياً 'لم يُسجَّل بعد' إن لم توجد
     const conditions = ["u.gym_id = $1", "u.role = 'athlete'", "u.is_active = TRUE"];
     const params = [session.gym_id];
     let p = 2;
@@ -113,7 +90,7 @@ export const getSessionAttendance = async (req, res) => {
       p++;
     }
 
-    params.push(sessionId);
+    params.push(sessionId); // آخر معامل لربط attendance بالحصة الحالية تحديداً
 
     const { rows } = await query(
       `SELECT
@@ -181,6 +158,73 @@ export const manualAttendance = async (req, res) => {
   } catch (err) { serverError(res, err); }
 };
 
+// ── POST /api/attendance/bulk ──────────────────────────────────
+// حفظ حضور عدّة رياضيين دفعة واحدة (من نافذة تعديل الحصة).
+// يُرسل الإشعار فقط لمن تغيّرت حالته إلى غائب/متأخر.
+export const bulkAttendance = async (req, res) => {
+  try {
+    const { sessionId, records } = req.body;
+    if (!sessionId || !Array.isArray(records))
+      return badRequest(res, "الحصة وقائمة الحضور مطلوبتان");
+    if (records.length > 500) return badRequest(res, "عدد السجلات كبير جداً");
+
+    const validStatuses = ["present", "absent", "late", "excused"];
+    for (const r of records) {
+      if (!r?.athleteId || !validStatuses.includes(r.status))
+        return badRequest(res, "بيانات الحضور غير صحيحة");
+    }
+
+    const sessionRes = await query(
+      "SELECT id, title FROM sessions WHERE id = $1 AND gym_id = $2",
+      [sessionId, req.user.gym_id]
+    );
+    if (!sessionRes.rows.length) return notFound(res, "الحصة غير موجودة");
+    const sessionTitle = sessionRes.rows[0].title;
+
+    if (!records.length) return ok(res, { saved: 0 });
+
+    const ids = [...new Set(records.map(r => r.athleteId))];
+    const athletes = await query(
+      "SELECT id, full_name FROM users WHERE id = ANY($1::uuid[]) AND gym_id = $2",
+      [ids, req.user.gym_id]
+    );
+    if (athletes.rows.length !== ids.length)
+      return badRequest(res, "أحد الرياضيين غير موجود في هذه الصالة");
+    const names = Object.fromEntries(athletes.rows.map(a => [a.id, a.full_name]));
+
+    const prev = await query(
+      "SELECT athlete_id, status FROM attendance WHERE session_id = $1 AND athlete_id = ANY($2::uuid[])",
+      [sessionId, ids]
+    );
+    const prevMap = Object.fromEntries(prev.rows.map(r => [r.athlete_id, r.status]));
+
+    await transaction(async (client) => {
+      for (const r of records) {
+        await client.query(
+          `INSERT INTO attendance (session_id, athlete_id, status, recorded_by, scan_method)
+           VALUES ($1, $2, $3, $4, 'manual')
+           ON CONFLICT (session_id, athlete_id)
+           DO UPDATE SET status = $3, recorded_by = $4, scan_method = 'manual'`,
+          [sessionId, r.athleteId, r.status, req.user.id]
+        );
+      }
+    });
+
+    for (const r of records) {
+      if ((r.status === "absent" || r.status === "late") && prevMap[r.athleteId] !== r.status) {
+        notifyAbsence({
+          athleteId: r.athleteId,
+          athleteName: names[r.athleteId],
+          sessionTitle,
+          status: r.status,
+        });
+      }
+    }
+
+    return ok(res, { saved: records.length });
+  } catch (err) { serverError(res, err); }
+};
+
 // ── GET /api/attendance/athlete/:athleteId ─────────────────────
 export const getAthleteAttendance = async (req, res) => {
   try {
@@ -221,6 +265,7 @@ export const getAthleteAttendance = async (req, res) => {
 };
 
 // ── GET /api/attendance/overview ────────────────────────────────
+// إحصائيات عامة شاملة لكل الحصص في الصالة (آخر 30 يوماً افتراضياً)
 export const getAttendanceOverview = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
@@ -256,6 +301,7 @@ export const getAttendanceOverview = async (req, res) => {
 };
 
 // ── GET /api/attendance/trend?period=week|month|year ────────────
+// اتجاه الحضور عبر الزمن (نفس منطق dashboard.controller لكن مخصَّص لصفحة الحضور)
 export const getAttendanceTrend = async (req, res) => {
   try {
     const { period = "month" } = req.query;
@@ -288,10 +334,11 @@ export const getAttendanceTrend = async (req, res) => {
 };
 
 // ── GET /api/attendance/leaderboard ──────────────────────────────
+// ترتيب الرياضيين حسب نسبة الحضور (آخر 30 يوماً)
 export const getAttendanceLeaderboard = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
-    const { order = "best" } = req.query;
+    const { order = "best" } = req.query; // best | worst
 
     const { rows } = await query(`
       SELECT
@@ -320,6 +367,7 @@ export const getAttendanceLeaderboard = async (req, res) => {
 };
 
 // ── GET /api/attendance/by-category ──────────────────────────────
+// توزيع نسب الحضور حسب الفئة العمرية
 export const getAttendanceByCategory = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
@@ -347,6 +395,7 @@ export const getAttendanceByCategory = async (req, res) => {
 };
 
 // ── GET /api/attendance/recent-sessions ──────────────────────────
+// آخر الحصص مع ملخص حضورها (للجدول السفلي في الصفحة)
 export const getRecentSessionsAttendance = async (req, res) => {
   try {
     const gymId = req.user.gym_id;

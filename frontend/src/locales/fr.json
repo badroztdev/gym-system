@@ -212,7 +212,6 @@
     "planDeletePermanentlyTitle": "Supprimer définitivement le plan",
     "planDeletePermanentlyMessage": "Ce plan sera définitivement supprimé de la base de données et cette action est irréversible. Êtes-vous sûr ?",
     "toastPlanDeletedPermanently": "Plan supprimé définitivement"
-
   },
   "sessions": {
     "pageTitle": "Séances et horaires",
@@ -294,7 +293,9 @@
     "roomDeletePermanently": "Supprimer définitivement",
     "roomDeletePermanentlyTitle": "Supprimer définitivement la salle",
     "roomDeletePermanentlyMessage": "La salle « {{name}} » sera supprimée définitivement de la base de données. Cette action est irréversible. Confirmez-vous ?",
-    "toastRoomDeletedPermanently": "Salle supprimée définitivement"
+    "toastRoomDeletedPermanently": "Salle supprimée définitivement",
+    "errorGeneric": "Une erreur est survenue, réessayez",
+    "badgeCompetition": "Compétition"
   },
   "sessionForm": {
     "addTitle": "Nouvelle séance",
@@ -676,5 +677,46 @@
     "errorPlan": "Choisissez le plan",
     "errorPrice": "Le prix est requis",
     "toastCreated": "Abonnement créé avec succès ✅"
+  },
+  "sessionModal": {
+    "subtitleEdit": "Vous pouvez modifier la séance ici.",
+    "subtitleAdd": "Créez une nouvelle séance ici.",
+    "tabSchedule": "Planning",
+    "tabAttendance": "Présence",
+    "tabResults": "Résultats",
+    "sessionType": "Type de séance",
+    "typeTraining": "Entraînement",
+    "typeCompetition": "Compétition",
+    "recordedOf": "{{done}} enregistrés sur {{total}}",
+    "markRestPresent": "Marquer les autres présents",
+    "statusPresent": "Présent",
+    "statusLate": "En retard",
+    "statusAbsent": "Absent",
+    "statusExcused": "Excusé",
+    "resultAthlete": "Athlète",
+    "resultAthleteSelect": "-- Choisir l'athlète --",
+    "resultSpecialty": "Spécialité",
+    "resultSpecialtyPlaceholder": "Ex : Kumité -35 kg",
+    "resultResult": "Résultat",
+    "resultResultPlaceholder": "Ex : Vainqueur",
+    "resultRank": "Classement",
+    "resultMedal": "Médaille",
+    "medalNone": "Aucune médaille",
+    "medalGold": "Or",
+    "medalSilver": "Argent",
+    "medalBronze": "Bronze",
+    "addResult": "Ajouter un résultat",
+    "removeResult": "Supprimer le résultat",
+    "noResults": "Aucun résultat pour l'instant — ajoutez le premier",
+    "errorResultAthlete": "Choisissez l'athlète pour chaque résultat",
+    "errorResultRank": "Le classement doit être un entier supérieur à 0",
+    "close": "Fermer",
+    "save": "Enregistrer",
+    "discardConfirm": "Vous avez des modifications non enregistrées. Fermer sans enregistrer ?",
+    "toastSaved": "Modifications enregistrées ✅",
+    "shareWhatsApp": "Partager via WhatsApp",
+    "cancelSession": "Annuler la séance",
+    "shareResultsTitle": "🏆 Résultats",
+    "badgeCompetition": "Compétition"
   }
 }

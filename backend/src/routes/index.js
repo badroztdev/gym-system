@@ -13,8 +13,8 @@ import { getPlans, createPlan, updatePlan, deletePlan, deletePlanPermanently } f
 import { getSubscriptions, getSubscription, createSubscription, updateSubscription, deleteSubscription, getSubscriptionStats } from "../controllers/subscriptions.controller.js";
 import { getPayments, createPayment, deletePayment, getPaymentsStats } from "../controllers/payments.controller.js";
 import { getRooms, createRoom, updateRoom, deleteRoom, deleteRoomPermanently, regenerateQR } from "../controllers/rooms.controller.js";
-import { getSessions, getSession, createSession, updateSession, cancelSession, deleteRecurringSeries, getTodaySessions } from "../controllers/sessions.controller.js";
-import { scanQR, getSessionAttendance, manualAttendance, getAthleteAttendance, getAttendanceOverview, getAttendanceTrend, getAttendanceLeaderboard, getAttendanceByCategory, getRecentSessionsAttendance } from "../controllers/attendance.controller.js";
+import { getSessions, getSession, createSession, updateSession, cancelSession, deleteRecurringSeries, getTodaySessions, getSessionResults, saveSessionResults } from "../controllers/sessions.controller.js";
+import { scanQR, getSessionAttendance, manualAttendance, bulkAttendance, getAthleteAttendance, getAttendanceOverview, getAttendanceTrend, getAttendanceLeaderboard, getAttendanceByCategory, getRecentSessionsAttendance } from "../controllers/attendance.controller.js";
 import { saveToken, getNotifications, markRead, sendManual, notifyExpiringSubscriptions } from "../controllers/notifications.controller.js";
 import { getMyAthletes, getDashboard, getSchedule, getAttendanceHistory, getSubscriptionHistory, scanAttendance } from "../controllers/portal.controller.js";
 import { getAthleteProgress, createProgress, updateProgress, deleteProgress, changeRank, getMetricTemplates, createMetricTemplate, getProgressList } from "../controllers/progress.controller.js";
@@ -144,9 +144,15 @@ router.post  ("/sessions",        authenticate, coachAndAbove, [
   body("startTime").notEmpty().withMessage("وقت البداية مطلوب"),
   body("endTime").notEmpty().withMessage("وقت النهاية مطلوب"),
   body("coachId").notEmpty().withMessage("المدرب مطلوب"),
+  body("sessionType").optional().isIn(["training","competition"]).withMessage("نوع الحصة غير صحيح"),
   validate,
 ], createSession);
-router.patch ("/sessions/:id",    authenticate, coachAndAbove, updateSession);
+router.patch ("/sessions/:id",    authenticate, coachAndAbove, [
+  body("sessionType").optional().isIn(["training","competition"]).withMessage("نوع الحصة غير صحيح"),
+  validate,
+], updateSession);
+router.get   ("/sessions/:id/results", authenticate, staffOnly,     getSessionResults);
+router.put   ("/sessions/:id/results", authenticate, coachAndAbove, saveSessionResults);
 router.delete("/sessions/:id",    authenticate, coachAndAbove, cancelSession);
 router.delete("/sessions/:id/series", authenticate, ownerOnly, deleteRecurringSeries);
 
@@ -163,6 +169,11 @@ router.post("/attendance/manual",                 authenticate, staffOnly,   [
   body("status").isIn(["present","absent","late","excused"]).withMessage("الحالة غير صحيحة"),
   validate,
 ], manualAttendance);
+router.post("/attendance/bulk",                   authenticate, staffOnly,   [
+  body("sessionId").notEmpty().withMessage("الحصة مطلوبة"),
+  body("records").isArray().withMessage("قائمة الحضور مطلوبة"),
+  validate,
+], bulkAttendance);
 router.get ("/attendance/athlete/:athleteId",     authenticate, staffOnly,   getAthleteAttendance);
 router.get ("/attendance/overview",               authenticate, staffOnly,   getAttendanceOverview);
 router.get ("/attendance/trend",                  authenticate, staffOnly,   getAttendanceTrend);
