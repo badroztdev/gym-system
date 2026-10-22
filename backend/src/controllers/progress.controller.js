@@ -59,10 +59,23 @@ export const getAthleteProgress = async (req, res) => {
       [athleteId]
     );
 
+    // نتائج المنافسات (تاريخ المشاركات + الميداليات)
+    const competitions = await query(
+      `SELECT r.id, r.specialty, r.result, r.rank_position, r.medal,
+              s.id AS session_id, s.title AS session_title,
+              TO_CHAR(s.session_date, 'YYYY-MM-DD') AS session_date
+       FROM session_results r
+       JOIN sessions s ON s.id = r.session_id
+       WHERE r.athlete_id = $1 AND s.is_cancelled = FALSE
+       ORDER BY s.session_date DESC, r.sort_order`,
+      [athleteId]
+    );
+
     return ok(res, {
       athlete: athleteCheck.rows[0],
       records: rows,
       rankHistory: ranks.rows,
+      competitionResults: competitions.rows,
     });
   } catch (err) { serverError(res, err); }
 };
@@ -217,7 +230,10 @@ export const getProgressList = async (req, res) => {
       `SELECT
          u.id, u.full_name, u.avatar_url, u.age_category, u.rank,
          latest.weight_kg, latest.performance_score, latest.record_date,
-         (SELECT COUNT(*) FROM athlete_progress WHERE athlete_id = u.id) AS records_count
+         (SELECT COUNT(*) FROM athlete_progress WHERE athlete_id = u.id) AS records_count,
+         (SELECT COUNT(*) FROM session_results WHERE athlete_id = u.id AND medal = 'gold')   AS gold_count,
+         (SELECT COUNT(*) FROM session_results WHERE athlete_id = u.id AND medal = 'silver') AS silver_count,
+         (SELECT COUNT(*) FROM session_results WHERE athlete_id = u.id AND medal = 'bronze') AS bronze_count
        FROM users u
        LEFT JOIN LATERAL (
          SELECT weight_kg, performance_score, record_date

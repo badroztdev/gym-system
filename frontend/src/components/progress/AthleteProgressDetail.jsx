@@ -7,6 +7,7 @@ import { Modal, Button, Spinner, Empty, Confirm } from "@/components/ui";
 import { progressService } from "@/services/progress.service";
 import ProgressForm from "./ProgressForm";
 import RankChangeForm from "./RankChangeForm";
+import CompetitionResultsList from "./CompetitionResultsList";
 import toast from "react-hot-toast";
 
 export default function AthleteProgressDetail({ open, onClose, athlete }) {
@@ -26,6 +27,7 @@ export default function AthleteProgressDetail({ open, onClose, athlete }) {
   const d = data?.data;
   const records = d?.records || [];
   const rankHistory = d?.rankHistory || [];
+  const competitionResults = d?.competitionResults || [];
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["athlete-progress", athlete?.id] });
 
@@ -131,6 +133,9 @@ export default function AthleteProgressDetail({ open, onClose, athlete }) {
                   </div>
                 )}
               </div>
+
+              {/* نتائج المنافسات (تاريخ + ميداليات) */}
+              <CompetitionResultsList results={competitionResults} maxHeight={320} />
 
               {/* سجل تغيّر الرتب */}
               {rankHistory.length > 0 && (

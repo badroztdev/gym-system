@@ -718,5 +718,9 @@
     "cancelSession": "إلغاء الحصة",
     "shareResultsTitle": "🏆 النتائج",
     "badgeCompetition": "منافسة"
+  },
+  "competitionResults": {
+    "title": "نتائج المنافسات ({{count}})",
+    "place": "المركز {{rank}}"
   }
 }

@@ -1,6 +1,7 @@
 // src/controllers/sessions.controller.js
 import { query, transaction } from "../utils/db.js";
 import { ok, created, noContent, notFound, badRequest, serverError } from "../utils/response.js";
+import { notifyCompetitionResult } from "./notifications.controller.js";
 
 const SESSION_TYPES = ["training", "competition"];
 const MEDALS = ["gold", "silver", "bronze"];
@@ -356,10 +357,11 @@ export const saveSessionResults = async (req, res) => {
     if (list.length > 200)    return badRequest(res, "عدد النتائج كبير جداً");
 
     const sessionRes = await query(
-      "SELECT id FROM sessions WHERE id = $1 AND gym_id = $2",
+      "SELECT id, title FROM sessions WHERE id = $1 AND gym_id = $2",
       [id, gymId]
     );
     if (!sessionRes.rows.length) return notFound(res, "الحصة غير موجودة");
+    const sessionTitle = sessionRes.rows[0].title;
 
     const clean = [];
     for (const [i, r] of list.entries()) {
@@ -388,6 +390,15 @@ export const saveSessionResults = async (req, res) => {
       if (valid.rows.length !== ids.length) return badRequest(res, "أحد الرياضيين غير موجود في هذه الصالة");
     }
 
+    // النتائج السابقة — لمعرفة من تغيّرت نتيجته فنُشعره (دون تكرار إشعار نتيجة لم تتغير)
+    const prevRes = await query(
+      "SELECT athlete_id, specialty, result, rank_position, medal FROM session_results WHERE session_id = $1",
+      [id]
+    );
+    const sig = (a) => [a.specialty || "", a.result || "", a.rank ?? "", a.medal || ""].join("|");
+    const prevSigs = new Set(prevRes.rows.map(r =>
+      `${r.athlete_id}#${sig({ specialty: r.specialty, result: r.result, rank: r.rank_position, medal: r.medal })}`));
+
     await transaction(async (client) => {
       await client.query("DELETE FROM session_results WHERE session_id = $1", [id]);
       for (const [i, c] of clean.entries()) {
@@ -400,6 +411,27 @@ export const saveSessionResults = async (req, res) => {
       }
     });
 
-    return ok(res, { message: "تم حفظ النتائج", count: clean.length });
+    // إشعار الرياضيين الذين أُضيفت/تغيّرت نتيجتهم (بعد نجاح الحفظ، ولا يُفشل الطلب إن تعذّر)
+    const changed = new Map();
+    for (const c of clean) {
+      if (prevSigs.has(`${c.athleteId}#${sig(c)}`)) continue;
+      if (!c.result && !c.rank && !c.medal) continue;
+      if (!changed.has(c.athleteId)) changed.set(c.athleteId, []);
+      changed.get(c.athleteId).push(c);
+    }
+    if (changed.size) {
+      const names = await query(
+        "SELECT id, full_name FROM users WHERE id = ANY($1::uuid[])", [[...changed.keys()]]
+      );
+      const nameOf = Object.fromEntries(names.rows.map(u => [u.id, u.full_name]));
+      for (const [athleteId, items] of changed) {
+        await notifyCompetitionResult({
+          athleteId, athleteName: nameOf[athleteId] || "",
+          sessionId: id, sessionTitle, results: items,
+        });
+      }
+    }
+
+    return ok(res, { message: "تم حفظ النتائج", count: clean.length, notified: changed.size });
   } catch (err) { serverError(res, err); }
 };

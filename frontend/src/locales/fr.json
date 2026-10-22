@@ -718,5 +718,9 @@
     "cancelSession": "Annuler la séance",
     "shareResultsTitle": "🏆 Résultats",
     "badgeCompetition": "Compétition"
+  },
+  "competitionResults": {
+    "title": "Résultats de compétitions ({{count}})",
+    "place": "{{rank}}e place"
   }
 }

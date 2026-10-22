@@ -137,6 +137,14 @@ export default function ProgressPage() {
                   )}
                 </div>
 
+                {(Number(a.gold_count) + Number(a.silver_count) + Number(a.bronze_count)) > 0 && (
+                  <div style={{ display: "flex", gap: 10, marginBottom: 10, fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
+                    {Number(a.gold_count)   > 0 && <span>🥇 <span className="mono">{a.gold_count}</span></span>}
+                    {Number(a.silver_count) > 0 && <span>🥈 <span className="mono">{a.silver_count}</span></span>}
+                    {Number(a.bronze_count) > 0 && <span>🥉 <span className="mono">{a.bronze_count}</span></span>}
+                  </div>
+                )}
+
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: 10 }}>
                   <span style={{ fontSize: 11, color: "var(--muted)" }}>
                     {a.rank ? `🏅 ${a.rank}` : t("progress.noRank")}

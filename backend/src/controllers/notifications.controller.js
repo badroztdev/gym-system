@@ -105,6 +105,44 @@ export const notifyAbsence = async ({ athleteId, athleteName, sessionTitle, stat
   } catch (err) { console.error("notifyAbsence:", err.message); }
 };
 
+// ── إشعار نتيجة منافسة — للرياضي ولأولياء أمره (يظهر في بوابة الرياضي) ──
+// results: [{ specialty, result, rank, medal }] لنفس الرياضي في نفس الحصة
+const MEDAL_AR = { gold: "🥇 ميدالية ذهبية", silver: "🥈 ميدالية فضية", bronze: "🥉 ميدالية برونزية" };
+
+export const notifyCompetitionResult = async ({ athleteId, athleteName, sessionId, sessionTitle, results }) => {
+  try {
+    const lines = results.map(r => [
+      r.specialty,
+      r.result,
+      r.rank ? `المركز ${r.rank}` : null,
+      r.medal ? MEDAL_AR[r.medal] : null,
+    ].filter(Boolean).join(" — ")).filter(Boolean);
+    if (!lines.length) return;
+
+    const hasMedal = results.some(r => r.medal);
+    const title = hasMedal ? "🏆 مبروك! نتيجة جديدة في المنافسة" : "🏆 نتيجة جديدة في المنافسة";
+    const body = `${athleteName} — "${sessionTitle}"\n${lines.join("\n")}`;
+
+    const recipients = await query(
+      `SELECT $1::uuid AS id UNION SELECT guardian_id FROM guardian_athlete WHERE athlete_id = $1`,
+      [athleteId]
+    );
+    const ids = recipients.rows.map(r => r.id);
+
+    for (const id of ids) {
+      await query(
+        `INSERT INTO notifications (user_id, title, body, type, metadata) VALUES ($1,$2,$3,'general',$4)`,
+        [id, title, body, JSON.stringify({ kind: "competition_result", athleteId, sessionId })]
+      );
+    }
+    const tokens = await query(
+      `SELECT token FROM user_fcm_tokens WHERE user_id = ANY($1::uuid[]) AND is_active = TRUE`,
+      [ids]
+    );
+    if (tokens.rows.length) await sendMulticast({ tokens: tokens.rows.map(r => r.token), title, body });
+  } catch (err) { console.error("notifyCompetitionResult:", err.message); }
+};
+
 // ── GET /api/notifications/notify-expiring (Cron يومي) ────────
 export const notifyExpiringSubscriptions = async (req, res) => {
   try {
