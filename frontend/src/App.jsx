@@ -38,6 +38,7 @@ import Progress      from "@/pages/Progress";
 import Settings      from "@/pages/Settings";
 import Dashboard     from "@/pages/Dashboard";
 import Attendance    from "@/pages/Attendance";
+import Messages      from "@/pages/Messages";
 
 // Portal (الرياضي / ولي الأمر)
 import PortalLayout   from "@/portal/components/PortalLayout";
@@ -47,6 +48,7 @@ import PortalSchedule from "@/portal/pages/PortalSchedule";
 import PortalScan     from "@/portal/pages/PortalScan";
 import PortalProfile  from "@/portal/pages/PortalProfile";
 import PortalProgress from "@/portal/pages/PortalProgress";
+import PortalMessages from "@/portal/pages/PortalMessages";
 
 const Placeholder = ({ title }) => (
   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 12, minHeight: 400, color: "var(--muted)" }}>
@@ -212,6 +214,7 @@ export default function App() {
             <Route path="sessions"      element={<Sessions />} />
             <Route path="subscriptions" element={<Subscriptions />} />
             <Route path="attendance"    element={<Attendance />} />
+            <Route path="messages"      element={<Messages />} />
             <Route path="progress"      element={<Progress />} />
             <Route path="team"          element={<Team />} />
             <Route path="notifications" element={<Notifications />} />
@@ -232,6 +235,7 @@ export default function App() {
             <Route path="scan"       element={<PortalScan />} />
             <Route path="profile"    element={<PortalProfile />} />
             <Route path="progress"   element={<PortalProgress />} />
+            <Route path="messages"   element={<PortalMessages />} />
           </Route>
 
           {/* 404 */}

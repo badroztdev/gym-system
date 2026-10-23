@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams, Outlet } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/store/authStore";
 import { usePortalStore } from "@/portal/store/portalStore";
 import { portalService } from "@/portal/services/portal.service";
@@ -13,6 +14,7 @@ const NAV = [
   { path: "schedule",   label: "الجدول",   icon: "📅" },
   { path: "scan",       label: "الحضور",   icon: "🔲" },
   { path: "progress",   label: "تقدّمي",   icon: "📈" },
+  { path: "messages",   labelKey: "chat.navLabel", label: "الرسائل", icon: "💬" },
   { path: "profile",    label: "ملفي",     icon: "👤" },
 ];
 
@@ -24,6 +26,16 @@ export default function PortalLayout() {
   const { selectedAthleteId, setSelectedAthlete, dark, toggleDark } = usePortalStore();
   const theme = dark ? PORTAL_DARK_THEME : PORTAL_LIGHT_THEME;
   const [showSwitcher, setShowSwitcher] = useState(false);
+  const { t, i18n } = useTranslation();
+  const toggleLanguage = () => i18n.changeLanguage(i18n.language === "ar" ? "fr" : "ar");
+
+  // عدد الرسائل غير المقروءة من المدرب (للشارة على تبويب الرسائل)
+  const { data: unreadData } = useQuery({
+    queryKey: ["portal-chat-unread"],
+    queryFn: portalService.getChatUnread,
+    refetchInterval: 20000,
+  });
+  const unreadChat = unreadData?.data?.count || 0;
 
   const { data } = useQuery({
     queryKey: ["my-athletes"],
@@ -77,6 +89,13 @@ export default function PortalLayout() {
         )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={toggleLanguage} aria-label="Language" style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: "var(--card)", border: "1px solid var(--border)",
+            cursor: "pointer", fontSize: 12, fontWeight: 700, color: "var(--text)",
+            fontFamily: "'Sora', sans-serif",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>{i18n.language === "ar" ? "FR" : "AR"}</button>
           <button onClick={toggleDark} aria-label="تبديل الوضع" style={{
             width: 36, height: 36, borderRadius: 10,
             background: "var(--card)", border: "1px solid var(--border)",
@@ -120,8 +139,17 @@ export default function PortalLayout() {
               cursor: "pointer", fontSize: 10, fontFamily: "'Sora', sans-serif",
               fontWeight: active ? 700 : 400, flex: 1,
             }}>
-              <span style={{ fontSize: 22 }}>{item.icon}</span>
-              <span>{item.label}</span>
+              <span style={{ fontSize: 22, position: "relative", lineHeight: 1 }}>
+                {item.icon}
+                {item.path === "messages" && unreadChat > 0 && (
+                  <span style={{
+                    position: "absolute", top: -4, insetInlineEnd: -8, minWidth: 16, height: 16, padding: "0 4px",
+                    borderRadius: 8, background: "var(--danger)", color: "#fff", fontSize: 10, fontWeight: 800,
+                    display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
+                  }}>{unreadChat > 9 ? "9+" : unreadChat}</span>
+                )}
+              </span>
+              <span>{item.labelKey ? t(item.labelKey) : item.label}</span>
             </button>
           );
         })}

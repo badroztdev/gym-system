@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams, Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
+import { chatService } from "@/services/chat.service";
 import { useAuthStore } from "@/store/authStore";
 import { useThemeStore } from "@/store/themeStore";
 import { DASHBOARD_DARK_THEME, DASHBOARD_LIGHT_THEME } from "@/dashboardTheme";
@@ -14,6 +16,7 @@ const getNav = (t) => [
   { path: "/sessions",      label: t("nav.sessions"),      icon: "📅" },
   { path: "/subscriptions", label: t("nav.subscriptions"), icon: "🎫" },
   { path: "/attendance",    label: t("nav.attendance"),    icon: "✅" },
+  { path: "/messages",      label: t("nav.messages"),      icon: "💬" },
   { path: "/progress",      label: t("nav.progress"),      icon: "📈" },
   { path: "/team",          label: t("nav.team"),          icon: "🧑‍🏫" },
   { path: "/notifications", label: t("nav.notifications"), icon: "🔔" },
@@ -42,6 +45,21 @@ export default function Layout() {
   const navigate                      = useNavigate();
   const { gymSlug }                   = useParams();
   const isMobile                      = useIsMobile();
+
+  // عدد رسائل الرياضيين غير المقروءة (شارة على القائمة)
+  const { data: unreadData } = useQuery({
+    queryKey: ["chat-unread"],
+    queryFn: chatService.getUnread,
+    refetchInterval: 20000,
+  });
+  const unreadChat = unreadData?.data?.count || 0;
+  const badge = (n) => n > 0 && (
+    <span className="mono" style={{
+      minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: "var(--danger)", color: "#fff",
+      fontSize: 10, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center",
+      marginInlineStart: "auto", flexShrink: 0,
+    }}>{n > 99 ? "99+" : n}</span>
+  );
 
   const toggleLanguage = () => i18n.changeLanguage(i18n.language === "ar" ? "fr" : "ar");
 
@@ -98,7 +116,7 @@ export default function Layout() {
             <button key={item.path} onClick={() => handleNav(item.path)} style={{
               width: "100%",
               padding: (collapsed && !isMobile) ? "12px 0" : "12px 18px",
-              display: "flex", alignItems: "center", gap: 12,
+              display: "flex", alignItems: "center", gap: 12, position: "relative",
               justifyContent: (collapsed && !isMobile) ? "center" : "flex-start",
               background: active ? "var(--accent)15" : "transparent",
               border: "none",
@@ -114,6 +132,10 @@ export default function Layout() {
             >
               <span style={{ fontSize: isMobile ? 20 : 18, flexShrink: 0 }}>{item.icon}</span>
               {(!collapsed || isMobile) && <span>{item.label}</span>}
+              {item.path === "/messages" && (!collapsed || isMobile) && badge(unreadChat)}
+              {item.path === "/messages" && collapsed && !isMobile && unreadChat > 0 && (
+                <span style={{ position: "absolute", top: 8, insetInlineEnd: 14, width: 9, height: 9, borderRadius: "50%", background: "var(--danger)" }} />
+              )}
             </button>
           );
         })}
@@ -275,8 +297,11 @@ export default function Layout() {
               fontSize: 10, fontFamily: "'Sora', sans-serif",
               padding: "4px 6px", minWidth: 50, flex: 1,
             }}>
-              <span style={{ fontSize: 21 }}>☰</span>
-              <span>المزيد</span>
+              <span style={{ fontSize: 21, position: "relative", lineHeight: 1.2 }}>
+                ☰
+                {unreadChat > 0 && <span style={{ position: "absolute", top: 0, insetInlineEnd: -6, width: 9, height: 9, borderRadius: "50%", background: "var(--danger)" }} />}
+              </span>
+              <span>{t("common.more")}</span>
             </button>
           </nav>
         )}

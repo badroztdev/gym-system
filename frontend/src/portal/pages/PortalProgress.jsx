@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { portalService } from "@/portal/services/portal.service";
+import CompetitionResultsList from "@/components/progress/CompetitionResultsList";
 
 export default function PortalProgress() {
   const { athlete } = useOutletContext();
@@ -15,6 +16,7 @@ export default function PortalProgress() {
 
   const d = data?.data;
   const records = d?.records || [];
+  const competitionResults = d?.competitionResults || [];
 
   const chartData = [...records].reverse().map(r => ({
     date: r.record_date?.slice(5, 10),
@@ -48,6 +50,13 @@ export default function PortalProgress() {
               {hasPerf   && <Line type="monotone" dataKey="الأداء" stroke="#818cf8" strokeWidth={2} dot={{ r: 3 }} connectNulls />}
             </LineChart>
           </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* نتائج المنافسات (تاريخ + ميداليات) */}
+      {competitionResults.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <CompetitionResultsList results={competitionResults} />
         </div>
       )}
 

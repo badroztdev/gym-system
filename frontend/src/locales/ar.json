@@ -8,7 +8,8 @@
     "progress": "التقدم",
     "team": "الفريق",
     "notifications": "الإشعارات",
-    "settings": "الإعدادات"
+    "settings": "الإعدادات",
+    "messages": "الرسائل"
   },
   "common": {
     "logout": "تسجيل الخروج",
@@ -722,5 +723,34 @@
   "competitionResults": {
     "title": "نتائج المنافسات ({{count}})",
     "place": "المركز {{rank}}"
+  },
+  "chat": {
+    "navLabel": "الرسائل",
+    "pageTitle": "رسائل الرياضيين",
+    "pageSubtitle": "تواصل مع الرياضيين وأولياء الأمور",
+    "portalTitle": "الرسائل",
+    "searchPlaceholder": "بحث باسم الرياضي...",
+    "noThreads": "لا توجد محادثات بعد",
+    "noThreadsHintStaff": "ستظهر هنا رسائل الرياضيين وأولياء الأمور",
+    "noThreadsHintPortal": "ابدأ محادثة مع مدربك",
+    "selectThread": "اختر محادثة لعرضها",
+    "newMessage": "رسالة جديدة",
+    "chooseRecipient": "اختر من تريد مراسلته",
+    "noRecipients": "لا يوجد مدرب متاح للمراسلة حالياً",
+    "roleCoach": "مدرب",
+    "roleAssistant": "مساعد مدرب",
+    "roleOwner": "إدارة النادي",
+    "typeMessage": "اكتب رسالة...",
+    "send": "إرسال",
+    "noMessages": "ابدأ المحادثة بإرسال رسالة",
+    "noMessagesPortal": "اكتب أول رسالة إلى {{name}}",
+    "today": "اليوم",
+    "yesterday": "أمس",
+    "guardian": "ولي الأمر",
+    "athlete": "رياضي",
+    "withStaff": "مع {{name}}",
+    "back": "رجوع",
+    "sendFailed": "تعذّر إرسال الرسالة، حاول مرة أخرى",
+    "loading": "جاري التحميل..."
   }
 }

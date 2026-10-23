@@ -17,6 +17,7 @@ import { getSessions, getSession, createSession, updateSession, cancelSession, d
 import { scanQR, getSessionAttendance, manualAttendance, bulkAttendance, getAthleteAttendance, getAttendanceOverview, getAttendanceTrend, getAttendanceLeaderboard, getAttendanceByCategory, getRecentSessionsAttendance } from "../controllers/attendance.controller.js";
 import { saveToken, getNotifications, markRead, sendManual, notifyExpiringSubscriptions } from "../controllers/notifications.controller.js";
 import { getMyAthletes, getDashboard, getSchedule, getAttendanceHistory, getSubscriptionHistory, scanAttendance } from "../controllers/portal.controller.js";
+import { getPortalRecipients, getPortalThreads, getPortalUnread, getPortalMessages, sendPortalMessage, getStaffThreads, getStaffUnread, getStaffMessages, sendStaffMessage } from "../controllers/chat.controller.js";
 import { getAthleteProgress, createProgress, updateProgress, deleteProgress, changeRank, getMetricTemplates, createMetricTemplate, getProgressList } from "../controllers/progress.controller.js";
 import { getGymSettings, updateGymSettings, updateGymPreferences, getMyProfile, updateMyProfile, changeMyPassword } from "../controllers/settings.controller.js";
 import { getOverview, getRevenueChart, getAttendanceChart, getMembersGrowth, getTopCoaches, getAgeCategoryDistribution, getRecentActivity } from "../controllers/dashboard.controller.js";
@@ -201,6 +202,24 @@ router.get("/portal/dashboard/:athleteId",     authenticate, portalOnly, getDash
 router.get("/portal/schedule/:athleteId",      authenticate, portalOnly, getSchedule);
 router.get("/portal/attendance/:athleteId",    authenticate, portalOnly, getAttendanceHistory);
 router.get("/portal/subscription/:athleteId",  authenticate, portalOnly, getSubscriptionHistory);
+// ── Chat (رسائل الرياضي/ولي الأمر ↔ المدرب) ───────────────────
+router.get ("/portal/chat/unread",                      authenticate, portalOnly, getPortalUnread);
+router.get ("/portal/chat/threads/:threadId/messages",  authenticate, portalOnly, getPortalMessages);
+router.get ("/portal/chat/:athleteId/recipients",       authenticate, portalOnly, getPortalRecipients);
+router.get ("/portal/chat/:athleteId/threads",          authenticate, portalOnly, getPortalThreads);
+router.post("/portal/chat/:athleteId/messages",         authenticate, portalOnly, [
+  body("staffId").notEmpty().withMessage("المستلم مطلوب"),
+  body("body").trim().notEmpty().withMessage("نص الرسالة مطلوب").isLength({ max: 2000 }).withMessage("الرسالة طويلة جداً"),
+  validate,
+], sendPortalMessage);
+router.get ("/chat/unread",                             authenticate, staffOnly, getStaffUnread);
+router.get ("/chat/threads",                            authenticate, staffOnly, getStaffThreads);
+router.get ("/chat/threads/:threadId/messages",         authenticate, staffOnly, getStaffMessages);
+router.post("/chat/threads/:threadId/messages",         authenticate, staffOnly, [
+  body("body").trim().notEmpty().withMessage("نص الرسالة مطلوب").isLength({ max: 2000 }).withMessage("الرسالة طويلة جداً"),
+  validate,
+], sendStaffMessage);
+
 router.post("/portal/scan",                    authenticate, portalOnly, [
   body("qrCode").notEmpty().withMessage("رمز QR مطلوب"),
   body("athleteId").notEmpty().withMessage("الرياضي مطلوب"),

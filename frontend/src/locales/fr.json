@@ -8,7 +8,8 @@
     "progress": "Progrès",
     "team": "Équipe",
     "notifications": "Notifications",
-    "settings": "Paramètres"
+    "settings": "Paramètres",
+    "messages": "Messages"
   },
   "common": {
     "logout": "Déconnexion",
@@ -722,5 +723,34 @@
   "competitionResults": {
     "title": "Résultats de compétitions ({{count}})",
     "place": "{{rank}}e place"
+  },
+  "chat": {
+    "navLabel": "Messages",
+    "pageTitle": "Messages des athlètes",
+    "pageSubtitle": "Échangez avec les athlètes et les tuteurs",
+    "portalTitle": "Messages",
+    "searchPlaceholder": "Rechercher un athlète...",
+    "noThreads": "Aucune conversation pour l'instant",
+    "noThreadsHintStaff": "Les messages des athlètes et des tuteurs apparaîtront ici",
+    "noThreadsHintPortal": "Démarrez une conversation avec votre entraîneur",
+    "selectThread": "Sélectionnez une conversation",
+    "newMessage": "Nouveau message",
+    "chooseRecipient": "Choisissez votre destinataire",
+    "noRecipients": "Aucun entraîneur disponible pour le moment",
+    "roleCoach": "Entraîneur",
+    "roleAssistant": "Assistant entraîneur",
+    "roleOwner": "Direction du club",
+    "typeMessage": "Écrire un message...",
+    "send": "Envoyer",
+    "noMessages": "Commencez la conversation en envoyant un message",
+    "noMessagesPortal": "Écrivez votre premier message à {{name}}",
+    "today": "Aujourd'hui",
+    "yesterday": "Hier",
+    "guardian": "Tuteur",
+    "athlete": "Athlète",
+    "withStaff": "Avec {{name}}",
+    "back": "Retour",
+    "sendFailed": "Échec de l'envoi du message, réessayez",
+    "loading": "Chargement..."
   }
 }
