@@ -1,5 +1,5 @@
 // src/portal/pages/PortalMessages.jsx — رسائل الرياضي/ولي الأمر مع المدرب
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,6 +7,28 @@ import toast from "react-hot-toast";
 import ChatConversation from "@/components/chat/ChatConversation";
 import { portalService } from "@/portal/services/portal.service";
 import { useAuthStore } from "@/store/authStore";
+
+// المساحة المرئية فعلاً (تتقلص عند ظهور لوحة مفاتيح الهاتف)
+function useVisualViewport() {
+  const read = () => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    return { height: vv?.height || window.innerHeight, top: vv?.offsetTop || 0 };
+  };
+  const [vp, setVp] = useState(read);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const h = () => setVp(read());
+    vv?.addEventListener("resize", h);
+    vv?.addEventListener("scroll", h);
+    window.addEventListener("resize", h);
+    return () => {
+      vv?.removeEventListener("resize", h);
+      vv?.removeEventListener("scroll", h);
+      window.removeEventListener("resize", h);
+    };
+  }, []);
+  return vp;
+}
 
 function Avatar({ name, size = 44 }) {
   return (
@@ -25,6 +47,12 @@ export default function PortalMessages() {
   const qc = useQueryClient();
   const { user } = useAuthStore();
   const rtl = i18n.language === "ar";
+  const vp = useVisualViewport();
+  const [headerH, setHeaderH] = useState(61);
+  useEffect(() => {
+    const h = document.querySelector("header");
+    if (h) setHeaderH(h.offsetHeight);
+  }, []);
   const locale = rtl ? "ar-DZ" : "fr-FR";
 
   // view: list | new | chat    —   target: { threadId|null, staffId, staffName }
@@ -124,8 +152,16 @@ export default function PortalMessages() {
 
   // ── محادثة ───────────────────────────────────────────────
   if (view === "chat" && target) {
+    // المحادثة تملأ المساحة المرئية فوق لوحة المفاتيح وتغطي الشريط السفلي،
+    // فيبقى حقل الكتابة ظاهراً دائماً
+    const chatShell = {
+      position: "fixed", left: 0, right: 0, zIndex: 40,
+      top: vp.top + headerH, height: Math.max(vp.height - headerH, 200),
+      background: "var(--bg)", direction: rtl ? "rtl" : "ltr",
+      display: "flex", flexDirection: "column",
+    };
     return (
-      <div style={shell}>
+      <div style={chatShell}>
         {topBar(target.staffName, roleLabel(target.staffRole))}
         <div style={{ flex: 1, minHeight: 0, background: "var(--bg)" }}>
           <ChatConversation
