@@ -87,6 +87,53 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
+      // شريط "تثبيت التطبيق" الدائم — يبقى ظاهراً حتى يتم التثبيت
+      (function () {
+        var standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+        if (standalone) return;
+        var deferred = null, bar = null;
+        var lang = "ar";
+        try { lang = (localStorage.getItem("i18nextLng") || localStorage.getItem("lang") || "ar").slice(0, 2); } catch (e) {}
+        var fr = lang === "fr";
+        var T = fr
+          ? { msg: "Installez SGMS sur votre écran d'accueil", btn: "Installer", ios: "Appuyez sur Partager puis « Sur l'écran d'accueil »" }
+          : { msg: "ثبّت تطبيق SGMS على شاشتك الرئيسية", btn: "تثبيت", ios: "اضغط زر المشاركة ثم «إضافة إلى الشاشة الرئيسية»" };
+        var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+        function hidden() { return location.pathname.indexOf("/portal") === 0; }
+        function remove() { if (bar && bar.parentNode) bar.parentNode.removeChild(bar); bar = null; }
+        function show() {
+          if (bar || hidden()) return;
+          bar = document.createElement("div");
+          bar.setAttribute("dir", fr ? "ltr" : "rtl");
+          bar.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:#0b0e11;border-bottom:1px solid #a3e635;color:#fff;font:600 13px/1.4 system-ui,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.4)";
+          var t = document.createElement("span");
+          t.textContent = isIOS && !deferred ? T.ios : T.msg;
+          bar.appendChild(t);
+          if (!isIOS || deferred) {
+            var b = document.createElement("button");
+            b.textContent = T.btn;
+            b.style.cssText = "flex-shrink:0;border:0;border-radius:8px;padding:8px 16px;background:#a3e635;color:#0b0e11;font:700 13px system-ui,sans-serif;cursor:pointer";
+            b.onclick = function () {
+              if (!deferred) return;
+              deferred.prompt();
+              deferred.userChoice.then(function (c) { if (c.outcome === "accepted") remove(); });
+            };
+            bar.appendChild(b);
+          }
+          document.body.appendChild(bar);
+        }
+
+        window.addEventListener("beforeinstallprompt", function (e) {
+          e.preventDefault(); deferred = e; remove(); show();
+        });
+        window.addEventListener("appinstalled", function () { deferred = null; remove(); });
+        if (isIOS) window.addEventListener("load", function () { setTimeout(show, 1500); });
+        // إخفاء/إظهار عند التنقل داخل التطبيق (SPA)
+        setInterval(function () { if (hidden()) remove(); else if (deferred || isIOS) show(); }, 1500);
+      })();
+    </script>
+    <script>
       // تسجيل service worker (شرط ظهور خيار "تثبيت التطبيق")
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", function () {
