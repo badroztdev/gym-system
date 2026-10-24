@@ -296,7 +296,8 @@
     "roomDeletePermanentlyMessage": "La salle « {{name}} » sera supprimée définitivement de la base de données. Cette action est irréversible. Confirmez-vous ?",
     "toastRoomDeletedPermanently": "Salle supprimée définitivement",
     "errorGeneric": "Une erreur est survenue, réessayez",
-    "badgeCompetition": "Compétition"
+    "badgeCompetition": "Compétition",
+    "groupShort": "Gr."
   },
   "sessionForm": {
     "addTitle": "Nouvelle séance",
@@ -347,7 +348,10 @@
     "errorRecurrenceEnd": "La date de fin est requise",
     "toastUpdated": "Séance mise à jour ✅",
     "toastCreatedMultiple": "{{count}} séances créées avec succès ✅",
-    "toastCreatedSingle": "Séance créée ✅"
+    "toastCreatedSingle": "Séance créée ✅",
+    "groupsTitle": "Groupes par catégorie",
+    "groupsHint": "Choisissez un ou plusieurs groupes par catégorie. Sans sélection = tous les groupes.",
+    "groupsAll": "Tous les groupes"
   },
   "team": {
     "pageTitle": "Équipe",

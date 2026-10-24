@@ -296,7 +296,8 @@
     "roomDeletePermanentlyMessage": "سيتم حذف قاعة \"{{name}}\" نهائياً من قاعدة البيانات ولا يمكن التراجع عن هذا الإجراء. هل أنت متأكد؟",
     "toastRoomDeletedPermanently": "تم حذف القاعة نهائياً",
     "errorGeneric": "حدث خطأ، حاول مرة أخرى",
-    "badgeCompetition": "منافسة"
+    "badgeCompetition": "منافسة",
+    "groupShort": "الفوج"
   },
   "sessionForm": {
     "addTitle": "حصة جديدة",
@@ -347,7 +348,10 @@
     "errorRecurrenceEnd": "تاريخ الانتهاء مطلوب",
     "toastUpdated": "تم تحديث الحصة ✅",
     "toastCreatedMultiple": "تم إنشاء {{count}} حصة بنجاح ✅",
-    "toastCreatedSingle": "تم إنشاء الحصة ✅"
+    "toastCreatedSingle": "تم إنشاء الحصة ✅",
+    "groupsTitle": "الأفواج لكل فئة",
+    "groupsHint": "اختر فوجاً أو أكثر لكل فئة. بدون اختيار = كل أفواج الفئة.",
+    "groupsAll": "كل الأفواج"
   },
   "team": {
     "pageTitle": "الفريق",

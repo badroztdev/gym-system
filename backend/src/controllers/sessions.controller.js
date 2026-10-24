@@ -6,6 +6,21 @@ import { notifyCompetitionResult } from "./notifications.controller.js";
 const SESSION_TYPES = ["training", "competition"];
 const MEDALS = ["gold", "silver", "bronze"];
 
+// ✅ الأفواج لكل فئة عمرية: { "مدارس": ["الفوج 1","الفوج 3"], "أشبال": ["الفوج 2"] }
+// فئة بدون أفواج (أو مصفوفة فارغة) = كل أفواجها. تُخزَّن كـ JSONB في sessions.age_groups
+const GROUP_RE = /^الفوج \d{1,2}$/;
+function cleanAgeGroups(raw, cats) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out = {};
+  for (const [cat, groups] of Object.entries(raw)) {
+    if (Array.isArray(cats) && !cats.includes(cat)) continue;
+    if (!Array.isArray(groups)) continue;
+    const g = [...new Set(groups.map(x => String(x).trim()).filter(x => GROUP_RE.test(x)))].slice(0, 20);
+    if (g.length) out[cat] = g;
+  }
+  return out;
+}
+
 function generateRecurringDates(startDate, endDate, days) {
   const dates = [];
   const current = new Date(startDate);
@@ -41,7 +56,7 @@ export const getSessions = async (req, res) => {
 
     const { rows } = await query(
       `SELECT
-         s.id, s.title, s.description, s.age_category,
+         s.id, s.title, s.description, s.age_category, s.age_groups,
          TO_CHAR(s.session_date, 'YYYY-MM-DD') AS session_date,
          s.start_time, s.end_time,
          s.capacity, s.is_recurring, s.recurrence_days, s.recurrence_end, s.is_cancelled,
@@ -103,12 +118,13 @@ export const createSession = async (req, res) => {
     const {
       title, description, sessionDate, startTime, endTime,
       capacity, coachId, roomId, categoryId, ageCategories,
-      isRecurring, recurrenceDays, recurrenceEnd, sessionType,
+      isRecurring, recurrenceDays, recurrenceEnd, sessionType, ageGroups,
     } = req.body;
     const type = SESSION_TYPES.includes(sessionType) ? sessionType : "training";
 
     const gymId = req.user.gym_id;
     const ageCats = Array.isArray(ageCategories) && ageCategories.length ? ageCategories : null;
+    const groupsJson = JSON.stringify(ageCats ? cleanAgeGroups(ageGroups, ageCats) : {});
 
     const coach = await query(
       "SELECT id FROM users WHERE id = $1 AND gym_id = $2 AND role IN ('coach','assistant','owner')",
@@ -120,11 +136,11 @@ export const createSession = async (req, res) => {
       const { rows } = await query(
         `INSERT INTO sessions
            (gym_id, coach_id, category_id, room_id, title, description,
-            session_date, start_time, end_time, capacity, is_recurring, age_category, session_type)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,FALSE,$11,$12)
+            session_date, start_time, end_time, capacity, is_recurring, age_category, session_type, age_groups)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,FALSE,$11,$12,$13::jsonb)
          RETURNING *`,
         [gymId, coachId, categoryId || null, roomId || null, title, description || null,
-         sessionDate, startTime, endTime, capacity || 20, ageCats, type]
+         sessionDate, startTime, endTime, capacity || 20, ageCats, type, groupsJson]
       );
       return created(res, rows[0]);
     }
@@ -142,12 +158,12 @@ export const createSession = async (req, res) => {
           `INSERT INTO sessions
              (gym_id, coach_id, category_id, room_id, title, description,
               session_date, start_time, end_time, capacity,
-              is_recurring, recurrence_days, recurrence_end, age_category, session_type)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,TRUE,$11,$12,$13,$14)
+              is_recurring, recurrence_days, recurrence_end, age_category, session_type, age_groups)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,TRUE,$11,$12,$13,$14,$15::jsonb)
            RETURNING id, session_date, title`,
           [gymId, coachId, categoryId || null, roomId || null, title, description || null,
            d, startTime, endTime, capacity || 20,
-           recurrenceDays, recurrenceEnd, ageCats, type]
+           recurrenceDays, recurrenceEnd, ageCats, type, groupsJson]
         );
         results.push(rows[0]);
       }
@@ -167,12 +183,17 @@ export const updateSession = async (req, res) => {
     const {
       title, description, sessionDate, startTime, endTime,
       capacity, coachId, roomId, categoryId, ageCategories,
-      isCancelled, cancelReason, sessionType
+      isCancelled, cancelReason, sessionType, ageGroups
     } = req.body;
 
     const ageCats = ageCategories === undefined
       ? null
       : (Array.isArray(ageCategories) && ageCategories.length ? ageCategories : []);
+
+    // undefined = لا تغيير؛ غير ذلك = استبدال (وأي فئة غير محددة تُحذف أفواجها)
+    const groupsJson = ageGroups === undefined
+      ? null
+      : JSON.stringify(cleanAgeGroups(ageGroups, ageCategories === undefined ? null : ageCategories));
 
     const { rows } = await query(
       `UPDATE sessions SET
@@ -189,8 +210,9 @@ export const updateSession = async (req, res) => {
          is_cancelled = COALESCE($11, is_cancelled),
          cancel_reason= COALESCE($12, cancel_reason),
          session_type = COALESCE($13, session_type),
+         age_groups   = CASE WHEN $14::jsonb IS NULL THEN age_groups ELSE $14::jsonb END,
          updated_at   = NOW()
-       WHERE id = $14 AND gym_id = $15
+       WHERE id = $15 AND gym_id = $16
        RETURNING *`,
       [
         title       || null,
@@ -206,6 +228,7 @@ export const updateSession = async (req, res) => {
         isCancelled ?? null,
         cancelReason || null,
         SESSION_TYPES.includes(sessionType) ? sessionType : null,
+        groupsJson,
         req.params.id, req.user.gym_id,
       ]
     );
@@ -289,7 +312,7 @@ export const getTodaySessions = async (req, res) => {
   try {
     const { rows } = await query(
       `SELECT
-         s.id, s.title, s.age_category,
+         s.id, s.title, s.age_category, s.age_groups,
          TO_CHAR(s.session_date, 'YYYY-MM-DD') AS session_date,
          s.start_time, s.end_time,
          s.capacity, s.is_cancelled, s.session_type,

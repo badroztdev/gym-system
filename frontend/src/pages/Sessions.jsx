@@ -154,13 +154,17 @@ function ScheduleTab() {
             }}>{s.category_name}</span>
           )}
           {(Array.isArray(s.age_category) ? s.age_category : (s.age_category ? [s.age_category] : []))
-            .map(cat => (
-              <span key={cat} style={{
-                fontSize: compact ? 9 : 10, fontWeight: 600,
-                padding: "1px 6px", borderRadius: 10,
-                background: "var(--accent3)20", color: "var(--accent3)",
-              }}>{cat}</span>
-            ))}
+            .map(cat => {
+              const gs = s.age_groups?.[cat] || [];
+              const nums = gs.map(g => String(g).replace(/\D/g, "")).filter(Boolean);
+              return (
+                <span key={cat} style={{
+                  fontSize: compact ? 9 : 10, fontWeight: 600,
+                  padding: "1px 6px", borderRadius: 10,
+                  background: "var(--accent3)20", color: "var(--accent3)",
+                }}>{cat}{nums.length ? ` · ${t("sessions.groupShort")} ${nums.join("،")}` : ""}</span>
+              );
+            })}
         </div>
         {/* العنوان */}
         <div style={{

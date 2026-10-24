@@ -51,11 +51,14 @@ function toLocalDateString(d) {
 }
 const today = () => toLocalDateString(new Date());
 
+// ✅ الأفواج المتاحة — نفس قائمة نموذج العضو (القيمة بالعربية دائماً لمطابقة users.group_name)
+const SESSION_GROUPS = ["الفوج 1", "الفوج 2", "الفوج 3", "الفوج 4"];
+
 const EMPTY = {
   title: "", description: "", sessionDate: today(),
   startTime: "08:00", endTime: "09:00",
   capacity: "20", coachId: "", roomId: "", categoryId: "",
-  ageCategories: [], sessionType: "training",
+  ageCategories: [], ageGroups: {}, sessionType: "training",
   isRecurring: false, recurrenceDays: [], recurrenceEnd: "",
 };
 
@@ -445,6 +448,8 @@ export default function SessionForm({ open, onClose, session, onSuccess, onDelet
         ageCategories: Array.isArray(session.age_category)
           ? session.age_category
           : (session.age_category ? [session.age_category] : []),
+        ageGroups: (session.age_groups && typeof session.age_groups === "object" && !Array.isArray(session.age_groups))
+          ? session.age_groups : {},
         sessionType: session.session_type === "competition" ? "competition" : "training",
         isRecurring: false,
         recurrenceDays: [],
@@ -510,12 +515,28 @@ export default function SessionForm({ open, onClose, session, onSuccess, onDelet
       ? p.recurrenceDays.filter(x => x !== d)
       : [...p.recurrenceDays, d],
   }));
-  const toggleAgeCategory = (v) => setForm(p => ({
-    ...p,
-    ageCategories: p.ageCategories.includes(v)
-      ? p.ageCategories.filter(x => x !== v)
-      : [...p.ageCategories, v],
-  }));
+  const toggleAgeCategory = (v) => setForm(p => {
+    const on = p.ageCategories.includes(v);
+    const groups = { ...p.ageGroups };
+    if (on) delete groups[v];            // إلغاء الفئة يحذف أفواجها
+    return {
+      ...p,
+      ageCategories: on ? p.ageCategories.filter(x => x !== v) : [...p.ageCategories, v],
+      ageGroups: groups,
+    };
+  });
+  // الأفواج لكل فئة: بدون اختيار = كل الأفواج
+  const toggleGroup = (cat, g) => setForm(p => {
+    const cur = p.ageGroups[cat] || [];
+    const next = cur.includes(g) ? cur.filter(x => x !== g) : [...cur, g];
+    const groups = { ...p.ageGroups };
+    if (next.length) groups[cat] = next; else delete groups[cat];
+    return { ...p, ageGroups: groups };
+  });
+  const clearGroups = (cat) => setForm(p => {
+    const groups = { ...p.ageGroups }; delete groups[cat];
+    return { ...p, ageGroups: groups };
+  });
 
   const setRows = (updater) => { setResultsDirty(true); setResultRows(updater); };
 
@@ -570,8 +591,12 @@ export default function SessionForm({ open, onClose, session, onSuccess, onDelet
 
     setLoading(true);
     try {
+      // الأفواج: فقط للفئات المحددة، وأفواج صالحة (وتُرسل {} لمسحها عند التعديل)
+      const ageGroups = {};
+      form.ageCategories.forEach(c => { if (form.ageGroups[c]?.length) ageGroups[c] = form.ageGroups[c]; });
       const payload = {
         ...form,
+        ageGroups,
         startTime: toTime24(form.startTime),
         endTime:   toTime24(form.endTime),
         capacity:      Number(form.capacity),
@@ -757,6 +782,55 @@ export default function SessionForm({ open, onClose, session, onSuccess, onDelet
                   ))}
                 </div>
               </div>
+
+              {/* ✅ الأفواج لكل فئة عمرية محدَّدة */}
+              {form.ageCategories.length > 0 && (
+                <div style={{
+                  border: "1px solid var(--border)", background: "var(--surface)",
+                  borderRadius: "var(--radius-sm)", padding: isMobile ? 10 : 12,
+                  display: "flex", flexDirection: "column", gap: 12,
+                }}>
+                  <div>
+                    <div style={{ fontSize: 12, color: "var(--muted-lt)", fontWeight: 600 }}>
+                      👥 {t("sessionForm.groupsTitle")}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, lineHeight: 1.5 }}>
+                      {t("sessionForm.groupsHint")}
+                    </div>
+                  </div>
+                  {form.ageCategories.map(cat => {
+                    const sel = form.ageGroups[cat] || [];
+                    const chip = (on) => ({
+                      minHeight: 34, padding: "6px 12px", fontSize: 12, borderRadius: 999,
+                      border: "1px solid " + (on ? "var(--accent)" : "var(--border)"),
+                      background: on ? "var(--accent)20" : "var(--card)",
+                      color: on ? "var(--accent)" : "var(--muted)",
+                      cursor: "pointer", fontFamily: "'Sora', sans-serif", fontWeight: on ? 600 : 400,
+                    });
+                    return (
+                      <div key={cat} style={{
+                        display: "flex", flexDirection: isMobile ? "column" : "row",
+                        alignItems: isMobile ? "stretch" : "center", gap: isMobile ? 6 : 12,
+                      }}>
+                        <div style={{
+                          fontSize: 12, fontWeight: 700, color: "var(--text)",
+                          minWidth: isMobile ? 0 : 84, flexShrink: 0,
+                        }}>{AGE_CATEGORY_LABELS[cat] || cat}</div>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          <button type="button" onClick={() => clearGroups(cat)} style={chip(sel.length === 0)}>
+                            {t("sessionForm.groupsAll")}
+                          </button>
+                          {SESSION_GROUPS.map(g => (
+                            <button key={g} type="button" onClick={() => toggleGroup(cat, g)} style={chip(sel.includes(g))}>
+                              {t("memberForm.groupLabel", { num: g.replace(/\D/g, "") })}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
                 <Select label={t("sessionForm.room")} options={roomOptions} value={form.roomId} onChange={set("roomId")} />

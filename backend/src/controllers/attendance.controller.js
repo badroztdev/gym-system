@@ -72,7 +72,7 @@ export const getSessionAttendance = async (req, res) => {
     const { sessionId } = req.params;
 
     const sessionCheck = await query(
-      "SELECT id, gym_id, age_category FROM sessions WHERE id = $1 AND gym_id = $2",
+      "SELECT id, gym_id, age_category, age_groups FROM sessions WHERE id = $1 AND gym_id = $2",
       [sessionId, req.user.gym_id]
     );
     if (!sessionCheck.rows.length) return notFound(res, "الحصة غير موجودة");
@@ -88,6 +88,18 @@ export const getSessionAttendance = async (req, res) => {
       conditions.push(`u.age_category::text = ANY($${p}::text[])`);
       params.push(session.age_category);
       p++;
+
+      // ✅ الأفواج: إن حُدّدت أفواج لفئة، يظهر فقط رياضيو هذه الأفواج (الفئات بلا أفواج تظهر كاملة)
+      const ag = session.age_groups;
+      if (ag && typeof ag === "object" && Object.keys(ag).length) {
+        conditions.push(
+          `(NOT ($${p}::jsonb ? u.age_category::text)
+            OR jsonb_array_length($${p}::jsonb -> u.age_category::text) = 0
+            OR ($${p}::jsonb -> u.age_category::text) ? u.group_name)`
+        );
+        params.push(JSON.stringify(ag));
+        p++;
+      }
     }
 
     params.push(sessionId); // آخر معامل لربط attendance بالحصة الحالية تحديداً
