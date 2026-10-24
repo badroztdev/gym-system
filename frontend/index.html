@@ -20,7 +20,6 @@
 
 <!-- اللغة والاتجاه -->
 <meta name="language" content="ar, fr, en" />
-<html lang="ar" dir="rtl">
 
 <!-- المؤلف -->
 <meta name="author" content="SGMS" />
@@ -71,9 +70,29 @@
   "url": "https://www.sgms.site/"
 }
 </script>
-<link rel="icon" type="image/png" href="/favicon.png" />  </head>
+
+<!-- ============================================================
+     PWA — تثبيت التطبيق على الشاشة الرئيسية
+============================================================ -->
+<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="theme-color" content="#0b0e11" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="SGMS" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="icon" type="image/png" href="/favicon.png" />
+  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      // تسجيل service worker (شرط ظهور خيار "تثبيت التطبيق")
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("/sw.js").catch(function () {});
+        });
+      }
+    </script>
   </body>
 </html>
