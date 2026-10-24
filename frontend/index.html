@@ -100,7 +100,15 @@
           : { msg: "ثبّت تطبيق SGMS على شاشتك الرئيسية", btn: "تثبيت", ios: "اضغط زر المشاركة ثم «إضافة إلى الشاشة الرئيسية»" };
         var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 
-        function hidden() { return location.pathname.indexOf("/portal") === 0; }
+        function inPortal() { return location.pathname.indexOf("/portal") === 0; }
+        // بوابة الرياضي: الشريط لآيفون فقط (أندرويد عنده تطبيق Google Play)
+        function hidden() { return inPortal() && !isIOS; }
+        function syncManifest() {
+          var l = document.querySelector('link[rel="manifest"]');
+          var want = inPortal() ? "/manifest-portal.webmanifest" : "/manifest.webmanifest";
+          if (l && l.getAttribute("href") !== want) l.setAttribute("href", want);
+        }
+        syncManifest();
         function remove() { if (bar && bar.parentNode) bar.parentNode.removeChild(bar); bar = null; }
         function show() {
           if (bar || hidden()) return;
@@ -130,7 +138,7 @@
         window.addEventListener("appinstalled", function () { deferred = null; remove(); });
         if (isIOS) window.addEventListener("load", function () { setTimeout(show, 1500); });
         // إخفاء/إظهار عند التنقل داخل التطبيق (SPA)
-        setInterval(function () { if (hidden()) remove(); else if (deferred || isIOS) show(); }, 1500);
+        setInterval(function () { syncManifest(); if (hidden()) remove(); else if (deferred || isIOS) show(); }, 1500);
       })();
     </script>
     <script>
