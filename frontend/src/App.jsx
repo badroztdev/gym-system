@@ -112,6 +112,10 @@ function useFcmSetup(token, user) {
   }, [token, user?.id]);
 }
 
+// ✅ أدوار البوابة (الرياضي / ولي الأمر) ومسار صفحتها الرئيسية
+const isPortalRole = (u) => ["athlete", "guardian"].includes(u?.role);
+const portalHome = (u) => (u?.gymSlug ? `/portal/${u.gymSlug}/home` : "/portal/login");
+
 // ✅ حارس أمان الصالة: يتحقق أن :gymSlug في الرابط يطابق فعلاً صالة المستخدم
 // المسجَّل دخوله. يمنع محاولة مستخدم صالة A من كتابة رابط صالة B يدوياً
 function GymGuard({ children }) {
@@ -123,6 +127,8 @@ function GymGuard({ children }) {
 
   if (!token) return <Navigate to="/login" replace />;
   if (user?.role === "super_admin") return <Navigate to="/superadmin" replace />;
+  // ✅ الرياضي / ولي الأمر مكانهما البوابة، لا لوحة الإدارة
+  if (isPortalRole(user)) return <Navigate to={portalHome(user)} replace />;
   if (!user?.gymSlug) return <Navigate to="/login" replace />;
   if (user.gymSlug !== gymSlug) return <Navigate to={`/${user.gymSlug}/${firstAllowedPage(user)}`} replace />;
 
@@ -155,6 +161,7 @@ function SuperAdminGuard({ children }) {
 
   if (!token) return <Navigate to="/login" replace />;
   if (user?.role !== "super_admin") {
+    if (isPortalRole(user)) return <Navigate to={portalHome(user)} replace />;
     return <Navigate to={user?.gymSlug ? `/${user.gymSlug}/dashboard` : "/login"} replace />;
   }
   return children;
@@ -195,6 +202,7 @@ function RootRedirect() {
 
   if (!token) return <Landing />;
   if (user?.role === "super_admin") return <Navigate to="/superadmin" replace />;
+  if (isPortalRole(user)) return <Navigate to={portalHome(user)} replace />;
   if (user?.gymSlug) return <Navigate to={`/${user.gymSlug}/${firstAllowedPage(user)}`} replace />;
   return <Landing />;
 }

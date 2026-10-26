@@ -74,7 +74,10 @@
 <!-- ============================================================
      PWA — تثبيت التطبيق على الشاشة الرئيسية
 ============================================================ -->
-<link rel="manifest" href="/manifest.webmanifest" />
+<script>
+  // المانيفست حسب المسار منذ أول قراءة للصفحة: بوابة الرياضي (/portal) أو لوحة الإدارة
+  document.write('<link rel="manifest" href="' + (location.pathname.indexOf("/portal") === 0 ? "/manifest-portal.webmanifest" : "/manifest.webmanifest") + '" />');
+</script>
 <meta name="theme-color" content="#0b0e11" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
