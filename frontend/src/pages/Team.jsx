@@ -96,6 +96,12 @@ function StaffTab() {
                 <Badge label={ROLE_LABELS[s.role] || s.role} type={s.role === "owner" ? "guardian" : "coach"} />
                 {!s.is_active && <Badge label={t("team.staffInactive")} type="expired" />}
                 <span style={{ fontSize: 11, color: "var(--muted)" }}>📅 {t("team.sessionsCount", { count: s.sessions_count })}</span>
+                {Array.isArray(s.permissions) && (
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: "var(--accent2)20", color: "var(--accent2)" }}>🔐 {t("team.customPerms")}</span>
+                )}
+                {s.access_scope && (
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: "var(--warning)20", color: "var(--warning)" }}>🎯 {t("team.limitedScope")}</span>
+                )}
               </div>
 
               {s.role !== "owner" && (
@@ -270,7 +276,7 @@ export default function TeamPage() {
         <div style={{ display: "flex", gap: 4, background: "var(--surface)", borderRadius: "var(--radius-sm)", padding: 4 }}>
           {TABS.map(tabItem => (
             <button key={tabItem.id} onClick={() => setTab(tabItem.id)} style={{
-              padding: "7px 16px", fontSize: 12, fontWeight: 600,
+              padding: "7px clamp(10px, 2vw, 16px)", fontSize: 12, fontWeight: 600,
               borderRadius: "var(--radius-sm)", border: "none",
               background: tab === tabItem.id ? "var(--accent)" : "transparent",
               color: tab === tabItem.id ? "#0d0f14" : "var(--muted)",
@@ -283,7 +289,7 @@ export default function TeamPage() {
         </div>
       </PageHeader>
 
-      <main style={{ padding: "24px 28px", flex: 1 }}>
+      <main style={{ padding: "clamp(12px, 3vw, 28px)", flex: 1 }}>
         {tab === "staff"      && <StaffTab />}
         {tab === "categories" && <CategoriesTab />}
       </main>

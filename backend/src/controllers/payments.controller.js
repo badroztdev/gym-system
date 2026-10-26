@@ -1,6 +1,7 @@
 // src/controllers/payments.controller.js
 import { query } from "../utils/db.js";
 import { sendMulticast } from "../services/fcm.service.js";
+import { athleteScopeSql, subscriptionInScope } from "../utils/access.js";
 import {
   ok, created, noContent, notFound, badRequest, serverError, paginate,
 } from "../utils/response.js";
@@ -14,7 +15,9 @@ export const getPayments = async (req, res) => {
 
     const conditions = ["u.gym_id = $1"];
     const params = [gymId];
-    let p = 2;
+    const scopeSql = athleteScopeSql(req.user, "u", params);
+    if (scopeSql) conditions.push(scopeSql);
+    let p = params.length + 1;
 
     if (subscriptionId) {
       conditions.push(`pay.subscription_id = $${p}`);
@@ -179,6 +182,9 @@ export const createPayment = async (req, res) => {
     const { subscriptionId, amount, method = "cash", notes, paidAt } = req.body;
     const gymId = req.user.gym_id;
 
+    if (!(await subscriptionInScope(req.user, subscriptionId)))
+      return notFound(res, "الاشتراك غير موجود");
+
     const sub = await query(
       `SELECT s.id, s.price,
               COALESCE((SELECT SUM(amount) FROM payments WHERE subscription_id = s.id AND status='paid'), 0) AS total_paid
@@ -222,15 +228,17 @@ export const createPayment = async (req, res) => {
 // ── DELETE /api/payments/:id ────────────────────────────────────
 export const deletePayment = async (req, res) => {
   try {
+    const dParams = [req.params.id, req.user.gym_id];
+    const dScope = athleteScopeSql(req.user, "u", dParams);
     const { rows } = await query(
       `DELETE FROM payments pay
        USING subscriptions s, users u
        WHERE pay.id = $1
          AND pay.subscription_id = s.id
          AND s.athlete_id = u.id
-         AND u.gym_id = $2
+         AND u.gym_id = $2 ${dScope ? "AND " + dScope : ""}
        RETURNING pay.id`,
-      [req.params.id, req.user.gym_id]
+      dParams
     );
     if (!rows.length) return notFound(res, "الدفعة غير موجودة");
     return noContent(res);
@@ -243,6 +251,8 @@ export const deletePayment = async (req, res) => {
 export const getPaymentsStats = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
+    const stParams = [gymId];
+    const stScope = athleteScopeSql(req.user, "u", stParams);
 
     const { rows } = await query(
       `SELECT
@@ -257,8 +267,8 @@ export const getPaymentsStats = async (req, res) => {
        FROM payments pay
        JOIN subscriptions s ON s.id = pay.subscription_id
        JOIN users u ON u.id = s.athlete_id
-       WHERE u.gym_id = $1 AND pay.status = 'paid'`,
-      [gymId]
+       WHERE u.gym_id = $1 AND pay.status = 'paid' ${stScope ? "AND " + stScope : ""}`,
+      stParams
     );
 
     return ok(res, rows[0]);

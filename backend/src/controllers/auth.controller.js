@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { query } from "../utils/db.js";
 import { ok, unauthorized, serverError } from "../utils/response.js";
+import { effectivePermissions, getScope } from "../utils/access.js";
 
 const signToken = (userId) =>
   jwt.sign({ userId }, process.env.JWT_SECRET, {
@@ -91,6 +92,9 @@ export const login = async (req, res) => {
         email:    user.email,
         role:     user.role,
         avatar:   user.avatar_url,
+        // ✅ الصلاحيات الفعلية (المالك: ["*"]) ونطاق البيانات — تُستخدم لإخفاء القوائم في الواجهة
+        permissions: effectivePermissions(user),
+        scope:       getScope(user),
       },
     });
   } catch (err) {
@@ -104,12 +108,20 @@ export const me = async (req, res) => {
     const { rows } = await query(
       `SELECT u.id, u.gym_id, u.full_name, u.email, u.phone,
               u.role, u.avatar_url, u.last_login_at,
+              u.permissions, u.access_scope,
               g.name AS gym_name, g.slug AS gym_slug, g.logo_url AS gym_logo
        FROM users u LEFT JOIN gyms g ON g.id = u.gym_id
        WHERE u.id = $1`,
       [req.user.id]
     );
-    return ok(res, rows[0]);
+    const row = rows[0];
+    // نُبقي الحقول القديمة كما هي ونضيف الصلاحيات والنطاق (دون كشف الأعمدة الخام)
+    const { permissions, access_scope, ...rest } = row;
+    return ok(res, {
+      ...rest,
+      permissions: effectivePermissions({ role: row.role, permissions }),
+      scope: getScope({ role: row.role, access_scope }),
+    });
   } catch (err) {
     serverError(res, err);
   }

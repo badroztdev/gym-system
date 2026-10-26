@@ -1,26 +1,40 @@
 // src/controllers/dashboard.controller.js
 import { query } from "../utils/db.js";
 import { ok, serverError } from "../utils/response.js";
+import { athleteScopeSql, memberScopeSql, sessionScopeSql } from "../utils/access.js";
+
+// ✅ نطاق المدرب: كل دالة تبني شرطها وتدفع معاملاتها في مصفوفة params الخاصة بالاستعلام
+const sc = {
+  member:  (req, a, p) => { const c = memberScopeSql(req.user, a, p);  return c ? ` AND ${c}` : ""; },
+  athlete: (req, a, p) => { const c = athleteScopeSql(req.user, a, p); return c ? ` AND ${c}` : ""; },
+  session: (req, a, p) => { const c = sessionScopeSql(req.user, a, p); return c ? ` AND ${c}` : ""; },
+};
 
 // ── GET /api/dashboard/overview ─────────────────────────────────
 export const getOverview = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
 
+    const mP = [gymId];  const mS = sc.member(req, "u", mP);
+    const sP = [gymId];  const sS = sc.athlete(req, "u", sP);
+    const rP = [gymId];  const rS = sc.athlete(req, "u", rP);
+    const seP = [gymId]; const seS = sc.session(req, "sessions", seP);
+    const aP = [gymId];  const aS = sc.session(req, "s", aP) + sc.athlete(req, "ua", aP);
+
     const [members, subs, revenue, sessions, attendance, staff] = await Promise.all([
       query(`
         SELECT
-          COUNT(*) FILTER (WHERE role='athlete')                                   AS total_athletes,
-          COUNT(*) FILTER (WHERE role='guardian')                                  AS total_guardians,
-          COUNT(*) FILTER (WHERE role='athlete' AND created_at >= DATE_TRUNC('month', NOW())) AS new_this_month
-        FROM users WHERE gym_id=$1 AND is_active=TRUE`, [gymId]),
+          COUNT(*) FILTER (WHERE u.role='athlete')                                   AS total_athletes,
+          COUNT(*) FILTER (WHERE u.role='guardian')                                  AS total_guardians,
+          COUNT(*) FILTER (WHERE u.role='athlete' AND u.created_at >= DATE_TRUNC('month', NOW())) AS new_this_month
+        FROM users u WHERE u.gym_id=$1 AND u.is_active=TRUE${mS}`, mP),
 
       query(`
         SELECT
           COUNT(*) FILTER (WHERE s.status='active' AND s.end_date>=CURRENT_DATE)                                   AS active_count,
           COUNT(*) FILTER (WHERE s.status='active' AND s.end_date BETWEEN CURRENT_DATE AND CURRENT_DATE+INTERVAL '7 days') AS expiring_count,
           COUNT(*) FILTER (WHERE s.status='active' AND s.end_date<CURRENT_DATE)                                     AS overdue_count
-        FROM subscriptions s JOIN users u ON u.id=s.athlete_id WHERE u.gym_id=$1`, [gymId]),
+        FROM subscriptions s JOIN users u ON u.id=s.athlete_id WHERE u.gym_id=$1${sS}`, sP),
 
       query(`
         SELECT
@@ -31,13 +45,13 @@ export const getOverview = async (req, res) => {
         JOIN users u ON u.id=s.athlete_id
         LEFT JOIN payments p ON p.subscription_id=s.id AND p.status='paid'
         LEFT JOIN LATERAL (SELECT SUM(amount) AS paid FROM payments WHERE subscription_id=s.id AND status='paid') pay ON TRUE
-        WHERE u.gym_id=$1`, [gymId]),
+        WHERE u.gym_id=$1${rS}`, rP),
 
       query(`
         SELECT
           COUNT(*) FILTER (WHERE session_date=CURRENT_DATE AND is_cancelled=FALSE)                       AS today_count,
           COUNT(*) FILTER (WHERE session_date BETWEEN CURRENT_DATE AND CURRENT_DATE+INTERVAL '7 days' AND is_cancelled=FALSE) AS week_count
-        FROM sessions WHERE gym_id=$1`, [gymId]),
+        FROM sessions WHERE gym_id=$1${seS}`, seP),
 
       query(`
         SELECT
@@ -46,7 +60,8 @@ export const getOverview = async (req, res) => {
           COUNT(*) FILTER (WHERE a.status='late')    AS late
         FROM attendance a
         JOIN sessions s ON s.id=a.session_id
-        WHERE s.gym_id=$1 AND s.session_date >= CURRENT_DATE - INTERVAL '30 days'`, [gymId]),
+        JOIN users ua ON ua.id=a.athlete_id
+        WHERE s.gym_id=$1 AND s.session_date >= CURRENT_DATE - INTERVAL '30 days'${aS}`, aP),
 
       query(`
         SELECT
@@ -71,6 +86,7 @@ export const getRevenueChart = async (req, res) => {
   try {
     const { period = "week" } = req.query;
     const gymId = req.user.gym_id;
+    const rcP = [gymId]; const rcS = sc.athlete(req, "u", rcP);
 
     let rows;
     if (period === "week") {
@@ -79,8 +95,8 @@ export const getRevenueChart = async (req, res) => {
                COALESCE(SUM(p.amount),0) AS value
         FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, INTERVAL '1 day') d(day)
         LEFT JOIN payments p ON p.paid_at::date = d.day AND p.status='paid'
-          AND p.subscription_id IN (SELECT s.id FROM subscriptions s JOIN users u ON u.id=s.athlete_id WHERE u.gym_id=$1)
-        GROUP BY d.day ORDER BY d.day`, [gymId]);
+          AND p.subscription_id IN (SELECT s.id FROM subscriptions s JOIN users u ON u.id=s.athlete_id WHERE u.gym_id=$1${rcS})
+        GROUP BY d.day ORDER BY d.day`, rcP);
       rows = r.rows;
     } else if (period === "year") {
       const r = await query(`
@@ -88,8 +104,8 @@ export const getRevenueChart = async (req, res) => {
                COALESCE(SUM(p.amount),0) AS value
         FROM generate_series(DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months', DATE_TRUNC('month', CURRENT_DATE), INTERVAL '1 month') d(month)
         LEFT JOIN payments p ON DATE_TRUNC('month', p.paid_at) = d.month AND p.status='paid'
-          AND p.subscription_id IN (SELECT s.id FROM subscriptions s JOIN users u ON u.id=s.athlete_id WHERE u.gym_id=$1)
-        GROUP BY d.month ORDER BY d.month`, [gymId]);
+          AND p.subscription_id IN (SELECT s.id FROM subscriptions s JOIN users u ON u.id=s.athlete_id WHERE u.gym_id=$1${rcS})
+        GROUP BY d.month ORDER BY d.month`, rcP);
       rows = r.rows;
     } else { // month
       const r = await query(`
@@ -97,8 +113,8 @@ export const getRevenueChart = async (req, res) => {
                COALESCE(SUM(p.amount),0) AS value
         FROM generate_series(CURRENT_DATE - INTERVAL '29 days', CURRENT_DATE, INTERVAL '1 day') d(day)
         LEFT JOIN payments p ON p.paid_at::date = d.day AND p.status='paid'
-          AND p.subscription_id IN (SELECT s.id FROM subscriptions s JOIN users u ON u.id=s.athlete_id WHERE u.gym_id=$1)
-        GROUP BY d.day ORDER BY d.day`, [gymId]);
+          AND p.subscription_id IN (SELECT s.id FROM subscriptions s JOIN users u ON u.id=s.athlete_id WHERE u.gym_id=$1${rcS})
+        GROUP BY d.day ORDER BY d.day`, rcP);
       rows = r.rows;
     }
 
@@ -118,6 +134,9 @@ export const getAttendanceChart = async (req, res) => {
     if (period === "year")  { interval = "11 months";dateFormat = "YYYY-MM";    truncUnit = "month"; }
 
     const stepInterval = truncUnit === "month" ? "1 month" : "1 day";
+    const acP = [gymId];
+    const acSes = sc.session(req, "s", acP);
+    const acAth = sc.athlete(req, "ua", acP);
 
     const { rows } = await query(`
       SELECT TO_CHAR(d.unit, '${dateFormat}') AS label,
@@ -129,10 +148,11 @@ export const getAttendanceChart = async (req, res) => {
         DATE_TRUNC('${truncUnit}', CURRENT_DATE),
         INTERVAL '${stepInterval}'
       ) d(unit)
-      LEFT JOIN sessions s ON DATE_TRUNC('${truncUnit}', s.session_date) = d.unit AND s.gym_id = $1
+      LEFT JOIN sessions s ON DATE_TRUNC('${truncUnit}', s.session_date) = d.unit AND s.gym_id = $1${acSes}
       LEFT JOIN attendance a ON a.session_id = s.id
+        ${acAth ? `AND EXISTS (SELECT 1 FROM users ua WHERE ua.id = a.athlete_id${acAth})` : ""}
       GROUP BY d.unit ORDER BY d.unit
-    `, [gymId]);
+    `, acP);
 
     return ok(res, rows);
   } catch (err) { serverError(res, err); }
@@ -150,6 +170,7 @@ export const getMembersGrowth = async (req, res) => {
     if (period === "year")  { interval = "11 months";dateFormat = "YYYY-MM";    truncUnit = "month"; }
 
     const stepInterval = truncUnit === "month" ? "1 month" : "1 day";
+    const gP = [gymId]; const gS = sc.athlete(req, "u", gP);
 
     const { rows } = await query(`
       SELECT TO_CHAR(d.unit, '${dateFormat}') AS label,
@@ -160,9 +181,9 @@ export const getMembersGrowth = async (req, res) => {
         INTERVAL '${stepInterval}'
       ) d(unit)
       LEFT JOIN users u ON DATE_TRUNC('${truncUnit}', u.created_at) = d.unit
-        AND u.gym_id = $1 AND u.role='athlete'
+        AND u.gym_id = $1 AND u.role='athlete'${gS}
       GROUP BY d.unit ORDER BY d.unit
-    `, [gymId]);
+    `, gP);
 
     return ok(res, rows);
   } catch (err) { serverError(res, err); }
@@ -171,6 +192,7 @@ export const getMembersGrowth = async (req, res) => {
 // ── GET /api/dashboard/top-coaches ──────────────────────────────
 export const getTopCoaches = async (req, res) => {
   try {
+    const tcScoped = sc.session(req, "s", [req.user.gym_id]) !== "";
     const { rows } = await query(`
       SELECT u.id, u.full_name,
              COUNT(DISTINCT s.id) AS sessions_count,
@@ -184,18 +206,20 @@ export const getTopCoaches = async (req, res) => {
       ORDER BY sessions_count DESC
       LIMIT 5
     `, [req.user.gym_id]);
-    return ok(res, rows);
+    // المدرب المقيَّد بنطاق لا يرى أداء زملائه
+    return ok(res, tcScoped ? rows.filter(r => r.id === req.user.id) : rows);
   } catch (err) { serverError(res, err); }
 };
 
 // ── GET /api/dashboard/age-category-distribution ────────────────
 export const getAgeCategoryDistribution = async (req, res) => {
   try {
+    const dP = [req.user.gym_id]; const dS = sc.athlete(req, "u", dP);
     const { rows } = await query(`
-      SELECT COALESCE(age_category::text, 'غير محدد') AS category, COUNT(*) AS count
-      FROM users WHERE gym_id=$1 AND role='athlete' AND is_active=TRUE
-      GROUP BY age_category ORDER BY count DESC
-    `, [req.user.gym_id]);
+      SELECT COALESCE(u.age_category::text, 'غير محدد') AS category, COUNT(*) AS count
+      FROM users u WHERE u.gym_id=$1 AND u.role='athlete' AND u.is_active=TRUE${dS}
+      GROUP BY u.age_category ORDER BY count DESC
+    `, dP);
     return ok(res, rows);
   } catch (err) { serverError(res, err); }
 };
@@ -204,24 +228,28 @@ export const getAgeCategoryDistribution = async (req, res) => {
 export const getRecentActivity = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
+    const raP = [gymId];
+    const raS1 = sc.athlete(req, "u", raP);
+    const raS2 = sc.athlete(req, "u", raP);
+    const raS3 = sc.athlete(req, "u", raP);
 
     const { rows } = await query(`
-      (SELECT 'member' AS type, full_name AS title, created_at AS ts, NULL::text AS detail
-       FROM users WHERE gym_id=$1 AND role='athlete' ORDER BY created_at DESC LIMIT 5)
+      (SELECT 'member' AS type, u.full_name AS title, u.created_at AS ts, NULL::text AS detail
+       FROM users u WHERE u.gym_id=$1 AND u.role='athlete'${raS1} ORDER BY u.created_at DESC LIMIT 5)
       UNION ALL
       (SELECT 'payment' AS type, u.full_name AS title, p.paid_at AS ts, p.amount::text AS detail
        FROM payments p
        JOIN subscriptions s ON s.id=p.subscription_id
        JOIN users u ON u.id=s.athlete_id
-       WHERE u.gym_id=$1 AND p.status='paid' ORDER BY p.paid_at DESC LIMIT 5)
+       WHERE u.gym_id=$1 AND p.status='paid'${raS2} ORDER BY p.paid_at DESC LIMIT 5)
       UNION ALL
       (SELECT 'subscription' AS type, u.full_name AS title, s.created_at AS ts, sp.name AS detail
        FROM subscriptions s
        JOIN users u ON u.id=s.athlete_id
        JOIN subscription_plans sp ON sp.id=s.plan_id
-       WHERE u.gym_id=$1 ORDER BY s.created_at DESC LIMIT 5)
+       WHERE u.gym_id=$1${raS3} ORDER BY s.created_at DESC LIMIT 5)
       ORDER BY ts DESC LIMIT 10
-    `, [gymId]);
+    `, raP);
 
     return ok(res, rows);
   } catch (err) { serverError(res, err); }

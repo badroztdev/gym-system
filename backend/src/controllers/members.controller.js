@@ -2,6 +2,7 @@
 import bcrypt from "bcrypt";
 import { query, transaction } from "../utils/db.js";
 import { uploadAvatar } from "../services/cloudinary.service.js";
+import { memberScopeSql, athleteScopeSql, memberInScope, checkNewAthleteValues } from "../utils/access.js";
 import {
   ok, created, noContent,
   notFound, badRequest, serverError,
@@ -17,7 +18,10 @@ export const getMembers = async (req, res) => {
 
     const conditions = ["u.gym_id = $1", "u.role IN ('athlete','guardian')"];
     const params = [gymId];
-    let p = 2;
+    // ✅ نطاق المدرب (فئات/أفواج) — المالك بلا قيود
+    const scopeSql = memberScopeSql(req.user, "u", params);
+    if (scopeSql) conditions.push(scopeSql);
+    let p = params.length + 1;
 
     if (includeInactive !== "true") {
       conditions.push("u.is_active = TRUE");
@@ -101,13 +105,15 @@ export const getMembers = async (req, res) => {
 // ── GET /api/members/:id ──────────────────────────────────────
 export const getMember = async (req, res) => {
   try {
+    const mParams = [req.params.id, req.user.gym_id];
+    const mScope = memberScopeSql(req.user, "u", mParams);
     const { rows } = await query(
       `SELECT u.id, u.full_name, u.phone, u.email, u.gender,
               u.date_of_birth, u.avatar_url, u.role, u.is_active, u.created_at,
               u.age_category, u.rank, u.weight_kg, u.blood_group, u.group_name
        FROM users u
-       WHERE u.id = $1 AND u.gym_id = $2`,
-      [req.params.id, req.user.gym_id]
+       WHERE u.id = $1 AND u.gym_id = $2 ${mScope ? "AND " + mScope : ""}`,
+      mParams
     );
     if (!rows.length) return notFound(res, "العضو غير موجود");
 
@@ -158,6 +164,11 @@ export const createMember = async (req, res) => {
       role = "athlete", ageCategory, rank, weightKg, bloodGroup, groupName,
       guardianId,
     } = req.body;
+
+    if (role === "athlete") {
+      const bad = checkNewAthleteValues(req.user, { ageCategory, groupName });
+      if (bad) return badRequest(res, bad);
+    }
 
     const phoneRequired = !guardianId;
     if (phoneRequired && !phone)
@@ -221,6 +232,13 @@ export const updateMember = async (req, res) => {
       role,         // ✅ الإصلاح: كان مفقوداً تماماً، فيُتجاهَل تغيير الدور صامتاً
       guardianId,
     } = req.body;
+
+    if (!(await memberInScope(req.user, req.params.id)))
+      return notFound(res, "العضو غير موجود");
+    {
+      const bad = checkNewAthleteValues(req.user, { ageCategory, groupName });
+      if (bad) return badRequest(res, bad);
+    }
 
     if (phone) {
       const dup = await query(
@@ -318,6 +336,8 @@ export const updateMember = async (req, res) => {
 // ── DELETE /api/members/:id  (soft delete / تعطيل) ─────────────
 export const deleteMember = async (req, res) => {
   try {
+    if (!(await memberInScope(req.user, req.params.id)))
+      return notFound(res, "العضو غير موجود");
     const { rows } = await query(
       "UPDATE users SET is_active = FALSE, updated_at = NOW() WHERE id = $1 AND gym_id = $2 RETURNING id",
       [req.params.id, req.user.gym_id]
@@ -387,6 +407,8 @@ export const deleteMemberPermanently = async (req, res) => {
 export const uploadMemberAvatar = async (req, res) => {
   try {
     if (!req.file) return badRequest(res, "لم يُرفَع أي ملف");
+    if (!(await memberInScope(req.user, req.params.id)))
+      return notFound(res, "العضو غير موجود");
 
     const check = await query(
       "SELECT id FROM users WHERE id = $1 AND gym_id = $2",
@@ -440,6 +462,8 @@ export const resetPassword = async (req, res) => {
 export const getMembersStats = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
+    const sParams = [gymId];
+    const sScope = athleteScopeSql(req.user, "u", sParams);
     const { rows } = await query(
       `SELECT
          COUNT(*)                                            AS total,
@@ -462,8 +486,8 @@ export const getMembersStats = async (req, res) => {
            WHERE u.created_at >= DATE_TRUNC('month', NOW())
          )                                                  AS new_this_month
        FROM users u
-       WHERE u.gym_id = $1 AND u.role = 'athlete'`,
-      [gymId]
+       WHERE u.gym_id = $1 AND u.role = 'athlete' ${sScope ? "AND " + sScope : ""}`,
+      sParams
     );
     return ok(res, rows[0]);
   } catch (err) {

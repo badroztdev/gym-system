@@ -2,6 +2,7 @@
 import { query, transaction } from "../utils/db.js";
 import { ok, created, notFound, badRequest, serverError } from "../utils/response.js";
 import { notifyAbsence } from "./notifications.controller.js";
+import { athleteScopeSql, sessionScopeSql, sessionInScope, athleteInScope, athletesInScope } from "../utils/access.js";
 
 // ── POST /api/attendance/scan ──────────────────────────────────
 export const scanQR = async (req, res) => {
@@ -75,6 +76,8 @@ export const getSessionAttendance = async (req, res) => {
       "SELECT id, gym_id, age_category, age_groups FROM sessions WHERE id = $1 AND gym_id = $2",
       [sessionId, req.user.gym_id]
     );
+    if (sessionCheck.rows.length && !(await sessionInScope(req.user, sessionId)))
+      return notFound(res, "الحصة غير موجودة");
     if (!sessionCheck.rows.length) return notFound(res, "الحصة غير موجودة");
     const session = sessionCheck.rows[0];
 
@@ -101,6 +104,11 @@ export const getSessionAttendance = async (req, res) => {
         p++;
       }
     }
+
+    // ✅ نطاق المدرب: يرى فقط رياضيي فئاته/أفواجه
+    const rosterScope = athleteScopeSql(req.user, "u", params);
+    if (rosterScope) conditions.push(rosterScope);
+    p = params.length + 1;
 
     params.push(sessionId); // آخر معامل لربط attendance بالحصة الحالية تحديداً
 
@@ -135,6 +143,11 @@ export const manualAttendance = async (req, res) => {
     const validStatuses = ["present","absent","late","excused"];
     if (!validStatuses.includes(status))
       return badRequest(res, `الحالة يجب أن تكون: ${validStatuses.join(" | ")}`);
+
+    if (!(await sessionInScope(req.user, sessionId)))
+      return notFound(res, "الحصة غير موجودة");
+    if (!(await athleteInScope(req.user, athleteId)))
+      return badRequest(res, "هذا الرياضي خارج نطاق صلاحياتك");
 
     const { rows } = await query(
       `INSERT INTO attendance (session_id, athlete_id, status, recorded_by, notes, scan_method)
@@ -190,10 +203,13 @@ export const bulkAttendance = async (req, res) => {
       "SELECT id, title FROM sessions WHERE id = $1 AND gym_id = $2",
       [sessionId, req.user.gym_id]
     );
-    if (!sessionRes.rows.length) return notFound(res, "الحصة غير موجودة");
+    if (!sessionRes.rows.length || !(await sessionInScope(req.user, sessionId)))
+      return notFound(res, "الحصة غير موجودة");
     const sessionTitle = sessionRes.rows[0].title;
 
     if (!records.length) return ok(res, { saved: 0 });
+    if (!(await athletesInScope(req.user, records.map(r => r.athleteId))))
+      return badRequest(res, "أحد الرياضيين خارج نطاق صلاحياتك");
 
     const ids = [...new Set(records.map(r => r.athleteId))];
     const athletes = await query(
@@ -243,7 +259,9 @@ export const getAthleteAttendance = async (req, res) => {
     const { month, year } = req.query;
     const conditions = ["a.athlete_id = $1", "u.gym_id = $2"];
     const params = [req.params.athleteId, req.user.gym_id];
-    let p = 3;
+    const aScope = athleteScopeSql(req.user, "u", params);
+    if (aScope) conditions.push(aScope);
+    let p = params.length + 1;
 
     if (month && year) {
       conditions.push(`EXTRACT(MONTH FROM s.session_date) = $${p}`);
@@ -285,6 +303,9 @@ export const getAttendanceOverview = async (req, res) => {
 
     const from = dateFrom || null;
     const to   = dateTo   || null;
+    const oParams = [gymId, from, to];
+    const oSes = sessionScopeSql(req.user, "s", oParams);
+    const oAth = athleteScopeSql(req.user, "ua", oParams);
 
     const stats = await query(
       `SELECT
@@ -296,10 +317,12 @@ export const getAttendanceOverview = async (req, res) => {
          COUNT(DISTINCT s.id)                        AS total_sessions
        FROM attendance a
        JOIN sessions s ON s.id = a.session_id
+       JOIN users ua ON ua.id = a.athlete_id
        WHERE s.gym_id = $1
          AND s.session_date >= COALESCE($2::date, CURRENT_DATE - INTERVAL '30 days')
-         AND s.session_date <= COALESCE($3::date, CURRENT_DATE)`,
-      [gymId, from, to]
+         AND s.session_date <= COALESCE($3::date, CURRENT_DATE)
+         ${oSes ? "AND " + oSes : ""} ${oAth ? "AND " + oAth : ""}`,
+      oParams
     );
 
     const row = stats.rows[0];
@@ -325,6 +348,9 @@ export const getAttendanceTrend = async (req, res) => {
     if (period === "year")  { interval = "11 months";dateFormat = "YYYY-MM";    truncUnit = "month"; }
 
     const stepInterval = truncUnit === "month" ? "1 month" : "1 day";
+    const tP = [gymId];
+    const tSes = sessionScopeSql(req.user, "s", tP);
+    const tAth = athleteScopeSql(req.user, "ua", tP);
 
     const { rows } = await query(`
       SELECT TO_CHAR(d.unit, '${dateFormat}') AS label,
@@ -337,9 +363,11 @@ export const getAttendanceTrend = async (req, res) => {
         INTERVAL '${stepInterval}'
       ) d(unit)
       LEFT JOIN sessions s ON DATE_TRUNC('${truncUnit}', s.session_date) = d.unit AND s.gym_id = $1
+        ${tSes ? "AND " + tSes : ""}
       LEFT JOIN attendance a ON a.session_id = s.id
+        ${tAth ? `AND EXISTS (SELECT 1 FROM users ua WHERE ua.id = a.athlete_id AND ${tAth})` : ""}
       GROUP BY d.unit ORDER BY d.unit
-    `, [gymId]);
+    `, tP);
 
     return ok(res, rows);
   } catch (err) { serverError(res, err); }
@@ -351,6 +379,9 @@ export const getAttendanceLeaderboard = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
     const { order = "best" } = req.query; // best | worst
+    const lP = [gymId];
+    const lAth = athleteScopeSql(req.user, "u", lP);
+    const lSes = sessionScopeSql(req.user, "s", lP);
 
     const { rows } = await query(`
       SELECT
@@ -368,11 +399,12 @@ export const getAttendanceLeaderboard = async (req, res) => {
       JOIN sessions s ON s.id = a.session_id
       WHERE u.gym_id = $1 AND u.role='athlete' AND u.is_active=TRUE
         AND s.session_date >= CURRENT_DATE - INTERVAL '30 days'
+        ${lAth ? "AND " + lAth : ""} ${lSes ? "AND " + lSes : ""}
       GROUP BY u.id, u.full_name, u.age_category, u.group_name
       HAVING COUNT(a.id) >= 1
       ORDER BY rate ${order === "worst" ? "ASC" : "DESC"}, total DESC
       LIMIT 10
-    `, [gymId]);
+    `, lP);
 
     return ok(res, rows);
   } catch (err) { serverError(res, err); }
@@ -383,6 +415,9 @@ export const getAttendanceLeaderboard = async (req, res) => {
 export const getAttendanceByCategory = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
+    const cP = [gymId];
+    const cAth = athleteScopeSql(req.user, "u", cP);
+    const cSes = sessionScopeSql(req.user, "s", cP);
 
     const { rows } = await query(`
       SELECT
@@ -398,9 +433,10 @@ export const getAttendanceByCategory = async (req, res) => {
       JOIN users u ON u.id = a.athlete_id
       WHERE s.gym_id = $1
         AND s.session_date >= CURRENT_DATE - INTERVAL '30 days'
+        ${cAth ? "AND " + cAth : ""} ${cSes ? "AND " + cSes : ""}
       GROUP BY u.age_category
       ORDER BY rate DESC
-    `, [gymId]);
+    `, cP);
 
     return ok(res, rows);
   } catch (err) { serverError(res, err); }
@@ -411,6 +447,8 @@ export const getAttendanceByCategory = async (req, res) => {
 export const getRecentSessionsAttendance = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
+    const rP = [gymId];
+    const rSes = sessionScopeSql(req.user, "s", rP);
 
     const { rows } = await query(`
       SELECT
@@ -424,11 +462,11 @@ export const getRecentSessionsAttendance = async (req, res) => {
       LEFT JOIN rooms r ON r.id = s.room_id
       LEFT JOIN attendance a ON a.session_id = s.id
       WHERE s.gym_id = $1 AND s.is_cancelled = FALSE
-        AND s.session_date <= CURRENT_DATE
+        AND s.session_date <= CURRENT_DATE ${rSes ? "AND " + rSes : ""}
       GROUP BY s.id, s.title, s.session_date, s.start_time, r.name
       ORDER BY s.session_date DESC, s.start_time DESC
       LIMIT 15
-    `, [gymId]);
+    `, rP);
 
     return ok(res, rows);
   } catch (err) { serverError(res, err); }

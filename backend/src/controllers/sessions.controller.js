@@ -2,6 +2,7 @@
 import { query, transaction } from "../utils/db.js";
 import { ok, created, noContent, notFound, badRequest, serverError } from "../utils/response.js";
 import { notifyCompetitionResult } from "./notifications.controller.js";
+import { athleteScopeSql, sessionScopeSql, sessionInScope, athletesInScope, checkSessionValues, getScope } from "../utils/access.js";
 
 const SESSION_TYPES = ["training", "competition"];
 const MEDALS = ["gold", "silver", "bronze"];
@@ -50,6 +51,8 @@ export const getSessions = async (req, res) => {
       if (dateFrom) { conditions.push(`s.session_date >= $${p}`); params.push(dateFrom); p++; }
       if (dateTo)   { conditions.push(`s.session_date <= $${p}`); params.push(dateTo);   p++; }
     }
+    const scopeSql = sessionScopeSql(req.user, "s", params);
+    if (scopeSql) { conditions.push(scopeSql); p = params.length + 1; }
     if (coachId)    { conditions.push(`s.coach_id = $${p}`);    params.push(coachId);    p++; }
     if (roomId)     { conditions.push(`s.room_id = $${p}`);     params.push(roomId);     p++; }
     if (categoryId) { conditions.push(`s.category_id = $${p}`); params.push(categoryId); p++; }
@@ -83,6 +86,8 @@ export const getSessions = async (req, res) => {
 // ── GET /api/sessions/:id ──────────────────────────────────────
 export const getSession = async (req, res) => {
   try {
+    if (!(await sessionInScope(req.user, req.params.id)))
+      return notFound(res, "الحصة غير موجودة");
     const { rows } = await query(
       `SELECT s.*, s.age_category,
               TO_CHAR(s.session_date, 'YYYY-MM-DD') AS session_date,
@@ -125,6 +130,12 @@ export const createSession = async (req, res) => {
     const gymId = req.user.gym_id;
     const ageCats = Array.isArray(ageCategories) && ageCategories.length ? ageCategories : null;
     const groupsJson = JSON.stringify(ageCats ? cleanAgeGroups(ageGroups, ageCats) : {});
+
+    const outOfScope = checkSessionValues(req.user, { categoryId, ageCategories: ageCats || [] });
+    if (outOfScope) return badRequest(res, outOfScope);
+    // مدرب مقيَّد بفئات عمرية لا يستطيع إنشاء حصة "لكل الفئات"
+    if (!ageCats && getScope(req.user)?.ageCategories.length)
+      return badRequest(res, "حدّد الفئة العمرية للحصة ضمن نطاق صلاحياتك");
 
     const coach = await query(
       "SELECT id FROM users WHERE id = $1 AND gym_id = $2 AND role IN ('coach','assistant','owner')",
@@ -186,6 +197,15 @@ export const updateSession = async (req, res) => {
       isCancelled, cancelReason, sessionType, ageGroups
     } = req.body;
 
+    if (!(await sessionInScope(req.user, req.params.id)))
+      return notFound(res, "الحصة غير موجودة");
+    {
+      const bad = checkSessionValues(req.user, {
+        categoryId, ageCategories: Array.isArray(ageCategories) && ageCategories.length ? ageCategories : undefined,
+      });
+      if (bad) return badRequest(res, bad);
+    }
+
     const ageCats = ageCategories === undefined
       ? null
       : (Array.isArray(ageCategories) && ageCategories.length ? ageCategories : []);
@@ -240,6 +260,8 @@ export const updateSession = async (req, res) => {
 // ── DELETE /api/sessions/:id  (إلغاء حصة واحدة فقط - soft) ──────
 export const cancelSession = async (req, res) => {
   try {
+    if (!(await sessionInScope(req.user, req.params.id)))
+      return notFound(res, "الحصة غير موجودة");
     const { rows } = await query(
       `UPDATE sessions SET is_cancelled = TRUE, cancel_reason = $1, updated_at = NOW()
        WHERE id = $2 AND gym_id = $3 RETURNING id`,
@@ -310,6 +332,8 @@ export const deleteRecurringSeries = async (req, res) => {
 // ── GET /api/sessions/today ────────────────────────────────────
 export const getTodaySessions = async (req, res) => {
   try {
+    const tParams = [req.user.gym_id];
+    const tScope = sessionScopeSql(req.user, "s", tParams);
     const { rows } = await query(
       `SELECT
          s.id, s.title, s.age_category, s.age_groups,
@@ -327,9 +351,9 @@ export const getTodaySessions = async (req, res) => {
        LEFT JOIN sport_categories c ON c.id = s.category_id
        WHERE s.gym_id = $1
          AND s.session_date = CURRENT_DATE
-         AND s.is_cancelled = FALSE
+         AND s.is_cancelled = FALSE ${tScope ? "AND " + tScope : ""}
        ORDER BY s.start_time`,
-      [req.user.gym_id]
+      tParams
     );
     return ok(res, rows);
   } catch (err) { serverError(res, err); }
@@ -346,7 +370,8 @@ export const getSessionResults = async (req, res) => {
       "SELECT id FROM sessions WHERE id = $1 AND gym_id = $2",
       [id, gymId]
     );
-    if (!sessionRes.rows.length) return notFound(res, "الحصة غير موجودة");
+    if (!sessionRes.rows.length || !(await sessionInScope(req.user, id)))
+      return notFound(res, "الحصة غير موجودة");
 
     const results = await query(
       `SELECT r.id, r.athlete_id, u.full_name AS athlete_name,
@@ -358,11 +383,13 @@ export const getSessionResults = async (req, res) => {
       [id]
     );
 
+    const aParams = [gymId];
+    const aScope = athleteScopeSql(req.user, "u", aParams);
     const athletes = await query(
-      `SELECT id, full_name FROM users
-       WHERE gym_id = $1 AND role = 'athlete' AND is_active = TRUE
-       ORDER BY full_name`,
-      [gymId]
+      `SELECT u.id, u.full_name FROM users u
+       WHERE u.gym_id = $1 AND u.role = 'athlete' AND u.is_active = TRUE ${aScope ? "AND " + aScope : ""}
+       ORDER BY u.full_name`,
+      aParams
     );
 
     return ok(res, { results: results.rows, athletes: athletes.rows });
@@ -383,7 +410,8 @@ export const saveSessionResults = async (req, res) => {
       "SELECT id, title FROM sessions WHERE id = $1 AND gym_id = $2",
       [id, gymId]
     );
-    if (!sessionRes.rows.length) return notFound(res, "الحصة غير موجودة");
+    if (!sessionRes.rows.length || !(await sessionInScope(req.user, id)))
+      return notFound(res, "الحصة غير موجودة");
     const sessionTitle = sessionRes.rows[0].title;
 
     const clean = [];
@@ -403,7 +431,9 @@ export const saveSessionResults = async (req, res) => {
       });
     }
 
-    // كل الرياضيين يجب أن ينتموا لنفس الصالة
+    // كل الرياضيين يجب أن ينتموا لنفس الصالة (وضمن نطاق المدرب)
+    if (clean.length && !(await athletesInScope(req.user, clean.map(c => c.athleteId))))
+      return badRequest(res, "أحد الرياضيين خارج نطاق صلاحياتك");
     if (clean.length) {
       const ids = [...new Set(clean.map(c => c.athleteId))];
       const valid = await query(

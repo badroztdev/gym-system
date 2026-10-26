@@ -8,6 +8,8 @@ import { useAuthStore } from "@/store/authStore";
 import { useThemeStore } from "@/store/themeStore";
 import { DASHBOARD_DARK_THEME, DASHBOARD_LIGHT_THEME } from "@/dashboardTheme";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import api from "@/services/api";
+import { canOpenPage } from "@/utils/permissions";
 
 // ✅ القائمة الآن دالة تُبنى بالترجمة الحالية (t) بدل نص ثابت
 const getNav = (t) => [
@@ -36,21 +38,39 @@ function useIsMobile() {
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed]     = useState(false);
-  const { user, logout }              = useAuthStore();
+  const { user, logout, updateUser }  = useAuthStore();
   const { dark, toggleDark }           = useThemeStore();
   const theme                         = dark ? DASHBOARD_DARK_THEME : DASHBOARD_LIGHT_THEME;
   const { t, i18n }                    = useTranslation();
-  const NAV                           = getNav(t);
+  // ✅ القائمة تعرض فقط ما يملك المستخدم صلاحيته (المالك: كل شيء)
+  const NAV                           = getNav(t).filter(item => canOpenPage(user, item.path.slice(1)));
   const location                      = useLocation();
   const navigate                      = useNavigate();
   const { gymSlug }                   = useParams();
   const isMobile                      = useIsMobile();
+
+  // ✅ تحديث الصلاحيات من الخادم (لو غيّر المالك صلاحيات المدرب وهو داخل التطبيق)
+  const { data: meData } = useQuery({
+    queryKey: ["auth-me"],
+    queryFn: () => api.get("/auth/me").then(r => r.data?.data ?? r.data),
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    staleTime: 60 * 1000,
+  });
+  useEffect(() => {
+    if (!meData || !user || user.role === "super_admin") return;
+    const samePerms = JSON.stringify(meData.permissions) === JSON.stringify(user.permissions);
+    const sameScope = JSON.stringify(meData.scope ?? null) === JSON.stringify(user.scope ?? null);
+    if (!samePerms || !sameScope) updateUser({ ...user, permissions: meData.permissions, scope: meData.scope ?? null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meData]);
 
   // عدد رسائل الرياضيين غير المقروءة (شارة على القائمة)
   const { data: unreadData } = useQuery({
     queryKey: ["chat-unread"],
     queryFn: chatService.getUnread,
     refetchInterval: 20000,
+    enabled: canOpenPage(user, "messages"),
   });
   const unreadChat = unreadData?.data?.count || 0;
   const badge = (n) => n > 0 && (

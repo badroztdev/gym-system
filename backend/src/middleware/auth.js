@@ -17,6 +17,7 @@ export const authenticate = async (req, res, next) => {
     // بدون أي تكلفة أداء إضافية) لتفادي إضافة أي middleware جديد لكل مسار
     const { rows } = await query(
       `SELECT u.id, u.gym_id, u.full_name, u.email, u.phone, u.role, u.is_active,
+              u.permissions, u.access_scope,
               g.subscription_status, g.trial_ends_at, g.subscription_ends_at
        FROM users u
        LEFT JOIN gyms g ON g.id = u.gym_id

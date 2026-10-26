@@ -3,6 +3,7 @@ import { Router } from "express";
 import multer from "multer";
 import { body } from "express-validator";
 import { validate } from "../middleware/validate.js";
+import { requirePermission as perm } from "../utils/access.js";
 import { authenticate, staffOnly, coachAndAbove, ownerOnly, authorize } from "../middleware/auth.js";
 
 import { login, me } from "../controllers/auth.controller.js";
@@ -52,12 +53,14 @@ router.post("/auth/login", [
 router.get("/auth/me", authenticate, me);
 
 // ── Members ───────────────────────────────────────────────────
-router.get   ("/members/stats",                authenticate, staffOnly,  getMembersStats);
+router.get   ("/members/stats",                authenticate, perm("members.view"),  getMembersStats);
 router.post  ("/members/:id/reset-password",   authenticate, ownerOnly,  resetPassword);
-router.post  ("/members/:id/avatar",          authenticate, staffOnly,  avatarUpload.single("avatar"), uploadMemberAvatar);
-router.get   ("/members",                       authenticate, staffOnly,  getMembers);
-router.get   ("/members/:id",                   authenticate, staffOnly,  getMember);
-router.post  ("/members",                       authenticate, staffOnly, [
+router.post  ("/members/:id/avatar",          authenticate, perm("members.edit"),  avatarUpload.single("avatar"), uploadMemberAvatar);
+// قائمة الأعضاء تُستخدم أيضاً لاختيار الرياضي في الاشتراكات والتقدم والحضور
+const readMembers = perm("members.view", "subscriptions.view", "subscriptions.add", "payments.view", "progress.view", "attendance.view", "sessions.view");
+router.get   ("/members",                       authenticate, readMembers,  getMembers);
+router.get   ("/members/:id",                   authenticate, readMembers,  getMember);
+router.post  ("/members",                       authenticate, perm("members.add"), [
   body("fullName").notEmpty().withMessage("الاسم الكامل مطلوب"),
   body("phone").custom((value, { req }) => {
     if (!req.body.guardianId && !value) throw new Error("رقم الهاتف مطلوب");
@@ -66,8 +69,8 @@ router.post  ("/members",                       authenticate, staffOnly, [
   body("role").optional().isIn(["athlete","guardian"]).withMessage("الدور غير صحيح"),
   validate,
 ], createMember);
-router.patch ("/members/:id",   authenticate, staffOnly, updateMember);
-router.delete("/members/:id",   authenticate, ownerOnly, deleteMember);
+router.patch ("/members/:id",   authenticate, perm("members.edit"), updateMember);
+router.delete("/members/:id",   authenticate, perm("members.delete"), deleteMember);
 router.delete("/members/:id/permanent", authenticate, ownerOnly, deleteMemberPermanently);
 
 // ── Categories ────────────────────────────────────────────────
@@ -104,26 +107,26 @@ router.delete("/plans/:id", authenticate, ownerOnly,     deletePlan);
 router.delete("/plans/:id/permanent", authenticate, ownerOnly, deletePlanPermanently);
 
 // ── Subscriptions ─────────────────────────────────────────────
-router.get   ("/subscriptions/stats", authenticate, staffOnly, getSubscriptionStats);
-router.get   ("/subscriptions",       authenticate, staffOnly, getSubscriptions);
-router.get   ("/subscriptions/:id",   authenticate, staffOnly, getSubscription);
-router.post  ("/subscriptions",       authenticate, staffOnly, [
+router.get   ("/subscriptions/stats", authenticate, perm("subscriptions.view", "payments.view"), getSubscriptionStats);
+router.get   ("/subscriptions",       authenticate, perm("subscriptions.view", "payments.view"), getSubscriptions);
+router.get   ("/subscriptions/:id",   authenticate, perm("subscriptions.view", "payments.view"), getSubscription);
+router.post  ("/subscriptions",       authenticate, perm("subscriptions.add"), [
   body("athleteId").notEmpty().withMessage("الرياضي مطلوب"),
   body("planId").notEmpty().withMessage("الخطة مطلوبة"),
   validate,
 ], createSubscription);
-router.patch ("/subscriptions/:id",   authenticate, staffOnly, updateSubscription);
-router.delete("/subscriptions/:id",   authenticate, ownerOnly, deleteSubscription);
+router.patch ("/subscriptions/:id",   authenticate, perm("subscriptions.edit"), updateSubscription);
+router.delete("/subscriptions/:id",   authenticate, perm("subscriptions.delete"), deleteSubscription);
 
 // ── Payments ──────────────────────────────────────────────────
-router.get   ("/payments/stats", authenticate, staffOnly, getPaymentsStats);
-router.get   ("/payments",       authenticate, staffOnly, getPayments);
-router.post  ("/payments",       authenticate, staffOnly, [
+router.get   ("/payments/stats", authenticate, perm("payments.view", "subscriptions.view"), getPaymentsStats);
+router.get   ("/payments",       authenticate, perm("payments.view", "subscriptions.view"), getPayments);
+router.post  ("/payments",       authenticate, perm("payments.add"), [
   body("subscriptionId").notEmpty().withMessage("الاشتراك مطلوب"),
   body("amount").isFloat({ min: 0.01 }).withMessage("المبلغ يجب أن يكون أكبر من صفر"),
   validate,
 ], createPayment);
-router.delete("/payments/:id",   authenticate, ownerOnly, deletePayment);
+router.delete("/payments/:id",   authenticate, perm("payments.delete"), deletePayment);
 
 // ── Rooms ─────────────────────────────────────────────────────
 router.get   ("/rooms",                   authenticate, staffOnly, getRooms);
@@ -136,10 +139,10 @@ router.delete("/rooms/:id/permanent",     authenticate, ownerOnly, deleteRoomPer
 router.post  ("/rooms/:id/regenerate-qr", authenticate, ownerOnly, regenerateQR);
 
 // ── Sessions ──────────────────────────────────────────────────
-router.get   ("/sessions/today",  authenticate, staffOnly,    getTodaySessions);
-router.get   ("/sessions",        authenticate, staffOnly,    getSessions);
-router.get   ("/sessions/:id",    authenticate, staffOnly,    getSession);
-router.post  ("/sessions",        authenticate, coachAndAbove, [
+router.get   ("/sessions/today",  authenticate, perm("sessions.view", "attendance.view"), getTodaySessions);
+router.get   ("/sessions",        authenticate, perm("sessions.view", "attendance.view"), getSessions);
+router.get   ("/sessions/:id",    authenticate, perm("sessions.view", "attendance.view"), getSession);
+router.post  ("/sessions",        authenticate, perm("sessions.add"), [
   body("title").notEmpty().withMessage("عنوان الحصة مطلوب"),
   body("sessionDate").notEmpty().withMessage("تاريخ الحصة مطلوب"),
   body("startTime").notEmpty().withMessage("وقت البداية مطلوب"),
@@ -148,13 +151,13 @@ router.post  ("/sessions",        authenticate, coachAndAbove, [
   body("sessionType").optional().isIn(["training","competition"]).withMessage("نوع الحصة غير صحيح"),
   validate,
 ], createSession);
-router.patch ("/sessions/:id",    authenticate, coachAndAbove, [
+router.patch ("/sessions/:id",    authenticate, perm("sessions.edit"), [
   body("sessionType").optional().isIn(["training","competition"]).withMessage("نوع الحصة غير صحيح"),
   validate,
 ], updateSession);
-router.get   ("/sessions/:id/results", authenticate, staffOnly,     getSessionResults);
-router.put   ("/sessions/:id/results", authenticate, coachAndAbove, saveSessionResults);
-router.delete("/sessions/:id",    authenticate, coachAndAbove, cancelSession);
+router.get   ("/sessions/:id/results", authenticate, perm("sessions.view", "attendance.view"), getSessionResults);
+router.put   ("/sessions/:id/results", authenticate, perm("sessions.edit"), saveSessionResults);
+router.delete("/sessions/:id",    authenticate, perm("sessions.delete"), cancelSession);
 router.delete("/sessions/:id/series", authenticate, ownerOnly, deleteRecurringSeries);
 
 // ── Attendance ────────────────────────────────────────────────
@@ -163,24 +166,24 @@ router.post("/attendance/scan",                   authenticate, [
   body("athleteId").notEmpty().withMessage("الرياضي مطلوب"),
   validate,
 ], scanQR);
-router.get ("/attendance/session/:sessionId",     authenticate, staffOnly,   getSessionAttendance);
-router.post("/attendance/manual",                 authenticate, staffOnly,   [
+router.get ("/attendance/session/:sessionId",     authenticate, perm("attendance.view", "sessions.view"), getSessionAttendance);
+router.post("/attendance/manual",                 authenticate, perm("attendance.manage"), [
   body("sessionId").notEmpty().withMessage("الحصة مطلوبة"),
   body("athleteId").notEmpty().withMessage("الرياضي مطلوب"),
   body("status").isIn(["present","absent","late","excused"]).withMessage("الحالة غير صحيحة"),
   validate,
 ], manualAttendance);
-router.post("/attendance/bulk",                   authenticate, staffOnly,   [
+router.post("/attendance/bulk",                   authenticate, perm("attendance.manage"), [
   body("sessionId").notEmpty().withMessage("الحصة مطلوبة"),
   body("records").isArray().withMessage("قائمة الحضور مطلوبة"),
   validate,
 ], bulkAttendance);
-router.get ("/attendance/athlete/:athleteId",     authenticate, staffOnly,   getAthleteAttendance);
-router.get ("/attendance/overview",               authenticate, staffOnly,   getAttendanceOverview);
-router.get ("/attendance/trend",                  authenticate, staffOnly,   getAttendanceTrend);
-router.get ("/attendance/leaderboard",             authenticate, staffOnly,   getAttendanceLeaderboard);
-router.get ("/attendance/by-category",             authenticate, staffOnly,   getAttendanceByCategory);
-router.get ("/attendance/recent-sessions",         authenticate, staffOnly,   getRecentSessionsAttendance);
+router.get ("/attendance/athlete/:athleteId",     authenticate, perm("attendance.view", "members.view"), getAthleteAttendance);
+router.get ("/attendance/overview",               authenticate, perm("attendance.view", "stats.view"), getAttendanceOverview);
+router.get ("/attendance/trend",                  authenticate, perm("attendance.view", "stats.view"), getAttendanceTrend);
+router.get ("/attendance/leaderboard",             authenticate, perm("attendance.view", "stats.view"), getAttendanceLeaderboard);
+router.get ("/attendance/by-category",             authenticate, perm("attendance.view", "stats.view"), getAttendanceByCategory);
+router.get ("/attendance/recent-sessions",         authenticate, perm("attendance.view", "stats.view"), getRecentSessionsAttendance);
 
 // ── Notifications ─────────────────────────────────────────────
 router.post ("/notifications/token",            authenticate, saveToken);
@@ -212,10 +215,10 @@ router.post("/portal/chat/:athleteId/messages",         authenticate, portalOnly
   body("body").trim().notEmpty().withMessage("نص الرسالة مطلوب").isLength({ max: 2000 }).withMessage("الرسالة طويلة جداً"),
   validate,
 ], sendPortalMessage);
-router.get ("/chat/unread",                             authenticate, staffOnly, getStaffUnread);
-router.get ("/chat/threads",                            authenticate, staffOnly, getStaffThreads);
-router.get ("/chat/threads/:threadId/messages",         authenticate, staffOnly, getStaffMessages);
-router.post("/chat/threads/:threadId/messages",         authenticate, staffOnly, [
+router.get ("/chat/unread",                             authenticate, perm("messages.view"), getStaffUnread);
+router.get ("/chat/threads",                            authenticate, perm("messages.view"), getStaffThreads);
+router.get ("/chat/threads/:threadId/messages",         authenticate, perm("messages.view"), getStaffMessages);
+router.post("/chat/threads/:threadId/messages",         authenticate, perm("messages.view"), [
   body("body").trim().notEmpty().withMessage("نص الرسالة مطلوب").isLength({ max: 2000 }).withMessage("الرسالة طويلة جداً"),
   validate,
 ], sendStaffMessage);
@@ -227,17 +230,17 @@ router.post("/portal/scan",                    authenticate, portalOnly, [
 ], scanAttendance);
 
 // ── Progress (متابعة التقدم) ────────────────────────────────────
-router.get   ("/progress/list",              authenticate, staffOnly, getProgressList);
-router.get   ("/progress/metrics-templates", authenticate, staffOnly, getMetricTemplates);
-router.post  ("/progress/metrics-templates", authenticate, coachAndAbove, createMetricTemplate);
+router.get   ("/progress/list",              authenticate, perm("progress.view"), getProgressList);
+router.get   ("/progress/metrics-templates", authenticate, perm("progress.view", "progress.manage"), getMetricTemplates);
+router.post  ("/progress/metrics-templates", authenticate, perm("progress.manage"), createMetricTemplate);
 router.get   ("/progress/athlete/:athleteId",authenticate, getAthleteProgress); // staff أو portal (تحقق داخلي)
-router.post  ("/progress",                    authenticate, coachAndAbove, [
+router.post  ("/progress",                    authenticate, perm("progress.manage"), [
   body("athleteId").notEmpty().withMessage("الرياضي مطلوب"),
   validate,
 ], createProgress);
-router.patch ("/progress/:id",                authenticate, coachAndAbove, updateProgress);
-router.delete("/progress/:id",                authenticate, coachAndAbove, deleteProgress);
-router.post  ("/progress/rank-change",        authenticate, coachAndAbove, [
+router.patch ("/progress/:id",                authenticate, perm("progress.manage"), updateProgress);
+router.delete("/progress/:id",                authenticate, perm("progress.manage"), deleteProgress);
+router.post  ("/progress/rank-change",        authenticate, perm("progress.manage"), [
   body("athleteId").notEmpty().withMessage("الرياضي مطلوب"),
   body("newRank").notEmpty().withMessage("الرتبة الجديدة مطلوبة"),
   validate,
@@ -256,13 +259,13 @@ router.post  ("/settings/change-password",  authenticate, [
 ], changeMyPassword);
 
 // ── Dashboard ─────────────────────────────────────────────────
-router.get("/dashboard/overview",                  authenticate, staffOnly, getOverview);
-router.get("/dashboard/revenue-chart",              authenticate, staffOnly, getRevenueChart);
-router.get("/dashboard/attendance-chart",           authenticate, staffOnly, getAttendanceChart);
-router.get("/dashboard/members-growth",             authenticate, staffOnly, getMembersGrowth);
-router.get("/dashboard/top-coaches",                authenticate, staffOnly, getTopCoaches);
-router.get("/dashboard/age-category-distribution",  authenticate, staffOnly, getAgeCategoryDistribution);
-router.get("/dashboard/recent-activity",            authenticate, staffOnly, getRecentActivity);
+router.get("/dashboard/overview",                  authenticate, perm("stats.view"), getOverview);
+router.get("/dashboard/revenue-chart",              authenticate, perm("stats.view"), getRevenueChart);
+router.get("/dashboard/attendance-chart",           authenticate, perm("stats.view"), getAttendanceChart);
+router.get("/dashboard/members-growth",             authenticate, perm("stats.view"), getMembersGrowth);
+router.get("/dashboard/top-coaches",                authenticate, perm("stats.view"), getTopCoaches);
+router.get("/dashboard/age-category-distribution",  authenticate, perm("stats.view"), getAgeCategoryDistribution);
+router.get("/dashboard/recent-activity",            authenticate, perm("stats.view"), getRecentActivity);
 
 // ── Onboarding (تسجيل صالة جديدة ذاتياً) ────────────────────────
 router.post("/onboarding/register", [

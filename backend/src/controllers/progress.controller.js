@@ -1,6 +1,7 @@
 // src/controllers/progress.controller.js
 import { query, transaction } from "../utils/db.js";
 import { ok, created, notFound, badRequest, serverError, paginate } from "../utils/response.js";
+import { athleteScopeSql, athleteInScope } from "../utils/access.js";
 
 // دالة مساعدة: التحقق أن الرياضي/ولي الأمر يملك صلاحية الوصول
 async function canAccessAsPortalUser(user, athleteId) {
@@ -13,6 +14,16 @@ async function canAccessAsPortalUser(user, athleteId) {
     return check.rows.length > 0;
   }
   return false;
+}
+
+// سجل التقدم يخص رياضياً ضمن صالة المستخدم ونطاقه
+async function progressInScope(user, progressId) {
+  const params = [progressId, user.gym_id];
+  const c = athleteScopeSql(user, "u", params);
+  const { rows } = await query(
+    `SELECT 1 FROM athlete_progress ap JOIN users u ON u.id = ap.athlete_id
+     WHERE ap.id = $1 AND u.gym_id = $2 ${c ? "AND " + c : ""}`, params);
+  return rows.length > 0;
 }
 
 // ── GET /api/progress/athlete/:athleteId ───────────────────────
@@ -29,6 +40,10 @@ export const getAthleteProgress = async (req, res) => {
       const allowed = await canAccessAsPortalUser(req.user, athleteId);
       if (!allowed) return badRequest(res, "ليس لديك صلاحية الوصول لهذا الرياضي");
     }
+
+    // نطاق المدرب
+    if (isStaff && !(await athleteInScope(req.user, athleteId)))
+      return notFound(res, "الرياضي غير موجود");
 
     // تحقق أن الرياضي في نفس الصالة
     const athleteCheck = await query(
@@ -96,6 +111,8 @@ export const createProgress = async (req, res) => {
       [athleteId, req.user.gym_id]
     );
     if (!athlete.rows.length) return badRequest(res, "الرياضي غير موجود");
+    if (!(await athleteInScope(req.user, athleteId)))
+      return badRequest(res, "هذا الرياضي خارج نطاق صلاحياتك");
 
     const { rows } = await query(
       `INSERT INTO athlete_progress
@@ -119,6 +136,9 @@ export const createProgress = async (req, res) => {
 export const updateProgress = async (req, res) => {
   try {
     const { recordDate, weightKg, bodyFatPct, performanceScore, notes, customMetrics } = req.body;
+
+    if (!(await progressInScope(req.user, req.params.id)))
+      return notFound(res, "السجل غير موجود");
 
     const { rows } = await query(
       `UPDATE athlete_progress SET
@@ -145,6 +165,8 @@ export const updateProgress = async (req, res) => {
 // ── DELETE /api/progress/:id ────────────────────────────────────
 export const deleteProgress = async (req, res) => {
   try {
+    if (!(await progressInScope(req.user, req.params.id)))
+      return notFound(res, "السجل غير موجود");
     const { rowCount } = await query("DELETE FROM athlete_progress WHERE id=$1", [req.params.id]);
     if (!rowCount) return notFound(res, "السجل غير موجود");
     return ok(res, { deleted: true });
@@ -157,6 +179,8 @@ export const changeRank = async (req, res) => {
   try {
     const { athleteId, newRank, notes } = req.body;
     if (!athleteId || !newRank) return badRequest(res, "الرياضي والرتبة الجديدة مطلوبان");
+    if (!(await athleteInScope(req.user, athleteId)))
+      return badRequest(res, "هذا الرياضي خارج نطاق صلاحياتك");
 
     const result = await transaction(async (client) => {
       const current = await client.query("SELECT rank FROM users WHERE id=$1", [athleteId]);
@@ -218,7 +242,9 @@ export const getProgressList = async (req, res) => {
 
     const conditions = ["u.gym_id = $1", "u.role = 'athlete'", "u.is_active = TRUE"];
     const params = [gymId];
-    let p = 2;
+    const scopeSql = athleteScopeSql(req.user, "u", params);
+    if (scopeSql) conditions.push(scopeSql);
+    let p = params.length + 1;
 
     if (search) { conditions.push(`u.full_name ILIKE $${p}`); params.push(`%${search}%`); p++; }
     if (ageCategory) { conditions.push(`u.age_category = $${p}`); params.push(ageCategory); p++; }

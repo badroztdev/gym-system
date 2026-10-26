@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import { useAuthStore } from "@/store/authStore";
+import { canOpenPage, firstAllowedPage } from "@/utils/permissions";
 import toast from "react-hot-toast";
 import "@/styles/globals.css";
 
@@ -123,9 +124,26 @@ function GymGuard({ children }) {
   if (!token) return <Navigate to="/login" replace />;
   if (user?.role === "super_admin") return <Navigate to="/superadmin" replace />;
   if (!user?.gymSlug) return <Navigate to="/login" replace />;
-  if (user.gymSlug !== gymSlug) return <Navigate to={`/${user.gymSlug}/dashboard`} replace />;
+  if (user.gymSlug !== gymSlug) return <Navigate to={`/${user.gymSlug}/${firstAllowedPage(user)}`} replace />;
 
   return children;
+}
+
+// ✅ حارس الصلاحيات داخل لوحة الصالة: إن لم يملك المستخدم صلاحية الصفحة يُوجَّه لأول صفحة مسموحة
+function PermRoute({ page, children }) {
+  const { gymSlug } = useParams();
+  const user = useAuthStore(s => s.user);
+  if (!canOpenPage(user, page)) {
+    return <Navigate to={`/${gymSlug}/${firstAllowedPage(user)}`} replace />;
+  }
+  return children;
+}
+
+// الصفحة الافتراضية بعد الدخول = أول صفحة يملك صلاحيتها
+function HomeIndex() {
+  const { gymSlug } = useParams();
+  const user = useAuthStore(s => s.user);
+  return <Navigate to={`/${gymSlug}/${firstAllowedPage(user)}`} replace />;
 }
 
 // حارس لوحة إدارة المنصة (super_admin فقط)
@@ -177,7 +195,7 @@ function RootRedirect() {
 
   if (!token) return <Landing />;
   if (user?.role === "super_admin") return <Navigate to="/superadmin" replace />;
-  if (user?.gymSlug) return <Navigate to={`/${user.gymSlug}/dashboard`} replace />;
+  if (user?.gymSlug) return <Navigate to={`/${user.gymSlug}/${firstAllowedPage(user)}`} replace />;
   return <Landing />;
 }
 
@@ -208,14 +226,14 @@ export default function App() {
               <Layout />
             </GymGuard>
           }>
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard"     element={<Dashboard />} />
-            <Route path="members"       element={<Members />} />
-            <Route path="sessions"      element={<Sessions />} />
-            <Route path="subscriptions" element={<Subscriptions />} />
-            <Route path="attendance"    element={<Attendance />} />
-            <Route path="messages"      element={<Messages />} />
-            <Route path="progress"      element={<Progress />} />
+            <Route index element={<HomeIndex />} />
+            <Route path="dashboard"     element={<PermRoute page="dashboard"><Dashboard /></PermRoute>} />
+            <Route path="members"       element={<PermRoute page="members"><Members /></PermRoute>} />
+            <Route path="sessions"      element={<PermRoute page="sessions"><Sessions /></PermRoute>} />
+            <Route path="subscriptions" element={<PermRoute page="subscriptions"><Subscriptions /></PermRoute>} />
+            <Route path="attendance"    element={<PermRoute page="attendance"><Attendance /></PermRoute>} />
+            <Route path="messages"      element={<PermRoute page="messages"><Messages /></PermRoute>} />
+            <Route path="progress"      element={<PermRoute page="progress"><Progress /></PermRoute>} />
             <Route path="team"          element={<Team />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="settings"      element={<Settings />} />

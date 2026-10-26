@@ -2,6 +2,7 @@
 import bcrypt from "bcrypt";
 import { query } from "../utils/db.js";
 import { ok, created, noContent, notFound, badRequest, serverError } from "../utils/response.js";
+import { cleanPermissions, cleanScope, DEFAULT_PERMISSIONS } from "../utils/access.js";
 
 // ── GET /api/staff ──────────────────────────────────────────────
 // يعرض المدربين والمساعدين (وأحياناً المالك) في الصالة
@@ -25,6 +26,7 @@ export const getStaff = async (req, res) => {
     const { rows } = await query(
       `SELECT id, full_name, phone, email, role, avatar_url,
               is_active, last_login_at, created_at,
+              permissions, access_scope,
               (SELECT COUNT(*) FROM sessions s WHERE s.coach_id = users.id AND s.is_cancelled = FALSE) AS sessions_count
        FROM users
        WHERE ${conditions.join(" AND ")}
@@ -33,6 +35,8 @@ export const getStaff = async (req, res) => {
          full_name`,
       params
     );
+    // الصلاحيات والنطاق لا يراها إلا المالك
+    if (req.user.role !== "owner") rows.forEach(r => { delete r.permissions; delete r.access_scope; });
     return ok(res, rows);
   } catch (err) { serverError(res, err); }
 };
@@ -41,7 +45,8 @@ export const getStaff = async (req, res) => {
 export const getStaffMember = async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT id, full_name, phone, email, role, avatar_url, is_active, created_at
+      `SELECT id, full_name, phone, email, role, avatar_url, is_active, created_at,
+              permissions, access_scope
        FROM users
        WHERE id = $1 AND gym_id = $2 AND role IN ('coach','assistant','owner')`,
       [req.params.id, req.user.gym_id]
@@ -56,7 +61,9 @@ export const getStaffMember = async (req, res) => {
       [req.params.id]
     );
 
-    return ok(res, { ...rows[0], upcomingSessions: sessions.rows });
+    const out = { ...rows[0], upcomingSessions: sessions.rows };
+    if (req.user.role !== "owner") { delete out.permissions; delete out.access_scope; }
+    return ok(res, out);
   } catch (err) { serverError(res, err); }
 };
 
@@ -65,6 +72,11 @@ export const createStaff = async (req, res) => {
   try {
     const { fullName, phone, email, role = "coach", password } = req.body;
     const gymId = req.user.gym_id;
+
+    const perms = "permissions" in req.body ? cleanPermissions(req.body.permissions) : null;
+    if (perms === undefined) return badRequest(res, "الصلاحيات غير صحيحة");
+    const scope = "accessScope" in req.body ? await cleanScope(req.body.accessScope, gymId) : null;
+    if (scope === undefined) return badRequest(res, "نطاق الصلاحيات غير صحيح");
 
     if (!["coach", "assistant"].includes(role))
       return badRequest(res, "الدور يجب أن يكون مدرب أو مساعد مدرب");
@@ -79,10 +91,12 @@ export const createStaff = async (req, res) => {
     const hash = await bcrypt.hash(password || phone, 10);
 
     const { rows } = await query(
-      `INSERT INTO users (gym_id, full_name, phone, email, role, password_hash)
-       VALUES ($1,$2,$3,$4,$5,$6)
-       RETURNING id, full_name, phone, email, role, created_at`,
-      [gymId, fullName, phone, email || null, role, hash]
+      `INSERT INTO users (gym_id, full_name, phone, email, role, password_hash, permissions, access_scope)
+       VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb)
+       RETURNING id, full_name, phone, email, role, created_at, permissions, access_scope`,
+      [gymId, fullName, phone, email || null, role, hash,
+       perms === null ? null : JSON.stringify(perms),
+       scope === null ? null : JSON.stringify(scope)]
     );
     return created(res, rows[0]);
   } catch (err) { serverError(res, err); }
@@ -96,6 +110,20 @@ export const updateStaff = async (req, res) => {
     let passwordHash = null;
     if (password) passwordHash = await bcrypt.hash(password, 10);
 
+    // ✅ undefined = لا تغيير | null = إعادة للافتراضي | قيمة = استبدال
+    const setPerms = "permissions" in req.body;
+    const setScope = "accessScope" in req.body;
+    const perms = setPerms ? cleanPermissions(req.body.permissions) : null;
+    if (perms === undefined) return badRequest(res, "الصلاحيات غير صحيحة");
+    const scope = setScope ? await cleanScope(req.body.accessScope, req.user.gym_id) : null;
+    if (scope === undefined) return badRequest(res, "نطاق الصلاحيات غير صحيح");
+
+    if (setPerms || setScope) {
+      const target = await query("SELECT role FROM users WHERE id = $1 AND gym_id = $2", [req.params.id, req.user.gym_id]);
+      if (target.rows[0]?.role === "owner")
+        return badRequest(res, "لا يمكن تعديل صلاحيات المالك");
+    }
+
     const { rows } = await query(
       `UPDATE users SET
          full_name     = COALESCE($1, full_name),
@@ -104,13 +132,17 @@ export const updateStaff = async (req, res) => {
          role          = COALESCE($4, role),
          is_active     = COALESCE($5, is_active),
          password_hash = COALESCE($6, password_hash),
+         permissions   = CASE WHEN $9::boolean  THEN $10::jsonb ELSE permissions  END,
+         access_scope  = CASE WHEN $11::boolean THEN $12::jsonb ELSE access_scope END,
          updated_at    = NOW()
        WHERE id = $7 AND gym_id = $8 AND role IN ('coach','assistant','owner')
-       RETURNING id, full_name, phone, email, role, is_active`,
+       RETURNING id, full_name, phone, email, role, is_active, permissions, access_scope`,
       [
         fullName || null, phone || null, email || null,
         role || null, isActive ?? null, passwordHash,
         req.params.id, req.user.gym_id,
+        setPerms, perms === null ? null : JSON.stringify(perms),
+        setScope, scope === null ? null : JSON.stringify(scope),
       ]
     );
     if (!rows.length) return notFound(res, "العضو غير موجود");

@@ -1,5 +1,6 @@
 // src/controllers/subscriptions.controller.js
 import { query, transaction } from "../utils/db.js";
+import { athleteScopeSql, athleteInScope, subscriptionInScope } from "../utils/access.js";
 import {
   ok, created, notFound, badRequest, serverError, paginate,
 } from "../utils/response.js";
@@ -13,7 +14,9 @@ export const getSubscriptions = async (req, res) => {
 
     const conditions = ["u.gym_id = $1"];
     const params = [gymId];
-    let p = 2;
+    const scopeSql = athleteScopeSql(req.user, "u", params);
+    if (scopeSql) conditions.push(scopeSql);
+    let p = params.length + 1;
 
     if (athleteId) {
       conditions.push(`s.athlete_id = $${p}`);
@@ -85,6 +88,8 @@ export const getSubscriptions = async (req, res) => {
 // ── GET /api/subscriptions/:id ─────────────────────────────────
 export const getSubscription = async (req, res) => {
   try {
+    const gParams = [req.params.id, req.user.gym_id];
+    const gScope = athleteScopeSql(req.user, "u", gParams);
     const { rows } = await query(
       `SELECT
          s.*, u.full_name AS athlete_name, u.phone AS athlete_phone,
@@ -98,8 +103,8 @@ export const getSubscription = async (req, res) => {
          SELECT SUM(amount) AS total_paid FROM payments
          WHERE subscription_id = s.id AND status = 'paid'
        ) pay ON TRUE
-       WHERE s.id = $1 AND u.gym_id = $2`,
-      [req.params.id, req.user.gym_id]
+       WHERE s.id = $1 AND u.gym_id = $2 ${gScope ? "AND " + gScope : ""}`,
+      gParams
     );
     if (!rows.length) return notFound(res, "الاشتراك غير موجود");
 
@@ -127,6 +132,8 @@ export const createSubscription = async (req, res) => {
       [athleteId, gymId]
     );
     if (!athlete.rows.length) return badRequest(res, "الرياضي غير موجود");
+    if (!(await athleteInScope(req.user, athleteId)))
+      return badRequest(res, "هذا الرياضي خارج نطاق صلاحياتك");
 
     const plan = await query(
       "SELECT * FROM subscription_plans WHERE id = $1 AND gym_id = $2 AND is_active = TRUE",
@@ -161,6 +168,9 @@ export const createSubscription = async (req, res) => {
 export const updateSubscription = async (req, res) => {
   try {
     const { status, endDate, price, notes, sessionsRemaining } = req.body;
+
+    if (!(await subscriptionInScope(req.user, req.params.id)))
+      return notFound(res, "الاشتراك غير موجود");
 
     const { rows } = await query(
       `UPDATE subscriptions s SET
@@ -197,12 +207,14 @@ export const deleteSubscription = async (req, res) => {
     const { id } = req.params;
     const gymId = req.user.gym_id;
 
-    // تحقق أولاً أن الاشتراك موجود فعلاً ويخص هذه الصالة
+    // تحقق أولاً أن الاشتراك موجود فعلاً ويخص هذه الصالة (وضمن نطاق المدرب)
+    const dParams = [id, gymId];
+    const dScope = athleteScopeSql(req.user, "u", dParams);
     const check = await query(
       `SELECT s.id FROM subscriptions s
        JOIN users u ON u.id = s.athlete_id
-       WHERE s.id = $1 AND u.gym_id = $2`,
-      [id, gymId]
+       WHERE s.id = $1 AND u.gym_id = $2 ${dScope ? "AND " + dScope : ""}`,
+      dParams
     );
     if (!check.rows.length) return notFound(res, "الاشتراك غير موجود");
 
@@ -221,6 +233,9 @@ export const deleteSubscription = async (req, res) => {
 export const getSubscriptionStats = async (req, res) => {
   try {
     const gymId = req.user.gym_id;
+    const stParams = [gymId];
+    const stScope = athleteScopeSql(req.user, "u", stParams);
+    const stSql = stScope ? "AND " + stScope : "";
 
     const { rows } = await query(
       `SELECT
@@ -235,8 +250,8 @@ export const getSubscriptionStats = async (req, res) => {
          SELECT SUM(amount) AS total_paid FROM payments
          WHERE subscription_id = s.id AND status = 'paid'
        ) pay ON TRUE
-       WHERE u.gym_id = $1`,
-      [gymId]
+       WHERE u.gym_id = $1 ${stSql}`,
+      stParams
     );
 
     const revenue = await query(
@@ -245,8 +260,8 @@ export const getSubscriptionStats = async (req, res) => {
        JOIN subscriptions s ON s.id = p.subscription_id
        JOIN users u ON u.id = s.athlete_id
        WHERE u.gym_id = $1 AND p.status = 'paid'
-         AND p.paid_at >= DATE_TRUNC('month', NOW())`,
-      [gymId]
+         AND p.paid_at >= DATE_TRUNC('month', NOW()) ${stSql}`,
+      stParams
     );
 
     return ok(res, { ...rows[0], ...revenue.rows[0] });
