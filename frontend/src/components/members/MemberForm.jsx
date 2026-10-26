@@ -45,6 +45,8 @@ const getGroupNames = (t) => [
   { value: "الفوج 2", label: t("memberForm.groupLabel", { num: 2 }) },
   { value: "الفوج 3", label: t("memberForm.groupLabel", { num: 3 }) },
   { value: "الفوج 4", label: t("memberForm.groupLabel", { num: 4 }) },
+  { value: "الفوج 5", label: t("memberForm.groupLabel", { num: 5 }) },
+  { value: "الفوج 6", label: t("memberForm.groupLabel", { num: 6 }) },
 ];
 
 const EMPTY_FORM = {
