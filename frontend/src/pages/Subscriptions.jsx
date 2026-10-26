@@ -161,6 +161,9 @@ function SubscriptionsTab() {
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["subscriptions"] });
     qc.invalidateQueries({ queryKey: ["subscriptions-stats"] });
+    qc.invalidateQueries({ queryKey: ["plans-page"] });   // عدّاد الاشتراكات النشطة في بطاقة الخطة
+    qc.invalidateQueries({ queryKey: ["payments"] });
+    qc.invalidateQueries({ queryKey: ["payments-stats"] });
   };
 
   const STATUSES = [
@@ -397,7 +400,11 @@ function PlansTab() {
   const { data, isLoading } = useQuery({ queryKey: ["plans-page"], queryFn: () => plansService.getAll({ includeInactive: "true" }) });
   const plans = data?.data || [];
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ["plans"] }) || qc.invalidateQueries({ queryKey: ["plans-page"] });
+  // ✅ إصلاح: كان الكود يستعمل || فيُنفَّذ الاستدعاء الأول فقط ولا تتحدّث قائمة الخطط
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["plans-page"] });
+    qc.invalidateQueries({ queryKey: ["plans"] });
+  };
 
   const deleteMutation = useMutation({
     mutationFn: plansService.remove,
