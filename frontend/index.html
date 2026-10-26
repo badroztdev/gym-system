@@ -87,22 +87,35 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
-      // شريط "تثبيت التطبيق" الدائم — يبقى ظاهراً حتى يتم التثبيت
+      // شريط "تثبيت التطبيق" — Android/Chrome: زر تثبيت | iPhone: إرشاد Safari | متصفحات التطبيقات (Instagram…): افتح في Safari
       (function () {
         var standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
         if (standalone) return;
+        var ua = navigator.userAgent || "";
         var deferred = null, bar = null;
         var lang = "ar";
         try { lang = (localStorage.getItem("i18nextLng") || localStorage.getItem("lang") || "ar").slice(0, 2); } catch (e) {}
         var fr = lang === "fr";
         var T = fr
-          ? { msg: "Installez SGMS sur votre écran d'accueil", btn: "Installer", ios: "Appuyez sur Partager puis « Sur l'écran d'accueil »" }
-          : { msg: "ثبّت تطبيق SGMS على شاشتك الرئيسية", btn: "تثبيت", ios: "اضغط زر المشاركة ثم «إضافة إلى الشاشة الرئيسية»" };
-        var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+          ? { msg: "Installez SGMS sur votre écran d'accueil", btn: "Installer",
+              ios: "Appuyez sur ≡ (ou ⬆︎) → Partager → « Sur l'écran d'accueil »",
+              iab: "Ouvrez ce lien dans Safari pour installer l'app : appuyez sur ⋯ puis « Ouvrir dans Safari »",
+              copy: "Copier le lien", copied: "Copié ✓" }
+          : { msg: "ثبّت تطبيق SGMS على شاشتك الرئيسية", btn: "تثبيت",
+              ios: "اضغط ≡ (أو ⬆︎) ← «مشاركة» ← «إضافة إلى الشاشة الرئيسية»",
+              iab: "للتثبيت افتح الرابط في Safari: اضغط ⋯ ثم «فتح في Safari» (أو انسخ الرابط والصقه في Safari)",
+              copy: "نسخ الرابط", copied: "تم النسخ ✓" };
+        var isIOS = /iphone|ipad|ipod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+        // متصفحات داخل التطبيقات (لا تدعم "إضافة إلى الشاشة الرئيسية")
+        var inApp = isIOS && /Instagram|FBAN|FBAV|FB_IAB|FBIOS|TikTok|musical_ly|BytedanceWebview|Snapchat|Line\/|MicroMessenger|Twitter|LinkedInApp|Pinterest|GSA\//i.test(ua);
+        var DKEY = "sgms-ios-bar-dismissed";
 
+        function dismissed() {
+          try { var t = Number(localStorage.getItem(DKEY) || 0); return t && Date.now() - t < 12 * 3600 * 1000; } catch (e) { return false; }
+        }
         function inPortal() { return location.pathname.indexOf("/portal") === 0; }
         // بوابة الرياضي: الشريط لآيفون فقط (أندرويد عنده تطبيق Google Play)
-        function hidden() { return inPortal() && !isIOS; }
+        function hidden() { return (inPortal() && !isIOS) || (isIOS && dismissed()); }
         function syncManifest() {
           var l = document.querySelector('link[rel="manifest"]');
           var want = inPortal() ? "/manifest-portal.webmanifest" : "/manifest.webmanifest";
@@ -110,25 +123,55 @@
         }
         syncManifest();
         function remove() { if (bar && bar.parentNode) bar.parentNode.removeChild(bar); bar = null; }
+        function copyLink(btn) {
+          var url = location.href, done = function () { btn.textContent = T.copied; };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(done, fallback);
+          } else fallback();
+          function fallback() {
+            try {
+              var i = document.createElement("input"); i.value = url; i.style.cssText = "position:fixed;opacity:0";
+              document.body.appendChild(i); i.select(); i.setSelectionRange(0, 999); document.execCommand("copy");
+              document.body.removeChild(i); done();
+            } catch (e) { window.prompt(url, url); }
+          }
+        }
+        function btnStyle() { return "flex-shrink:0;border:0;border-radius:8px;padding:8px 14px;background:#a3e635;color:#0b0e11;font:700 13px system-ui,sans-serif;cursor:pointer"; }
         function show() {
           if (bar || hidden()) return;
           bar = document.createElement("div");
           bar.setAttribute("dir", fr ? "ltr" : "rtl");
-          bar.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:#0b0e11;border-bottom:1px solid #a3e635;color:#fff;font:600 13px/1.4 system-ui,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.4)";
+          bar.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 10px;padding:10px 14px;background:#0b0e11;border-bottom:1px solid #a3e635;color:#fff;font:600 13px/1.5 system-ui,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.4)";
           var t = document.createElement("span");
-          t.textContent = isIOS && !deferred ? T.ios : T.msg;
+          t.style.cssText = "flex:1 1 200px;min-width:0";
+          t.textContent = inApp ? T.iab : (isIOS && !deferred ? T.ios : T.msg);
           bar.appendChild(t);
-          if (!isIOS || deferred) {
+          var actions = document.createElement("div");
+          actions.style.cssText = "display:flex;align-items:center;gap:8px";
+          if (inApp) {
+            var c = document.createElement("button");
+            c.textContent = T.copy; c.style.cssText = btnStyle();
+            c.onclick = function () { copyLink(c); };
+            actions.appendChild(c);
+          } else if (!isIOS || deferred) {
             var b = document.createElement("button");
-            b.textContent = T.btn;
-            b.style.cssText = "flex-shrink:0;border:0;border-radius:8px;padding:8px 16px;background:#a3e635;color:#0b0e11;font:700 13px system-ui,sans-serif;cursor:pointer";
+            b.textContent = T.btn; b.style.cssText = btnStyle();
             b.onclick = function () {
               if (!deferred) return;
               deferred.prompt();
-              deferred.userChoice.then(function (c) { if (c.outcome === "accepted") remove(); });
+              deferred.userChoice.then(function (r) { if (r.outcome === "accepted") remove(); });
             };
-            bar.appendChild(b);
+            actions.appendChild(b);
           }
+          if (isIOS) {
+            // آيفون: لا يوجد حدث "تم التثبيت" فنسمح بالإغلاق 12 ساعة حتى لا يحجب الصفحة
+            var x = document.createElement("button");
+            x.textContent = "✕"; x.setAttribute("aria-label", "close");
+            x.style.cssText = "border:0;background:transparent;color:#9ca3af;font:700 18px system-ui,sans-serif;padding:4px 6px;cursor:pointer";
+            x.onclick = function () { try { localStorage.setItem(DKEY, String(Date.now())); } catch (e) {} remove(); };
+            actions.appendChild(x);
+          }
+          if (actions.children.length) bar.appendChild(actions);
           document.body.appendChild(bar);
         }
 
