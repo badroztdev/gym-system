@@ -75,6 +75,7 @@ export default function MemberDetail({ open, onClose, memberId }) {
             <InfoRow label={t("memberForm.email")} value={m.email} />
             <InfoRow label={t("memberForm.gender")} value={m.gender === "male" ? t("memberForm.male") : m.gender === "female" ? t("memberForm.female") : null} />
             <InfoRow label={t("memberForm.dateOfBirth")} value={m.date_of_birth?.slice(0,10)} />
+            <InfoRow label={t("memberForm.address")} value={m.address} />
           </div>
 
           {/* المعلومات الرياضية (للرياضي فقط) */}

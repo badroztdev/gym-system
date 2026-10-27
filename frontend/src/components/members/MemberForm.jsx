@@ -52,7 +52,7 @@ const getGroupNames = (t) => [
 const EMPTY_FORM = {
   fullName: "", phone: "", email: "", gender: "",
   dateOfBirth: "", role: "athlete", ageCategory: "",
-  rank: "", weightKg: "", bloodGroup: "", guardianId: "", groupName: "",
+  rank: "", weightKg: "", bloodGroup: "", guardianId: "", groupName: "", address: "",
 };
 
 function Section({ title }) {
@@ -96,6 +96,7 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
         ageCategory: member.age_category               || "",
         rank:        member.rank                       || "",
         groupName:   member.group_name                  || "",
+        address:     member.address                     || "",
         weightKg:    member.weight_kg != null ? String(member.weight_kg) : "",
         bloodGroup:  member.blood_group                || "",
         guardianId:  "", // سيُعبّى أدناه من بيانات العضو الكاملة عند التعديل
@@ -274,6 +275,14 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
           <Select label={t("memberForm.role")}          options={ROLES}   value={form.role}        onChange={set("role")} />
           <Input  label={t("memberForm.dateOfBirth")}   type="date"       value={form.dateOfBirth} onChange={set("dateOfBirth")} />
         </div>
+
+        {/* ✅ العنوان (يُستعمل في جدول التأمين) */}
+        <Input
+          label={t("memberForm.address")}
+          placeholder={t("memberForm.addressPlaceholder")}
+          value={form.address}
+          onChange={set("address")}
+        />
 
         <Section title={t("memberForm.sectionSport")} />
 

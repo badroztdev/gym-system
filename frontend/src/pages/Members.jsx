@@ -7,6 +7,7 @@ import { useAuthStore } from "@/store/authStore";
 import PageHeader from "@/components/layout/PageHeader";
 import MemberForm from "@/components/members/MemberForm";
 import MemberDetail from "@/components/members/MemberDetail";
+import InsuranceExportModal from "@/components/members/InsuranceExportModal";
 import { Button, Badge, Spinner, Empty, Confirm, Modal } from "@/components/ui";
 import toast from "react-hot-toast";
 
@@ -178,6 +179,7 @@ export default function MembersPage() {
   const [resetId,   setResetId]   = useState(null);
   const [resetModal, setResetModal] = useState(false);
   const [customPass, setCustomPass] = useState("");
+  const [showInsurance, setShowInsurance] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["members", { search, role, status, ageCategory, showInactive, page }],
@@ -245,9 +247,14 @@ export default function MembersPage() {
         title={t("members.title")}
         subtitle={meta.total ? t("members.totalCount", { count: meta.total }) : ""}
         actions={
-          <Button icon="+" onClick={() => setShowForm(true)}>
-            {t("members.newMember")}
-          </Button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Button variant="secondary" onClick={() => setShowInsurance(true)}>
+              {t("members.insuranceBtn")}
+            </Button>
+            <Button icon="+" onClick={() => setShowForm(true)}>
+              {t("members.newMember")}
+            </Button>
+          </div>
         }
       />
 
@@ -512,6 +519,9 @@ export default function MembersPage() {
         title={t("members.permanentDeleteConfirmTitle")}
         message={t("members.permanentDeleteConfirmMessage")}
       />
+
+      {/* ✅ تصدير جدول التأمين (Word) */}
+      <InsuranceExportModal open={showInsurance} onClose={() => setShowInsurance(false)} />
 
       {/* ✅ نافذة تفاصيل العضو الكاملة — تُفتح عند النقر على أي سطر في الجدول */}
       <MemberDetail

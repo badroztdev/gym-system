@@ -7,7 +7,7 @@ import { requirePermission as perm } from "../utils/access.js";
 import { authenticate, staffOnly, coachAndAbove, ownerOnly, authorize } from "../middleware/auth.js";
 
 import { login, me } from "../controllers/auth.controller.js";
-import { getMembers, getMember, createMember, updateMember, deleteMember, deleteMemberPermanently, getMembersStats, resetPassword, uploadMemberAvatar } from "../controllers/members.controller.js";
+import { getMembers, getMember, createMember, updateMember, deleteMember, deleteMemberPermanently, getMembersStats, getInsuranceList, resetPassword, uploadMemberAvatar } from "../controllers/members.controller.js";
 import { getCategories, createCategory, updateCategory, deleteCategory, deleteCategoryPermanently } from "../controllers/categories.controller.js";
 import { getStaff, getStaffMember, createStaff, updateStaff, deleteStaff } from "../controllers/staff.controller.js";
 import { getPlans, createPlan, updatePlan, deletePlan, deletePlanPermanently } from "../controllers/plans.controller.js";
@@ -54,6 +54,7 @@ router.get("/auth/me", authenticate, me);
 
 // ── Members ───────────────────────────────────────────────────
 router.get   ("/members/stats",                authenticate, perm("members.view"),  getMembersStats);
+router.get   ("/members/insurance-list",       authenticate, perm("members.view"),  getInsuranceList);
 router.post  ("/members/:id/reset-password",   authenticate, ownerOnly,  resetPassword);
 router.post  ("/members/:id/avatar",          authenticate, perm("members.edit"),  avatarUpload.single("avatar"), uploadMemberAvatar);
 // قائمة الأعضاء تُستخدم أيضاً لاختيار الرياضي في الاشتراكات والتقدم والحضور

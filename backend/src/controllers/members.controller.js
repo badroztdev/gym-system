@@ -75,7 +75,7 @@ export const getMembers = async (req, res) => {
       `SELECT
          u.id, u.full_name, u.phone, u.email, u.gender,
          u.date_of_birth, u.avatar_url, u.role, u.is_active, u.created_at,
-         u.age_category, u.rank, u.weight_kg, u.blood_group, u.group_name,
+         u.age_category, u.rank, u.weight_kg, u.blood_group, u.group_name, u.address,
          sub.status        AS sub_status,
          sub.end_date      AS sub_end_date,
          sp.name           AS plan_name,
@@ -110,7 +110,7 @@ export const getMember = async (req, res) => {
     const { rows } = await query(
       `SELECT u.id, u.full_name, u.phone, u.email, u.gender,
               u.date_of_birth, u.avatar_url, u.role, u.is_active, u.created_at,
-              u.age_category, u.rank, u.weight_kg, u.blood_group, u.group_name
+              u.age_category, u.rank, u.weight_kg, u.blood_group, u.group_name, u.address
        FROM users u
        WHERE u.id = $1 AND u.gym_id = $2 ${mScope ? "AND " + mScope : ""}`,
       mParams
@@ -162,7 +162,7 @@ export const createMember = async (req, res) => {
     const {
       fullName, phone, email, gender, dateOfBirth,
       role = "athlete", ageCategory, rank, weightKg, bloodGroup, groupName,
-      guardianId,
+      guardianId, address,
     } = req.body;
 
     if (role === "athlete") {
@@ -189,15 +189,16 @@ export const createMember = async (req, res) => {
     const { rows } = await query(
       `INSERT INTO users
          (gym_id, full_name, phone, email, gender, date_of_birth,
-          role, password_hash, age_category, rank, weight_kg, blood_group, group_name)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+          role, password_hash, age_category, rank, weight_kg, blood_group, group_name, address)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        RETURNING id, full_name, phone, email, gender, date_of_birth,
-                 role, created_at, age_category, rank, weight_kg, blood_group, group_name`,
+                 role, created_at, age_category, rank, weight_kg, blood_group, group_name, address`,
       [
         req.user.gym_id, fullName, phone || null, email || null,
         gender || null, dateOfBirth || null, role, hash,
         ageCategory || null, rank || null,
         weightKg || null, bloodGroup || null, groupName || null,
+        (typeof address === "string" && address.trim()) || null,
       ]
     );
 
@@ -230,7 +231,7 @@ export const updateMember = async (req, res) => {
       fullName, phone, email, gender, dateOfBirth, isActive,
       ageCategory, rank, weightKg, bloodGroup, groupName,
       role,         // ✅ الإصلاح: كان مفقوداً تماماً، فيُتجاهَل تغيير الدور صامتاً
-      guardianId,
+      guardianId, address,
     } = req.body;
 
     if (!(await memberInScope(req.user, req.params.id)))
@@ -273,6 +274,7 @@ export const updateMember = async (req, res) => {
       bloodGroup   || null,
       groupName    || null,
       role         || null,   // ✅ أُضيف كوسيط جديد
+      (typeof address === "string" && address.trim()) || null,
       req.params.id, req.user.gym_id,
     ];
 
@@ -290,10 +292,11 @@ export const updateMember = async (req, res) => {
          blood_group   = COALESCE($10, blood_group),
          group_name    = COALESCE($11, group_name),
          role          = COALESCE($12, role),
+         address       = COALESCE($13, address),
          updated_at    = NOW()
-       WHERE id = $13 AND gym_id = $14
+       WHERE id = $14 AND gym_id = $15
        RETURNING id, full_name, phone, email, gender, date_of_birth,
-                 is_active, age_category, rank, weight_kg, blood_group, group_name, role`,
+                 is_active, age_category, rank, weight_kg, blood_group, group_name, role, address`,
       params
     );
 
@@ -456,6 +459,31 @@ export const resetPassword = async (req, res) => {
         : `تم إعادة تعيين كلمة المرور إلى رقم الهاتف: ${member.rows[0].phone}`,
     });
   } catch (err) { serverError(res, err); }
+};
+
+// ── GET /api/members/insurance-list ───────────────────────────
+// قائمة خفيفة بكل الرياضيين (بدون ترقيم صفحات) لاختيار من سيُؤمَّنون وتصدير جدول Word
+export const getInsuranceList = async (req, res) => {
+  try {
+    const params = [req.user.gym_id];
+    const scopeSql = athleteScopeSql(req.user, "u", params);
+    const { rows } = await query(
+      `SELECT u.id, u.full_name, u.date_of_birth, u.address,
+              u.age_category, u.group_name,
+              EXISTS (
+                SELECT 1 FROM subscriptions s
+                WHERE s.athlete_id = u.id AND s.status = 'active' AND s.end_date >= CURRENT_DATE
+              ) AS has_active_sub
+       FROM users u
+       WHERE u.gym_id = $1 AND u.role = 'athlete' AND u.is_active = TRUE
+         ${scopeSql ? "AND " + scopeSql : ""}
+       ORDER BY u.full_name ASC`,
+      params
+    );
+    return ok(res, rows);
+  } catch (err) {
+    serverError(res, err);
+  }
 };
 
 // ── GET /api/members/stats ────────────────────────────────────

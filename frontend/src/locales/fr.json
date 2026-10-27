@@ -83,7 +83,27 @@
     "categoryCubs": "Cadets",
     "categoryMids": "Juniors",
     "categoryHopes": "Espoirs",
-    "categorySeniors": "Seniors"
+    "categorySeniors": "Seniors",
+    "insuranceBtn": "🛡️ Assurance",
+    "insuranceTitle": "Tableau d'assurance (Word)",
+    "insuranceHint": "Sélectionnez les athlètes à assurer, complétez leurs données manquantes si besoin, puis téléchargez le tableau : N°, Nom et prénom, Date de naissance, Adresse.",
+    "insuranceSearch": "Rechercher par nom…",
+    "insuranceOnlyActive": "Abonnement actif uniquement",
+    "insuranceSelectAll": "Tout sélectionner ({{count}})",
+    "insuranceClear": "Tout désélectionner",
+    "insuranceSelected": "{{count}} sélectionné(s) sur {{total}}",
+    "insuranceMissing": "{{count}} athlète(s) sélectionné(s) avec des données incomplètes (date de naissance ou adresse). Complétez-les ici, l'enregistrement est automatique.",
+    "insuranceIncomplete": "Incomplet",
+    "insuranceDocLang": "Langue du tableau :",
+    "insuranceLangAr": "Arabe",
+    "insuranceLangFr": "Français",
+    "insuranceLangBoth": "Arabe + Français",
+    "insuranceDownload": "Télécharger Word",
+    "insuranceNone": "Aucun athlète",
+    "insuranceNoSelection": "Sélectionnez au moins un athlète",
+    "insuranceSaved": "Données enregistrées ✅",
+    "insuranceDone": "Fichier téléchargé ✅",
+    "insuranceLoadError": "Impossible de charger la liste"
   },
   "memberForm": {
     "addTitle": "Ajouter un nouveau membre",
@@ -129,7 +149,9 @@
     "groupLabel": "Groupe {{num}}",
     "toastAvatarUpdated": "Photo mise à jour ✅",
     "avatarAfterCreateHint": "💡 Vous pourrez ajouter une photo après la création du membre, depuis la fenêtre de modification",
-    "toastAvatarUploadFailedAfterCreate": "Membre ajouté mais l'envoi de la photo a échoué, réessayez depuis la modification"
+    "toastAvatarUploadFailedAfterCreate": "Membre ajouté mais l'envoi de la photo a échoué, réessayez depuis la modification",
+    "address": "Adresse",
+    "addressPlaceholder": "Ex : Cité 5 Juillet, Alger"
   },
   "subscriptions": {
     "pageTitle": "Abonnements et paiements",

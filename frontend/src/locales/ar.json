@@ -83,7 +83,27 @@
     "categoryCubs": "أشبال",
     "categoryMids": "أواسط",
     "categoryHopes": "أمال",
-    "categorySeniors": "أكابر"
+    "categorySeniors": "أكابر",
+    "insuranceBtn": "🛡️ تأمين",
+    "insuranceTitle": "جدول التأمين (Word)",
+    "insuranceHint": "حدّد الرياضيين المراد تأمينهم، أكمل بياناتهم الناقصة إن وُجدت، ثم حمّل الجدول: الرقم، الاسم واللقب، تاريخ الميلاد، العنوان.",
+    "insuranceSearch": "بحث بالاسم…",
+    "insuranceOnlyActive": "اشتراك نشط فقط",
+    "insuranceSelectAll": "تحديد الكل ({{count}})",
+    "insuranceClear": "إلغاء التحديد",
+    "insuranceSelected": "{{count}} محدد من {{total}}",
+    "insuranceMissing": "{{count}} من المحددين بياناتهم ناقصة (تاريخ الميلاد أو العنوان). يمكنك إكمالها هنا مباشرة وتُحفظ تلقائياً.",
+    "insuranceIncomplete": "ناقص",
+    "insuranceDocLang": "لغة الجدول:",
+    "insuranceLangAr": "العربية",
+    "insuranceLangFr": "الفرنسية",
+    "insuranceLangBoth": "عربي + فرنسي",
+    "insuranceDownload": "تحميل Word",
+    "insuranceNone": "لا يوجد رياضيون",
+    "insuranceNoSelection": "حدّد رياضياً واحداً على الأقل",
+    "insuranceSaved": "تم حفظ البيانات ✅",
+    "insuranceDone": "تم تحميل الملف ✅",
+    "insuranceLoadError": "تعذّر تحميل القائمة"
   },
   "memberForm": {
     "addTitle": "إضافة عضو جديد",
@@ -129,7 +149,9 @@
     "groupLabel": "الفوج {{num}}",
     "toastAvatarUpdated": "تم تحديث الصورة ✅",
     "avatarAfterCreateHint": "💡 يمكنك إضافة صورة بعد إنشاء العضو، من نافذة التعديل",
-    "toastAvatarUploadFailedAfterCreate": "تم إضافة العضو لكن فشل رفع الصورة، حاول رفعها من نافذة التعديل"
+    "toastAvatarUploadFailedAfterCreate": "تم إضافة العضو لكن فشل رفع الصورة، حاول رفعها من نافذة التعديل",
+    "address": "العنوان",
+    "addressPlaceholder": "مثال: حي 5 جويلية، الجزائر"
   },
   "subscriptions": {
     "pageTitle": "الاشتراكات والمدفوعات",
