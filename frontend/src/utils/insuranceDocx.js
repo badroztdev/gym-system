@@ -77,12 +77,23 @@ const esc = (s) =>
 
 const FONT = '<w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial" w:eastAsia="Arial"/>';
 
+const LRM = "\u200E";
+
 // فقرة: lines = مصفوفة أسطر (كل سطر نص)، rtl = اتجاه الفقرة
-function para(lines, { rtl, bold, size = 22, align = "left", color, after = 0, before = 0 }) {
-  const runs = lines.map((txt, i) =>
-    `<w:r><w:rPr>${FONT}${bold ? "<w:b/><w:bCs/>" : ""}${color ? `<w:color w:val="${color}"/>` : ""}<w:sz w:val="${size}"/><w:szCs w:val="${size}"/>${rtl ? "<w:rtl/>" : ""}</w:rPr>${i ? "<w:br/>" : ""}<w:t xml:space="preserve">${esc(txt)}</w:t></w:r>`
-  ).join("");
-  // في فقرة bidi: "left" تعني بداية السطر (يمين)، لذلك نستخدم start/end الصريحة
+function para(lines, { rtl, bold, size = 22, align = "start", color, after = 0, before = 0 }) {
+  const rpr = (isRtl) =>
+    `<w:rPr>${FONT}${bold ? "<w:b/><w:bCs/>" : ""}${color ? `<w:color w:val="${color}"/>` : ""}<w:sz w:val="${size}"/><w:szCs w:val="${size}"/>${isRtl ? "<w:rtl/>" : ""}</w:rPr>`;
+  const run = (txt, isRtl) => `<w:r>${rpr(isRtl)}<w:t xml:space="preserve">${esc(txt)}</w:t></w:r>`;
+  // في المستند العربي: نفصل الأرقام والتواريخ (19/07/2009) في مقطع LTR محاط بعلامة LRM،
+  // وإلا يعكس Word ترتيبها فتظهر 2009/07/19
+  const runsFor = (txt) => {
+    if (!rtl) return run(txt, false);
+    return String(txt).split(/(\d[\d/.:\-]*)/).filter(Boolean).map((seg) =>
+      /^\d/.test(seg) ? run(LRM + seg + LRM, false) : run(seg, true)
+    ).join("");
+  };
+  const runs = lines.map((txt, i) => (i ? `<w:r><w:br/></w:r>` : "") + runsFor(txt)).join("");
+  // في فقرة bidi: القيمة "left" في OOXML = بداية السطر (يمين في العربية)، و"right" = نهايته
   const jc = align === "center" ? "center" : (align === "end" ? "right" : "left");
   return `<w:p><w:pPr>${rtl ? "<w:bidi/>" : ""}<w:spacing w:before="${before}" w:after="${after}"/><w:jc w:val="${jc}"/></w:pPr>${runs}</w:p>`;
 }
@@ -112,7 +123,7 @@ export function buildInsuranceDocx({ title, subtitle = [], headers, rows, rtl, t
 
   const bodyRows = rows.map((r) =>
     `<w:tr><w:trPr><w:cantSplit/><w:trHeight w:val="420" w:hRule="atLeast"/></w:trPr>${r
-      .map((v, i) => cell([v], widths[i], { rtl, size: 21, align: i === 0 || i === 2 ? "center" : "left" })).join("")}</w:tr>`
+      .map((v, i) => cell([v], widths[i], { rtl, size: 21, align: i === 0 || i === 2 ? "center" : "start" })).join("")}</w:tr>`
   ).join("");
 
   const border = (n) => `<w:${n} w:val="single" w:sz="6" w:space="0" w:color="555555"/>`;
@@ -126,7 +137,7 @@ export function buildInsuranceDocx({ title, subtitle = [], headers, rows, rtl, t
     para(title, { rtl, bold: true, size: 30, align: "center", after: 80 }) +
     (subtitle.length ? para(subtitle, { rtl, size: 21, align: "center", color: "555555", after: 240 }) : "") +
     table +
-    para([totalLabel], { rtl, bold: true, size: 21, align: "end", before: 200 }) +
+    para([totalLabel], { rtl, bold: true, size: 21, align: "start", before: 200 }) +
     `<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="850" w:header="567" w:footer="567" w:gutter="0"/>${rtl ? "<w:bidi/>" : ""}</w:sectPr>`;
 
   const documentXml =
