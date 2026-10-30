@@ -29,6 +29,7 @@ import Landing       from "@/pages/Landing";
 import Login         from "@/pages/Login";
 import SubscriptionRequired from "@/pages/SubscriptionRequired";
 import SignUp        from "@/pages/SignUp";
+import Register      from "@/pages/Register";
 import SuperAdmin    from "@/pages/SuperAdmin";
 import Members       from "@/pages/Members";
 import Subscriptions from "@/pages/Subscriptions";
@@ -217,6 +218,8 @@ export default function App() {
           <Route path="/login"  element={<Login />} />
           <Route path="/subscription-required" element={<SubscriptionRequired />} />
           <Route path="/signup" element={<SignUp />} />
+          {/* استمارة تسجيل الرياضي — عامة بلا تسجيل دخول */}
+          <Route path="/register/:gymSlug" element={<Register />} />
 
           {/* الجذر — يوجّه تلقائياً حسب حالة تسجيل الدخول */}
           <Route path="/" element={<RootRedirect />} />

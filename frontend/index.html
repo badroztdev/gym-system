@@ -118,7 +118,7 @@
         }
         function inPortal() { return location.pathname.indexOf("/portal") === 0; }
         // بوابة الرياضي: الشريط لآيفون فقط (أندرويد عنده تطبيق Google Play)
-        function hidden() { return (inPortal() && !isIOS) || (isIOS && dismissed()); }
+        function hidden() { return location.pathname.indexOf("/register") === 0 || (inPortal() && !isIOS) || (isIOS && dismissed()); }
         function syncManifest() {
           var l = document.querySelector('link[rel="manifest"]');
           var want = inPortal() ? "/manifest-portal.webmanifest" : "/manifest.webmanifest";

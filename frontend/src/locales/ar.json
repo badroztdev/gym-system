@@ -103,7 +103,25 @@
     "insuranceNoSelection": "حدّد رياضياً واحداً على الأقل",
     "insuranceSaved": "تم حفظ البيانات ✅",
     "insuranceDone": "تم تحميل الملف ✅",
-    "insuranceLoadError": "تعذّر تحميل القائمة"
+    "insuranceLoadError": "تعذّر تحميل القائمة",
+    "regBtn": "🔗 التسجيل",
+    "regTitle": "التسجيل الإلكتروني",
+    "regLinkLabel": "رابط استمارة التسجيل",
+    "regLinkHint": "شاركه مع الرياضيين ليملؤوا بياناتهم بأنفسهم، وتصلك طلباتهم هنا لتقبلها أو ترفضها.",
+    "regCopy": "نسخ الرابط",
+    "regCopied": "تم نسخ الرابط ✅",
+    "regWhatsapp": "مشاركة عبر واتساب",
+    "regOpen": "فتح",
+    "regShareText": "سجّل في {{gym}} عبر هذا الرابط:",
+    "regPending": "طلبات بانتظار المراجعة ({{count}})",
+    "regNone": "لا توجد طلبات جديدة",
+    "regAccept": "قبول وإضافة",
+    "regReject": "رفض",
+    "regRejectConfirm": "تأكيد الرفض",
+    "regRejected": "تم رفض الطلب",
+    "regPhoneExists": "الرقم مسجل لدى عضو",
+    "regGuardian": "ولي الأمر",
+    "regAge": "{{age}} سنة"
   },
   "memberForm": {
     "addTitle": "إضافة عضو جديد",
@@ -151,7 +169,9 @@
     "avatarAfterCreateHint": "💡 يمكنك إضافة صورة بعد إنشاء العضو، من نافذة التعديل",
     "toastAvatarUploadFailedAfterCreate": "تم إضافة العضو لكن فشل رفع الصورة، حاول رفعها من نافذة التعديل",
     "address": "العنوان",
-    "addressPlaceholder": "مثال: حي 5 جويلية، الجزائر"
+    "addressPlaceholder": "مثال: حي 5 جويلية، الجزائر",
+    "regPrefillNote": "بيانات واردة من استمارة التسجيل. راجعها وأكمل الفئة العمرية والفوج.",
+    "regGuardianNote": "ولي الأمر المذكور في الاستمارة: {{name}} {{phone}}. اربطه من القائمة أو أضفه كولي أمر أولاً."
   },
   "subscriptions": {
     "pageTitle": "الاشتراكات والمدفوعات",
@@ -815,5 +835,35 @@
     "back": "رجوع",
     "sendFailed": "تعذّر إرسال الرسالة، حاول مرة أخرى",
     "loading": "جاري التحميل..."
+  },
+  "registration": {
+    "title": "استمارة التسجيل",
+    "subtitle": "املأ بياناتك وسيتواصل معك النادي لتأكيد التسجيل",
+    "fullName": "الاسم واللقب *",
+    "fullNamePlaceholder": "مثال: محمد بن علي",
+    "phone": "رقم الهاتف *",
+    "dob": "تاريخ الميلاد *",
+    "gender": "الجنس",
+    "male": "ذكر",
+    "female": "أنثى",
+    "address": "العنوان",
+    "addressPlaceholder": "مثال: حي 5 جويلية، الجزائر",
+    "bloodGroup": "زمرة الدم (اختياري)",
+    "bloodSelect": "-- اختر --",
+    "guardianSection": "ولي الأمر (للأطفال والقاصرين)",
+    "guardianName": "اسم ولي الأمر",
+    "guardianPhone": "هاتف ولي الأمر",
+    "submit": "إرسال الاستمارة",
+    "sending": "جارٍ الإرسال…",
+    "errName": "الاسم واللقب مطلوب",
+    "errPhone": "رقم هاتف غير صالح",
+    "errDob": "تاريخ ميلاد غير صالح",
+    "successTitle": "تم استلام طلبك",
+    "successText": "سيتواصل معك النادي قريباً لتأكيد التسجيل.",
+    "another": "تسجيل رياضي آخر",
+    "notFound": "رابط التسجيل غير صالح",
+    "tooMany": "محاولات كثيرة، حاول لاحقاً",
+    "errorGeneric": "تعذّر الإرسال، حاول مرة أخرى",
+    "privacy": "بياناتك تُرسل إلى النادي فقط"
   }
 }

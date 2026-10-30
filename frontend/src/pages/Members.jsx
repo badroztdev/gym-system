@@ -8,6 +8,8 @@ import PageHeader from "@/components/layout/PageHeader";
 import MemberForm from "@/components/members/MemberForm";
 import MemberDetail from "@/components/members/MemberDetail";
 import InsuranceExportModal from "@/components/members/InsuranceExportModal";
+import RegistrationsModal, { useRegistrations } from "@/components/members/RegistrationsModal";
+import api from "@/services/api";
 import { Button, Badge, Spinner, Empty, Confirm, Modal } from "@/components/ui";
 import toast from "react-hot-toast";
 
@@ -180,6 +182,10 @@ export default function MembersPage() {
   const [resetModal, setResetModal] = useState(false);
   const [customPass, setCustomPass] = useState("");
   const [showInsurance, setShowInsurance] = useState(false);
+  const [showReg, setShowReg] = useState(false);
+  const [regPrefill, setRegPrefill] = useState(null); // طلب تسجيل قيد القبول
+  const { data: regData } = useRegistrations();
+  const regCount = regData?.data?.length || 0;
 
   const { data, isLoading } = useQuery({
     queryKey: ["members", { search, role, status, ageCategory, showInactive, page }],
@@ -238,7 +244,17 @@ export default function MembersPage() {
   const handleRole = useCallback((v) => { setRole(v); setPage(1); }, []);
 
   const openEdit   = (m)  => { setEditMember(m); setShowForm(true); };
-  const closeForm  = ()   => { setShowForm(false); setEditMember(null); };
+  const closeForm  = ()   => { setShowForm(false); setEditMember(null); setRegPrefill(null); };
+  // قبول طلب تسجيل: نفتح نموذج العضو معبّأً بالبيانات الواردة
+  const acceptRegistration = (req) => { setShowReg(false); setEditMember(null); setRegPrefill(req); setShowForm(true); };
+  // بعد إنشاء العضو فعلياً: نُغلق الطلب (يختفي من قائمة الانتظار)
+  const onMemberCreated = (memberId) => {
+    const req = regPrefill;
+    if (!req) return;
+    api.patch(`/registrations/${req.id}`, { status: "approved", memberId })
+      .catch(() => {})
+      .finally(() => qc.invalidateQueries({ queryKey: ["registrations"] }));
+  };
   const onSuccess  = ()   => { qc.invalidateQueries({ queryKey: ["members"] }); qc.invalidateQueries({ queryKey: ["members-stats"] }); };
 
   return (
@@ -248,6 +264,16 @@ export default function MembersPage() {
         subtitle={meta.total ? t("members.totalCount", { count: meta.total }) : ""}
         actions={
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Button variant="secondary" onClick={() => setShowReg(true)}>
+              {t("members.regBtn")}
+              {regCount > 0 && (
+                <span style={{
+                  marginInlineStart: 6, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9,
+                  background: "var(--danger)", color: "#fff", fontSize: 11, fontWeight: 700,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                }}>{regCount}</span>
+              )}
+            </Button>
             <Button variant="secondary" onClick={() => setShowInsurance(true)}>
               {t("members.insuranceBtn")}
             </Button>
@@ -458,6 +484,8 @@ export default function MembersPage() {
         open={showForm}
         onClose={closeForm}
         member={editMember}
+        prefill={regPrefill}
+        onCreated={onMemberCreated}
         onSuccess={onSuccess}
       />
 
@@ -519,6 +547,9 @@ export default function MembersPage() {
         title={t("members.permanentDeleteConfirmTitle")}
         message={t("members.permanentDeleteConfirmMessage")}
       />
+
+      {/* ✅ رابط التسجيل الذاتي + طلبات الرياضيين */}
+      <RegistrationsModal open={showReg} onClose={() => setShowReg(false)} onAccept={acceptRegistration} />
 
       {/* ✅ تصدير جدول التأمين (Word) */}
       <InsuranceExportModal open={showInsurance} onClose={() => setShowInsurance(false)} />

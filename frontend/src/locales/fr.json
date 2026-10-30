@@ -103,7 +103,25 @@
     "insuranceNoSelection": "Sélectionnez au moins un athlète",
     "insuranceSaved": "Données enregistrées ✅",
     "insuranceDone": "Fichier téléchargé ✅",
-    "insuranceLoadError": "Impossible de charger la liste"
+    "insuranceLoadError": "Impossible de charger la liste",
+    "regBtn": "🔗 Inscriptions",
+    "regTitle": "Inscription en ligne",
+    "regLinkLabel": "Lien du formulaire d'inscription",
+    "regLinkHint": "Partagez-le avec les athlètes pour qu'ils remplissent leurs informations eux-mêmes. Leurs demandes arrivent ici pour être acceptées ou refusées.",
+    "regCopy": "Copier le lien",
+    "regCopied": "Lien copié ✅",
+    "regWhatsapp": "Partager sur WhatsApp",
+    "regOpen": "Ouvrir",
+    "regShareText": "Inscrivez-vous à {{gym}} via ce lien :",
+    "regPending": "Demandes en attente ({{count}})",
+    "regNone": "Aucune nouvelle demande",
+    "regAccept": "Accepter et ajouter",
+    "regReject": "Refuser",
+    "regRejectConfirm": "Confirmer le refus",
+    "regRejected": "Demande refusée",
+    "regPhoneExists": "Téléphone déjà enregistré",
+    "regGuardian": "Tuteur",
+    "regAge": "{{age}} ans"
   },
   "memberForm": {
     "addTitle": "Ajouter un nouveau membre",
@@ -151,7 +169,9 @@
     "avatarAfterCreateHint": "💡 Vous pourrez ajouter une photo après la création du membre, depuis la fenêtre de modification",
     "toastAvatarUploadFailedAfterCreate": "Membre ajouté mais l'envoi de la photo a échoué, réessayez depuis la modification",
     "address": "Adresse",
-    "addressPlaceholder": "Ex : Cité 5 Juillet, Alger"
+    "addressPlaceholder": "Ex : Cité 5 Juillet, Alger",
+    "regPrefillNote": "Données reçues du formulaire d'inscription. Vérifiez-les et complétez la catégorie d'âge et le groupe.",
+    "regGuardianNote": "Tuteur indiqué dans le formulaire : {{name}} {{phone}}. Liez-le depuis la liste ou ajoutez-le d'abord comme tuteur."
   },
   "subscriptions": {
     "pageTitle": "Abonnements et paiements",
@@ -815,5 +835,35 @@
     "back": "Retour",
     "sendFailed": "Échec de l'envoi du message, réessayez",
     "loading": "Chargement..."
+  },
+  "registration": {
+    "title": "Formulaire d'inscription",
+    "subtitle": "Remplissez vos informations, le club vous contactera pour confirmer l'inscription",
+    "fullName": "Nom et prénom *",
+    "fullNamePlaceholder": "Ex : Mohamed Benali",
+    "phone": "Téléphone *",
+    "dob": "Date de naissance *",
+    "gender": "Genre",
+    "male": "Masculin",
+    "female": "Féminin",
+    "address": "Adresse",
+    "addressPlaceholder": "Ex : Cité 5 Juillet, Alger",
+    "bloodGroup": "Groupe sanguin (optionnel)",
+    "bloodSelect": "-- Choisir --",
+    "guardianSection": "Tuteur (pour les enfants et mineurs)",
+    "guardianName": "Nom du tuteur",
+    "guardianPhone": "Téléphone du tuteur",
+    "submit": "Envoyer le formulaire",
+    "sending": "Envoi en cours…",
+    "errName": "Le nom et prénom est requis",
+    "errPhone": "Numéro de téléphone invalide",
+    "errDob": "Date de naissance invalide",
+    "successTitle": "Demande reçue",
+    "successText": "Le club vous contactera bientôt pour confirmer l'inscription.",
+    "another": "Inscrire un autre athlète",
+    "notFound": "Lien d'inscription invalide",
+    "tooMany": "Trop de tentatives, réessayez plus tard",
+    "errorGeneric": "Échec de l'envoi, réessayez",
+    "privacy": "Vos données sont transmises uniquement au club"
   }
 }

@@ -66,7 +66,7 @@ function Section({ title }) {
   );
 }
 
-export default function MemberForm({ open, onClose, member, onSuccess }) {
+export default function MemberForm({ open, onClose, member, onSuccess, prefill = null, onCreated }) {
   const { t } = useTranslation();
   const ROLES          = getRoles(t);
   const GENDERS        = getGenders(t);
@@ -100,13 +100,24 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
         bloodGroup:  member.blood_group                || "",
         guardianId:  "", // سيُعبّى أدناه من بيانات العضو الكاملة عند التعديل
       });
+    } else if (prefill) {
+      // ✅ طلب تسجيل ذاتي: نملأ ما أدخله الرياضي، والباقي (الفئة/الفوج) يكمله الطاقم
+      setForm({
+        ...EMPTY_FORM,
+        fullName:    prefill.full_name                  || "",
+        phone:       prefill.phone                      || "",
+        gender:      prefill.gender                     || "",
+        dateOfBirth: prefill.date_of_birth?.slice(0,10) || "",
+        address:     prefill.address                    || "",
+        bloodGroup:  prefill.blood_group                || "",
+      });
     } else {
       setForm(EMPTY_FORM);
     }
     setErrors({});
     setAvatarPreview(null);
     setAvatarFile(null);
-  }, [open, member]);
+  }, [open, member, prefill]);
 
   // ── عند التعديل: جلب بيانات العضو الكاملة لمعرفة ولي الأمر الحالي ──
   const { data: memberDetail } = useQuery({
@@ -194,6 +205,7 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
         // ✅ إذا اختار المستخدم صورة قبل الحفظ، ارفعها تلقائياً الآن
         // باستخدام معرّف العضو الجديد الذي أرجعه الخادم للتو
         const newMemberId = result?.data?.id;
+        if (newMemberId) onCreated?.(newMemberId);
         if (avatarFile && newMemberId) {
           try {
             await membersService.uploadAvatar(newMemberId, avatarFile);
@@ -246,6 +258,20 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
             <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: "none" }} disabled={uploadingAvatar} />
           </label>
         </div>}
+        {/* ✅ بيانات قادمة من استمارة التسجيل الذاتي */}
+        {prefill && !isEdit && (
+          <div style={{
+            fontSize: 11, color: "var(--accent2)", background: "var(--accent2)12",
+            padding: "10px 12px", borderRadius: "var(--radius-sm)", lineHeight: 1.7,
+          }}>
+            📥 {t("memberForm.regPrefillNote")}
+            {(prefill.guardian_name || prefill.guardian_phone) && (
+              <div style={{ marginTop: 4, color: "var(--muted-lt)" }}>
+                👤 {t("memberForm.regGuardianNote", { name: prefill.guardian_name || "", phone: prefill.guardian_phone || "" })}
+              </div>
+            )}
+          </div>
+        )}
         <Section title={t("memberForm.sectionBasic")} />
 
         <Input

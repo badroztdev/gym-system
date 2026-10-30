@@ -17,6 +17,7 @@ import { getRooms, createRoom, updateRoom, deleteRoom, deleteRoomPermanently, re
 import { getSessions, getSession, createSession, updateSession, cancelSession, deleteRecurringSeries, getTodaySessions, getSessionResults, saveSessionResults } from "../controllers/sessions.controller.js";
 import { scanQR, getSessionAttendance, manualAttendance, bulkAttendance, getAthleteAttendance, getAttendanceOverview, getAttendanceTrend, getAttendanceLeaderboard, getAttendanceByCategory, getRecentSessionsAttendance } from "../controllers/attendance.controller.js";
 import { saveToken, getNotifications, markRead, sendManual, notifyExpiringSubscriptions } from "../controllers/notifications.controller.js";
+import { getRegistrationInfo, submitRegistration, listRegistrations, updateRegistration } from "../controllers/registrations.controller.js";
 import { getMyAthletes, getDashboard, getSchedule, getAttendanceHistory, getSubscriptionHistory, scanAttendance } from "../controllers/portal.controller.js";
 import { getPortalRecipients, getPortalThreads, getPortalUnread, getPortalMessages, sendPortalMessage, getStaffThreads, getStaffUnread, getStaffMessages, sendStaffMessage } from "../controllers/chat.controller.js";
 import { getAthleteProgress, createProgress, updateProgress, deleteProgress, changeRank, getMetricTemplates, createMetricTemplate, getProgressList } from "../controllers/progress.controller.js";
@@ -51,6 +52,14 @@ router.post("/auth/login", [
   validate,
 ], login);
 router.get("/auth/me", authenticate, me);
+
+// ── التسجيل الذاتي للرياضيين ──────────────────────────────────
+// عام (بلا تسجيل دخول): صفحة الاستمارة بالرابط /register/:slug
+router.get   ("/public/registration/:slug",    getRegistrationInfo);
+router.post  ("/public/registration/:slug",    submitRegistration);
+// للطاقم: مراجعة الطلبات
+router.get   ("/registrations",                authenticate, perm("members.add"), listRegistrations);
+router.patch ("/registrations/:id",            authenticate, perm("members.add"), updateRegistration);
 
 // ── Members ───────────────────────────────────────────────────
 router.get   ("/members/stats",                authenticate, perm("members.view"),  getMembersStats);
