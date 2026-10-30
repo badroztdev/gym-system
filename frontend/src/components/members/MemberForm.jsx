@@ -50,7 +50,7 @@ const getGroupNames = (t) => [
 ];
 
 const EMPTY_FORM = {
-  fullName: "", phone: "", email: "", gender: "",
+  fullName: "", phone: "", gender: "",
   dateOfBirth: "", role: "athlete", ageCategory: "",
   rank: "", weightKg: "", bloodGroup: "", guardianId: "", groupName: "", address: "",
 };
@@ -89,7 +89,6 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
       setForm({
         fullName:    member.full_name                  || "",
         phone:       member.phone                      || "",
-        email:       member.email                      || "",
         gender:      member.gender                     || "",
         dateOfBirth: member.date_of_birth?.slice(0,10) || "",
         role:        member.role                       || "athlete",
@@ -137,6 +136,10 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
 
   const set = (field) => (e) => setForm(f => ({ ...f, [field]: e.target.value }));
 
+  // ✅ ولي الأمر: يظهر الاسم والهاتف والدور فقط. الرياضي المرتبط بولي أمر: الهاتف مخفي (اختياري)
+  const isGuardian = form.role === "guardian";
+  const linked     = !isGuardian && !!form.guardianId;
+
   // ✅ عند اختيار صورة: عرض معاينة فورية، ثم رفع مباشر (فقط عند التعديل،
   // بما أن الرفع يحتاج معرّف عضو موجود بالفعل في قاعدة البيانات)
   const handleAvatarChange = async (e) => {
@@ -164,8 +167,8 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
     const errs = {};
     if (!form.fullName.trim()) errs.fullName = t("memberForm.errorFullName");
     // رقم الهاتف مطلوب فقط إذا لم يكن مرتبطاً بولي أمر
-    if (!form.guardianId && !form.phone.trim()) errs.phone = t("memberForm.errorPhone");
-    if (form.weightKg && isNaN(Number(form.weightKg)))
+    if (!linked && !form.phone.trim()) errs.phone = t("memberForm.errorPhone");
+    if (!isGuardian && form.weightKg && isNaN(Number(form.weightKg)))
       errs.weightKg = t("memberForm.errorWeight");
     return errs;
   };
@@ -179,6 +182,7 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
       const payload = {
         ...form,
         weightKg: form.weightKg ? Number(form.weightKg) : null,
+        guardianId: linked ? form.guardianId : "", // ولي الأمر لا يُربط بولي أمر آخر
       };
       if (isEdit) {
         await membersService.update(member.id, payload);
@@ -217,8 +221,8 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-        {/* ✅ صورة العضو — قابلة للنقر لاختيار/تغيير الصورة */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}>
+        {/* ✅ صورة العضو — للرياضي فقط (ولي الأمر: الاسم والهاتف والدور) */}
+        {!isGuardian && <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}>
           <label style={{ position: "relative", cursor: "pointer" }}>
             <div style={{
               width: 84, height: 84, borderRadius: "50%", overflow: "hidden",
@@ -241,7 +245,7 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
             }}>📷</div>
             <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: "none" }} disabled={uploadingAvatar} />
           </label>
-        </div>
+        </div>}
         <Section title={t("memberForm.sectionBasic")} />
 
         <Input
@@ -252,50 +256,52 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
           error={errors.fullName}
         />
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        {/* الهاتف: مخفي عندما يكون الرياضي مرتبطاً بولي أمر (يصبح اختيارياً) */}
+        {!linked && (
           <Input
-            label={form.guardianId ? t("memberForm.phoneOptional") : t("memberForm.phoneRequired")}
-            placeholder={form.guardianId ? t("memberForm.phoneOptionalPlaceholder") : t("memberForm.phonePlaceholder")}
+            label={t("memberForm.phoneRequired")}
+            placeholder={t("memberForm.phonePlaceholder")}
             value={form.phone}
             onChange={set("phone")}
             error={errors.phone}
             type="tel"
+            inputMode="tel"
           />
+        )}
+
+        {isGuardian ? (
+          /* ولي الأمر: الدور فقط */
+          <Select label={t("memberForm.role")} options={ROLES} value={form.role} onChange={set("role")} />
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
+            <Select label={t("memberForm.gender")}       options={GENDERS} value={form.gender}      onChange={set("gender")} />
+            <Select label={t("memberForm.role")}          options={ROLES}   value={form.role}        onChange={set("role")} />
+            <Input  label={t("memberForm.dateOfBirth")}   type="date"       value={form.dateOfBirth} onChange={set("dateOfBirth")} />
+          </div>
+        )}
+
+        {/* ✅ العنوان (يُستعمل في جدول التأمين) — للرياضي فقط */}
+        {!isGuardian && (
           <Input
-            label={t("memberForm.email")}
-            placeholder={t("memberForm.emailPlaceholder")}
-            value={form.email}
-            onChange={set("email")}
-            type="email"
+            label={t("memberForm.address")}
+            placeholder={t("memberForm.addressPlaceholder")}
+            value={form.address}
+            onChange={set("address")}
           />
-        </div>
+        )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-          <Select label={t("memberForm.gender")}       options={GENDERS} value={form.gender}      onChange={set("gender")} />
-          <Select label={t("memberForm.role")}          options={ROLES}   value={form.role}        onChange={set("role")} />
-          <Input  label={t("memberForm.dateOfBirth")}   type="date"       value={form.dateOfBirth} onChange={set("dateOfBirth")} />
-        </div>
-
-        {/* ✅ العنوان (يُستعمل في جدول التأمين) */}
-        <Input
-          label={t("memberForm.address")}
-          placeholder={t("memberForm.addressPlaceholder")}
-          value={form.address}
-          onChange={set("address")}
-        />
-
+        {!isGuardian && (
+        <>
         <Section title={t("memberForm.sectionSport")} />
 
-        {form.role === "athlete" && (
-          <Select
+        <Select
             label={t("memberForm.guardianLink")}
             options={guardianOptions}
             value={form.guardianId}
             onChange={set("guardianId")}
           />
-        )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
           <Select
             label={t("memberForm.ageCategory")}
             options={AGE_CATEGORIES}
@@ -317,7 +323,7 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
           onChange={set("groupName")}
         />
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
           <Input
             label={t("memberForm.weight")}
             placeholder={t("memberForm.weightPlaceholder")}
@@ -336,15 +342,18 @@ export default function MemberForm({ open, onClose, member, onSuccess }) {
           />
         </div>
 
+        </>
+        )}
+
         {!isEdit && (
           <p style={{
             fontSize: 11, color: "var(--muted)",
             background: "var(--surface)", padding: "10px 12px",
             borderRadius: "var(--radius-sm)", lineHeight: 1.6,
           }}>
-            {t("memberForm.helpDefaultPassword")}
-            {form.guardianId && " " + t("memberForm.helpGuardianPhone")}
-            {form.guardianId && " " + t("memberForm.helpGuardianAccess")}
+            {linked
+              ? t("memberForm.helpGuardianPhone") + " " + t("memberForm.helpGuardianAccess")
+              : t("memberForm.helpDefaultPassword")}
           </p>
         )}
 
