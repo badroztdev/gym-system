@@ -41,8 +41,8 @@
     "statusExpiresInDays": "Expire dans {{days}}j",
     "searchPlaceholder": "Rechercher par nom ou téléphone...",
     "allCategories": "Toutes les catégories",
-    "showInactive": "Afficher les inactifs",
-    "showingInactive": "✓ Inactifs affichés",
+    "showInactive": "Inactifs uniquement",
+    "showingInactive": "✓ Inactifs uniquement",
     "roleAthlete": "Athlète",
     "roleGuardian": "Tuteur",
     "badgeActive": "Actif",
@@ -121,7 +121,8 @@
     "regRejected": "Demande refusée",
     "regPhoneExists": "Téléphone déjà enregistré",
     "regGuardian": "Tuteur",
-    "regAge": "{{age}} ans"
+    "regAge": "{{age}} ans",
+    "allGroups": "Tous les groupes"
   },
   "memberForm": {
     "addTitle": "Ajouter un nouveau membre",

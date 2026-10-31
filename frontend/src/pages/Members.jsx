@@ -62,9 +62,10 @@ function StatsRow() {
 }
 
 // ── Filters bar ───────────────────────────────────────────────
-function FiltersBar({ search, status, ageCategory, showInactive, role, onSearch, onStatus, onAgeCategory, onToggleInactive, onRole }) {
+function FiltersBar({ search, status, ageCategory, group, showInactive, role, onSearch, onStatus, onAgeCategory, onGroup, onToggleInactive, onRole }) {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
+  // ✅ قائمة واحدة للحالة بدل أربعة أزرار
   const statuses = [
     { value: "",         label: t("members.statusAll") },
     { value: "active",   label: t("members.statusActive") },
@@ -80,81 +81,91 @@ function FiltersBar({ search, status, ageCategory, showInactive, role, onSearch,
     "أشبال": t("members.categoryCubs"), "أواسط": t("members.categoryMids"),
     "أمال": t("members.categoryHopes"), "أكابر": t("members.categorySeniors"),
   };
-  const categories = categoryKeys;
+  // ✅ الأفواج 1–6 (القيمة بالعربية كما تُخزَّن)
+  const groupKeys = ["", ...[1, 2, 3, 4, 5, 6].map(n => `الفوج ${n}`)];
+  const groupLabel = (g) => t("memberForm.groupLabel", { num: g.replace(/\D/g, "") });
 
+  const selectStyle = (active) => ({
+    width: isMobile ? "100%" : "auto", minWidth: 0, boxSizing: "border-box",
+    padding: isMobile ? "8px 6px" : "8px 14px", fontSize: 12, borderRadius: "var(--radius-sm)",
+    border: "1px solid " + (active ? "var(--accent2)" : "var(--border)"),
+    background: active ? "var(--accent2)15" : "var(--card)",
+    color: active ? "var(--accent2)" : "var(--muted)",
+    cursor: "pointer", fontFamily: "'Sora', sans-serif", outline: "none",
+    textOverflow: "ellipsis",
+  });
+  const optStyle = { background: "var(--card)", color: "var(--text)" };
+  const chipStyle = (active, color) => ({
+    flex: isMobile ? 1 : "none", padding: isMobile ? "8px 6px" : "8px 14px", fontSize: 12, borderRadius: "var(--radius-sm)",
+    border: "1px solid " + (active ? color : "var(--border)"),
+    background: active ? color + "15" : "var(--card)",
+    color: active ? color : "var(--muted)",
+    cursor: "pointer", fontFamily: "'Sora', sans-serif", fontWeight: 500, whiteSpace: "nowrap",
+  });
+
+  const searchBox = (
+    <div style={{ position: "relative", flex: 1, minWidth: isMobile ? "100%" : 200 }}>
+      <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", fontSize: 14 }}>🔍</span>
+      <input
+        placeholder={t("members.searchPlaceholder")}
+        value={search}
+        onChange={e => onSearch(e.target.value)}
+        style={{
+          width: "100%", boxSizing: "border-box", padding: "9px 38px 9px 14px",
+          background: "var(--card)", border: "1px solid var(--border)",
+          borderRadius: "var(--radius-sm)", color: "var(--text)",
+          fontSize: 13, outline: "none", direction: "rtl",
+        }}
+      />
+    </div>
+  );
+  {/* فلتر الدور: الرياضيون / أولياء الأمور — الرياضيون افتراضياً */}
+  const roleChips = (
+    <div style={{ display: "flex", gap: 6, flex: isMobile ? 2 : "none" }}>
+      <button onClick={() => onRole("athlete")} style={chipStyle(role === "athlete", "var(--accent)")}>{t("members.roleAthlete")}</button>
+      <button onClick={() => onRole("guardian")} style={chipStyle(role === "guardian", "var(--accent2)")}>{t("members.roleGuardian")}</button>
+    </div>
+  );
+  const categorySelect = (
+    <select value={ageCategory} onChange={e => onAgeCategory(e.target.value)} style={selectStyle(!!ageCategory)} aria-label={t("members.allCategories")}>
+      {categoryKeys.map(c => (
+        <option key={c} value={c} style={optStyle}>{c ? categoryLabels[c] : t("members.allCategories")}</option>
+      ))}
+    </select>
+  );
+  const groupSelect = (
+    <select value={group} onChange={e => onGroup(e.target.value)} style={selectStyle(!!group)} aria-label={t("members.allGroups")}>
+      {groupKeys.map(g => (
+        <option key={g} value={g} style={optStyle}>{g ? groupLabel(g) : t("members.allGroups")}</option>
+      ))}
+    </select>
+  );
+  const statusSelect = (
+    <select value={status} onChange={e => onStatus(e.target.value)} style={selectStyle(!!status)} aria-label={t("members.colStatus")}>
+      {statuses.map(s => <option key={s.value} value={s.value} style={optStyle}>{s.label}</option>)}
+    </select>
+  );
+  {/* المعطّلون فقط (وليس الجميع) */}
+  const inactiveBtn = (
+    <button onClick={onToggleInactive} style={{ ...chipStyle(showInactive, "var(--danger)"), flex: isMobile ? 1.2 : "none" }}>
+      {showInactive ? t("members.showingInactive") : t("members.showInactive")}
+    </button>
+  );
+
+  if (isMobile) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+        {searchBox}
+        <div style={{ display: "flex", gap: 6 }}>{roleChips}{inactiveBtn}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6 }}>
+          {categorySelect}{groupSelect}{statusSelect}
+        </div>
+      </div>
+    );
+  }
   return (
     <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-      <div style={{ position: "relative", flex: 1, minWidth: isMobile ? "100%" : 200 }}>
-        <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", fontSize: 14 }}>🔍</span>
-        <input
-          placeholder={t("members.searchPlaceholder")}
-          value={search}
-          onChange={e => onSearch(e.target.value)}
-          style={{
-            width: "100%", padding: "9px 38px 9px 14px",
-            background: "var(--card)", border: "1px solid var(--border)",
-            borderRadius: "var(--radius-sm)", color: "var(--text)",
-            fontSize: 13, outline: "none", direction: "rtl",
-          }}
-        />
-      </div>
-      {/* ✅ فلتر الدور: الرياضيون / أولياء الأمور — الرياضيون افتراضياً */}
-      <div style={{ display: "flex", gap: 6 }}>
-        <button onClick={() => onRole("athlete")} style={{
-          padding: "8px 14px", fontSize: 12, borderRadius: "var(--radius-sm)",
-          border: "1px solid " + (role === "athlete" ? "var(--accent)" : "var(--border)"),
-          background: role === "athlete" ? "var(--accent)15" : "var(--card)",
-          color: role === "athlete" ? "var(--accent)" : "var(--muted)",
-          cursor: "pointer", fontFamily: "'Sora', sans-serif", fontWeight: 500, whiteSpace: "nowrap",
-        }}>{t("members.roleAthlete")}</button>
-        <button onClick={() => onRole("guardian")} style={{
-          padding: "8px 14px", fontSize: 12, borderRadius: "var(--radius-sm)",
-          border: "1px solid " + (role === "guardian" ? "var(--accent2)" : "var(--border)"),
-          background: role === "guardian" ? "var(--accent2)15" : "var(--card)",
-          color: role === "guardian" ? "var(--accent2)" : "var(--muted)",
-          cursor: "pointer", fontFamily: "'Sora', sans-serif", fontWeight: 500, whiteSpace: "nowrap",
-        }}>{t("members.roleGuardian")}</button>
-      </div>
-      {/* فلتر الفئة */}
-      <select
-        value={ageCategory}
-        onChange={e => onAgeCategory(e.target.value)}
-        style={{
-          padding: "8px 14px", fontSize: 12, borderRadius: "var(--radius-sm)",
-          border: "1px solid " + (ageCategory ? "var(--accent2)" : "var(--border)"),
-          background: ageCategory ? "var(--accent2)15" : "var(--card)",
-          color: ageCategory ? "var(--accent2)" : "var(--muted)",
-          cursor: "pointer", fontFamily: "'Sora', sans-serif",
-          outline: "none",
-        }}
-      >
-        {categories.map(c => (
-          <option key={c} value={c} style={{ background: "var(--card)", color: "var(--text)" }}>
-            {c ? categoryLabels[c] : t("members.allCategories")}
-          </option>
-        ))}
-      </select>
-      {/* فلتر الحالة */}
-      <div style={{ display: "flex", gap: 6 }}>
-        {statuses.map(s => (
-          <button key={s.value} onClick={() => onStatus(s.value)} style={{
-            padding: "8px 14px", fontSize: 12, borderRadius: "var(--radius-sm)",
-            border: "1px solid " + (status === s.value ? "var(--accent2)" : "var(--border)"),
-            background: status === s.value ? "var(--accent2)15" : "var(--card)",
-            color: status === s.value ? "var(--accent2)" : "var(--muted)",
-            cursor: "pointer", fontFamily: "'Sora', sans-serif", fontWeight: 500,
-          }}>{s.label}</button>
-        ))}
-      </div>
-      {/* إظهار/إخفاء المعطّلين */}
-      <button onClick={onToggleInactive} style={{
-        padding: "8px 14px", fontSize: 12, borderRadius: "var(--radius-sm)",
-        border: "1px solid " + (showInactive ? "var(--danger)" : "var(--border)"),
-        background: showInactive ? "var(--danger)15" : "var(--card)",
-        color: showInactive ? "var(--danger)" : "var(--muted)",
-        cursor: "pointer", fontFamily: "'Sora', sans-serif", fontWeight: 500,
-        whiteSpace: "nowrap",
-      }}>{showInactive ? t("members.showingInactive") : t("members.showInactive")}</button>
+      {searchBox}{roleChips}{categorySelect}{groupSelect}{statusSelect}{inactiveBtn}
     </div>
   );
 }
@@ -176,6 +187,7 @@ export default function MembersPage() {
   const [role,    setRole]    = useState("athlete"); // ✅ افتراضياً: الرياضيون فقط، بدون أولياء الأمور
   const [status,  setStatus]  = useState("");
   const [ageCategory, setAgeCategory] = useState("");
+  const [group, setGroup] = useState("");
   const [showInactive, setShowInactive] = useState(false);
   const [page,    setPage]    = useState(1);
   const [showForm, setShowForm] = useState(false);
@@ -193,8 +205,9 @@ export default function MembersPage() {
   const regCount = regData?.data?.length || 0;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["members", { search, role, status, ageCategory, showInactive, page }],
-    queryFn:  () => membersService.getAll({ search, role, status, ageCategory, includeInactive: showInactive, page, limit: 15 }),
+    queryKey: ["members", { search, role, status, ageCategory, group, showInactive, page }],
+    // includeInactive="only": المعطّلون فقط (كان يعرض الجميع)
+    queryFn:  () => api.get("/members", { params: { search, role, status, ageCategory, group, includeInactive: showInactive ? "only" : undefined, page, limit: 15 } }).then(r => r.data),
     keepPreviousData: true,
   });
 
@@ -245,6 +258,7 @@ export default function MembersPage() {
   const handleSearch      = useCallback((v) => { setSearch(v);      setPage(1); }, []);
   const handleStatus      = useCallback((v) => { setStatus(v);      setPage(1); }, []);
   const handleAgeCategory = useCallback((v) => { setAgeCategory(v); setPage(1); }, []);
+  const handleGroup       = useCallback((v) => { setGroup(v);       setPage(1); }, []);
   const handleToggleInactive = useCallback(() => { setShowInactive(v => !v); setPage(1); }, []);
   const handleRole = useCallback((v) => { setRole(v); setPage(1); }, []);
 
@@ -293,7 +307,7 @@ export default function MembersPage() {
 
       <main style={{ padding: isMobile ? "14px 12px" : "24px 28px", flex: 1 }}>
         <StatsRow />
-        <FiltersBar search={search} status={status} ageCategory={ageCategory} showInactive={showInactive} role={role} onSearch={handleSearch} onStatus={handleStatus} onAgeCategory={handleAgeCategory} onToggleInactive={handleToggleInactive} onRole={handleRole} />
+        <FiltersBar search={search} status={status} ageCategory={ageCategory} group={group} showInactive={showInactive} role={role} onSearch={handleSearch} onStatus={handleStatus} onAgeCategory={handleAgeCategory} onGroup={handleGroup} onToggleInactive={handleToggleInactive} onRole={handleRole} />
 
         {/* Table */}
         <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>

@@ -23,7 +23,10 @@ export const getMembers = async (req, res) => {
     if (scopeSql) conditions.push(scopeSql);
     let p = params.length + 1;
 
-    if (includeInactive !== "true") {
+    // includeInactive: "only" = المعطّلون فقط · "true" = الجميع (توافق مع الاستدعاءات القديمة) · غير ذلك = النشطون فقط
+    if (includeInactive === "only") {
+      conditions.push("u.is_active = FALSE");
+    } else if (includeInactive !== "true") {
       conditions.push("u.is_active = TRUE");
     }
 

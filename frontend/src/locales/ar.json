@@ -41,8 +41,8 @@
     "statusExpiresInDays": "ينتهي بعد {{days}}ي",
     "searchPlaceholder": "بحث بالاسم أو رقم الهاتف...",
     "allCategories": "كل الفئات",
-    "showInactive": "إظهار المعطّلين",
-    "showingInactive": "✓ عرض المعطّلين",
+    "showInactive": "المعطّلون فقط",
+    "showingInactive": "✓ المعطّلون فقط",
     "roleAthlete": "رياضي",
     "roleGuardian": "ولي أمر",
     "badgeActive": "نشط",
@@ -121,7 +121,8 @@
     "regRejected": "تم رفض الطلب",
     "regPhoneExists": "الرقم مسجل لدى عضو",
     "regGuardian": "ولي الأمر",
-    "regAge": "{{age}} سنة"
+    "regAge": "{{age}} سنة",
+    "allGroups": "كل الأفواج"
   },
   "memberForm": {
     "addTitle": "إضافة عضو جديد",
