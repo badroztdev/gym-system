@@ -166,6 +166,11 @@ export default function MembersPage() {
   const { user } = useAuthStore();
   const isOwner = user?.role === "owner";
   const isMobile = useIsMobile();
+  const compactBtn = isMobile
+    ? { flex: "1 1 0", minWidth: 0, padding: "6px 6px", fontSize: 12, whiteSpace: "nowrap", justifyContent: "center", gap: 4, position: "relative" }
+    : { position: "relative" }; // الحاسوب: الحجم العادي، لكن الشارة تتموضع بالنسبة للزر
+  // نص الزر: يُختصر بنقاط إذا ضاق العرض (شاشات صغيرة جداً)
+  const lbl = (txt) => <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{txt}</span>;
 
   const [search,  setSearch]  = useState("");
   const [role,    setRole]    = useState("athlete"); // ✅ افتراضياً: الرياضيون فقط، بدون أولياء الأمور
@@ -263,22 +268,24 @@ export default function MembersPage() {
         title={t("members.title")}
         subtitle={meta.total ? t("members.totalCount", { count: meta.total }) : ""}
         actions={
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Button variant="secondary" onClick={() => setShowReg(true)}>
-              {t("members.regBtn")}
+          /* الهاتف: ثلاثة أزرار صغيرة في صف واحد · الحاسوب: كما هي */
+          <div style={{ display: "flex", gap: isMobile ? 6 : 8, flexWrap: isMobile ? "nowrap" : "wrap", width: isMobile ? "100%" : "auto", minWidth: 0 }}>
+            <Button variant="secondary" size={isMobile ? "sm" : undefined} onClick={() => setShowReg(true)} style={compactBtn}>
+              {lbl(t("members.regBtn"))}
               {regCount > 0 && (
+                /* شارة في زاوية الزر: لا تستهلك عرضاً من النص */
                 <span style={{
-                  marginInlineStart: 6, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9,
-                  background: "var(--danger)", color: "#fff", fontSize: 11, fontWeight: 700,
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                }}>{regCount}</span>
+                  position: "absolute", top: -6, insetInlineEnd: -4, minWidth: 17, height: 17, padding: "0 4px", borderRadius: 9,
+                  background: "var(--danger)", color: "#fff", fontSize: 10, fontWeight: 700, boxSizing: "border-box",
+                  display: "inline-flex", alignItems: "center", justifyContent: "center", border: "2px solid var(--bg, #0b0e11)",
+                }}>{regCount > 99 ? "99+" : regCount}</span>
               )}
             </Button>
-            <Button variant="secondary" onClick={() => setShowInsurance(true)}>
-              {t("members.insuranceBtn")}
+            <Button variant="secondary" size={isMobile ? "sm" : undefined} onClick={() => setShowInsurance(true)} style={compactBtn}>
+              {lbl(t("members.insuranceBtn"))}
             </Button>
-            <Button icon="+" onClick={() => setShowForm(true)}>
-              {t("members.newMember")}
+            <Button icon="+" size={isMobile ? "sm" : undefined} onClick={() => setShowForm(true)} style={{ ...compactBtn, ...(isMobile ? { flex: "1.3 1 0" } : null) }}>
+              {lbl(t("members.newMember"))}
             </Button>
           </div>
         }
