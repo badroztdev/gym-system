@@ -298,14 +298,16 @@ export default function MembersPage() {
             <Button variant="secondary" size={isMobile ? "sm" : undefined} onClick={() => setShowInsurance(true)} style={compactBtn}>
               {lbl(t("members.insuranceBtn"))}
             </Button>
-            <Button icon="+" size={isMobile ? "sm" : undefined} onClick={() => setShowForm(true)} style={{ ...compactBtn, ...(isMobile ? { flex: "1.3 1 0" } : null) }}>
-              {lbl(t("members.newMember"))}
-            </Button>
           </div>
         }
       />
 
       <main style={{ padding: isMobile ? "14px 12px" : "24px 28px", flex: 1 }}>
+        {/* زر عضو جديد: واضح أعلى المحتوى (مثل زر خطة جديدة) */}
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+          <Button icon="+" onClick={() => { setEditMember(null); setShowForm(true); }}>{t("members.newMember")}</Button>
+        </div>
+
         <StatsRow />
         <FiltersBar search={search} status={status} ageCategory={ageCategory} group={group} showInactive={showInactive} role={role} onSearch={handleSearch} onStatus={handleStatus} onAgeCategory={handleAgeCategory} onGroup={handleGroup} onToggleInactive={handleToggleInactive} onRole={handleRole} />
 
