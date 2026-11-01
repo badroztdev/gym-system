@@ -177,13 +177,13 @@ export default function MembersPage() {
   const { user } = useAuthStore();
   const isOwner = user?.role === "owner";
   const isMobile = useIsMobile();
-  // أزرار ممتلئة بلون واضح: أيقونة + نص كامل (يُمرَّر لون الخلفية ولون النص)
-  const actBtn = (bg, fg) => ({
+  // أزرار ثانوية بيضاء (لون البطاقة): أيقونة + نص كامل
+  const actBtn = () => ({
     position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
     flex: isMobile ? "1 1 0" : "none", minWidth: 0, boxSizing: "border-box",
-    padding: isMobile ? "12px 8px" : "12px 20px", fontSize: 14, fontWeight: 700, fontFamily: "'Sora', sans-serif",
-    color: fg, background: bg, border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+    padding: isMobile ? "12px 8px" : "12px 20px", fontSize: 14, fontWeight: 600, fontFamily: "'Sora', sans-serif",
+    color: "var(--text)", background: "var(--card)", border: "1px solid var(--border)",
+    borderRadius: "var(--radius-sm)", cursor: "pointer",
   });
 
   const [search,  setSearch]  = useState("");
@@ -293,7 +293,7 @@ export default function MembersPage() {
             style={{ order: isMobile ? 0 : 3, flex: isMobile ? "1 1 100%" : "none", justifyContent: "center", padding: "12px 20px", fontSize: 14, fontWeight: 700 }}>
             {t("members.newMember")}
           </Button>
-          <button type="button" onClick={() => setShowReg(true)} style={{ ...actBtn("var(--accent2)", "#fff"), order: isMobile ? 1 : 1 }}>
+          <button type="button" onClick={() => setShowReg(true)} style={{ ...actBtn(), order: isMobile ? 1 : 1 }}>
             <span style={{ fontSize: 18, lineHeight: 1 }}>🔗</span>
             <span style={{ whiteSpace: "nowrap" }}>{t("members.regBtn")}</span>
             {regCount > 0 && (
@@ -304,7 +304,7 @@ export default function MembersPage() {
               }}>{regCount > 99 ? "99+" : regCount}</span>
             )}
           </button>
-          <button type="button" onClick={() => setShowInsurance(true)} style={{ ...actBtn("var(--accent3)", "#0d0f14"), order: isMobile ? 2 : 2 }}>
+          <button type="button" onClick={() => setShowInsurance(true)} style={{ ...actBtn(), order: isMobile ? 2 : 2 }}>
             <span style={{ fontSize: 18, lineHeight: 1 }}>🛡️</span>
             <span style={{ whiteSpace: "nowrap" }}>{t("members.insuranceBtn")}</span>
           </button>
