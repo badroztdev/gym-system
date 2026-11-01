@@ -177,11 +177,14 @@ export default function MembersPage() {
   const { user } = useAuthStore();
   const isOwner = user?.role === "owner";
   const isMobile = useIsMobile();
-  const compactBtn = isMobile
-    ? { flex: "1 1 0", minWidth: 0, padding: "6px 6px", fontSize: 12, whiteSpace: "nowrap", justifyContent: "center", gap: 4, position: "relative" }
-    : { position: "relative" }; // الحاسوب: الحجم العادي، لكن الشارة تتموضع بالنسبة للزر
-  // نص الزر: يُختصر بنقاط إذا ضاق العرض (شاشات صغيرة جداً)
-  const lbl = (txt) => <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{txt}</span>;
+  // أزرار ثانوية واضحة: أيقونة + نص كامل، بإطار ملوّن خفيف
+  const actBtn = (color) => ({
+    position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+    flex: isMobile ? "1 1 0" : "none", minWidth: 0, boxSizing: "border-box",
+    padding: isMobile ? "11px 8px" : "11px 18px", fontSize: 13, fontWeight: 600, fontFamily: "'Sora', sans-serif",
+    color: "var(--text)", background: color + "14", border: "1.5px solid " + color + "66",
+    borderRadius: "var(--radius-sm)", cursor: "pointer",
+  });
 
   const [search,  setSearch]  = useState("");
   const [role,    setRole]    = useState("athlete"); // ✅ افتراضياً: الرياضيون فقط، بدون أولياء الأمور
@@ -281,31 +284,30 @@ export default function MembersPage() {
       <PageHeader
         title={t("members.title")}
         subtitle={meta.total ? t("members.totalCount", { count: meta.total }) : ""}
-        actions={
-          /* الهاتف: ثلاثة أزرار صغيرة في صف واحد · الحاسوب: كما هي */
-          <div style={{ display: "flex", gap: isMobile ? 6 : 8, flexWrap: isMobile ? "nowrap" : "wrap", width: isMobile ? "100%" : "auto", minWidth: 0 }}>
-            <Button variant="secondary" size={isMobile ? "sm" : undefined} onClick={() => setShowReg(true)} style={compactBtn}>
-              {lbl(t("members.regBtn"))}
-              {regCount > 0 && (
-                /* شارة في زاوية الزر: لا تستهلك عرضاً من النص */
-                <span style={{
-                  position: "absolute", top: -6, insetInlineEnd: -4, minWidth: 17, height: 17, padding: "0 4px", borderRadius: 9,
-                  background: "var(--danger)", color: "#fff", fontSize: 10, fontWeight: 700, boxSizing: "border-box",
-                  display: "inline-flex", alignItems: "center", justifyContent: "center", border: "2px solid var(--bg, #0b0e11)",
-                }}>{regCount > 99 ? "99+" : regCount}</span>
-              )}
-            </Button>
-            <Button variant="secondary" size={isMobile ? "sm" : undefined} onClick={() => setShowInsurance(true)} style={compactBtn}>
-              {lbl(t("members.insuranceBtn"))}
-            </Button>
-          </div>
-        }
       />
 
       <main style={{ padding: isMobile ? "14px 12px" : "24px 28px", flex: 1 }}>
-        {/* زر عضو جديد: واضح أعلى المحتوى (مثل زر خطة جديدة) */}
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-          <Button icon="+" onClick={() => { setEditMember(null); setShowForm(true); }}>{t("members.newMember")}</Button>
+        {/* شريط الإجراءات: عضو جديد (رئيسي) + رابط التسجيل + التأمين */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, justifyContent: isMobile ? "stretch" : "flex-end" }}>
+          <Button icon="+" onClick={() => { setEditMember(null); setShowForm(true); }}
+            style={{ order: isMobile ? 0 : 3, flex: isMobile ? "1 1 100%" : "none", justifyContent: "center", padding: "12px 20px", fontSize: 14, fontWeight: 700 }}>
+            {t("members.newMember")}
+          </Button>
+          <button type="button" onClick={() => setShowReg(true)} style={{ ...actBtn("var(--accent2)"), order: isMobile ? 1 : 1 }}>
+            <span style={{ fontSize: 18, lineHeight: 1 }}>🔗</span>
+            <span style={{ whiteSpace: "nowrap" }}>{t("members.regBtn")}</span>
+            {regCount > 0 && (
+              <span style={{
+                position: "absolute", top: -8, insetInlineEnd: -6, minWidth: 20, height: 20, padding: "0 5px", borderRadius: 10,
+                background: "var(--danger)", color: "#fff", fontSize: 11, fontWeight: 700, boxSizing: "border-box",
+                display: "inline-flex", alignItems: "center", justifyContent: "center", border: "2px solid var(--bg, #0b0e11)",
+              }}>{regCount > 99 ? "99+" : regCount}</span>
+            )}
+          </button>
+          <button type="button" onClick={() => setShowInsurance(true)} style={{ ...actBtn("var(--accent3)"), order: isMobile ? 2 : 2 }}>
+            <span style={{ fontSize: 18, lineHeight: 1 }}>🛡️</span>
+            <span style={{ whiteSpace: "nowrap" }}>{t("members.insuranceBtn")}</span>
+          </button>
         </div>
 
         <StatsRow />
