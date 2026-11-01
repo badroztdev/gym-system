@@ -183,6 +183,11 @@ function SubscriptionsTab() {
 
   return (
     <>
+      {/* زر اشتراك جديد — نفس مكان زر خطة جديدة */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+        <Button icon="+" onClick={() => setShowForm(true)}>{t("subscriptions.newSubscription")}</Button>
+      </div>
+
       <StatsRow />
 
       {/* فلاتر */}
@@ -340,16 +345,6 @@ function SubscriptionsTab() {
             </div>
           </div>
         )}
-      </div>
-
-      {/* زر اشتراك جديد عائم في PageHeader عبر context — هنا نضيفه كزر إضافي */}
-      <div style={{
-        position: "fixed", bottom: isMobile ? 90 : 150, zIndex: 5,
-        [i18n.language === "ar" ? "left" : "right"]: isMobile ? 16 : 30,
-      }}>
-        <Button onClick={() => setShowForm(true)} style={{ boxShadow: "var(--shadow)", padding: isMobile ? "10px 16px" : "12px 22px" }} icon="+">
-          {isMobile ? "" : t("subscriptions.newSubscription")}
-        </Button>
       </div>
 
       <SubscriptionForm open={showForm} onClose={() => setShowForm(false)} onSuccess={refresh} />
