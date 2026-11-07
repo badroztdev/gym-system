@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/services/api";
 import toast from "react-hot-toast";
+import InstallButton from "@/components/InstallButton";
 
 const ROLE_LABELS = { owner: "المالك", coach: "مدرب", assistant: "مساعد", super_admin: "مدير المنصة" };
 
@@ -169,6 +170,7 @@ export default function Login() {
             </p>
           </form>
         )}
+        <InstallButton />
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { usePortalStore } from "@/portal/store/portalStore";
 import { PORTAL_DARK_THEME, PORTAL_LIGHT_THEME } from "@/portal/portalTheme";
 import api from "@/services/api";
 import toast from "react-hot-toast";
+import InstallButton from "@/components/InstallButton";
 
 const ROLE_LABELS = { athlete: "رياضي", guardian: "ولي أمر" };
 
@@ -181,6 +182,7 @@ export default function PortalLogin() {
             </button>
           </form>
         )}
+        <InstallButton />
       </div>
     </div>
   );

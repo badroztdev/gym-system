@@ -81,7 +81,7 @@
 <meta name="theme-color" content="#0b0e11" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-title" content="SGMS" />
+<script>document.write('<meta name="apple-mobile-web-app-title" content="' + (location.pathname.indexOf("/portal") === 0 ? "SGMS Athlete" : "SGMS") + '" />');</script>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="icon" type="image/png" href="/favicon.png" />
@@ -90,39 +90,52 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
-      // شريط "تثبيت التطبيق" — Android/Chrome: زر تثبيت | iPhone: إرشاد Safari | متصفحات التطبيقات (Instagram…): افتح في Safari
+      // التثبيت: Android/Chrome زر تثبيت مباشر | iPhone: لا يوجد API للتثبيت، لذا نعرض دليلاً مصوّراً بالخطوات
+      // window.sgmsInstall() / window.sgmsInstallState() تُستخدمان من صفحات الدخول (InstallButton)
       (function () {
         var standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-        if (standalone) return;
+        if (standalone) { window.sgmsInstallState = function () { return { show: false }; }; window.sgmsInstall = function () {}; return; }
         var ua = navigator.userAgent || "";
-        var deferred = null, bar = null;
+        var deferred = null, bar = null, sheet = null;
         var lang = "ar";
         try { lang = (localStorage.getItem("i18nextLng") || localStorage.getItem("lang") || "ar").slice(0, 2); } catch (e) {}
         var fr = lang === "fr";
+        function inPortal() { return location.pathname.indexOf("/portal") === 0; }
+        function appName() { return inPortal() ? "SGMS Athlete" : "SGMS"; }
         var T = fr
-          ? { msg: "Installez SGMS sur votre écran d'accueil", btn: "Installer",
-              ios: "Appuyez sur ≡ (ou ⬆︎) → Partager → « Sur l'écran d'accueil »",
+          ? { msg: "Installez SGMS sur votre écran d'accueil", btn: "Installer", how: "Comment ?",
+              ios: "Installez l'app : Partager → « Sur l'écran d'accueil »",
               iab: "Ouvrez ce lien dans Safari pour installer l'app : appuyez sur ⋯ puis « Ouvrir dans Safari »",
-              copy: "Copier le lien", copied: "Copié ✓" }
-          : { msg: "ثبّت تطبيق SGMS على شاشتك الرئيسية", btn: "تثبيت",
-              ios: "اضغط ≡ (أو ⬆︎) ← «مشاركة» ← «إضافة إلى الشاشة الرئيسية»",
+              copy: "Copier le lien", copied: "Copié ✓", close: "Fermer",
+              title: "Installer l'application", safari: "Ouvrez cette page dans Safari (ou Chrome) sur iPhone.",
+              s1: "Appuyez sur le bouton Partager", s1b: "en bas de l'écran (ou ⋯ puis « Partager »)",
+              s2: "Choisissez « Sur l'écran d'accueil »", s2b: "faites défiler la liste vers le bas si besoin",
+              s3: "Appuyez sur « Ajouter »", s3b: "l'app apparaîtra sous le nom : ",
+              other: "Sur ce navigateur, utilisez le menu ⋮ puis « Installer l'application »." }
+          : { msg: "ثبّت تطبيق SGMS على شاشتك الرئيسية", btn: "تثبيت", how: "كيف؟",
+              ios: "للتثبيت: مشاركة ← «إضافة إلى الشاشة الرئيسية»",
               iab: "للتثبيت افتح الرابط في Safari: اضغط ⋯ ثم «فتح في Safari» (أو انسخ الرابط والصقه في Safari)",
-              copy: "نسخ الرابط", copied: "تم النسخ ✓" };
+              copy: "نسخ الرابط", copied: "تم النسخ ✓", close: "إغلاق",
+              title: "تثبيت التطبيق", safari: "افتح هذه الصفحة في Safari (أو Chrome) على الآيفون.",
+              s1: "اضغط زر المشاركة", s1b: "أسفل الشاشة (أو ⋯ ثم «مشاركة»)",
+              s2: "اختر «إضافة إلى الشاشة الرئيسية»", s2b: "مرّر القائمة للأسفل إن لم تجدها",
+              s3: "اضغط «إضافة»", s3b: "سيظهر التطبيق باسم: ",
+              other: "في هذا المتصفح استخدم القائمة ⋮ ثم «تثبيت التطبيق»." };
         var isIOS = /iphone|ipad|ipod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
-        // متصفحات داخل التطبيقات (لا تدعم "إضافة إلى الشاشة الرئيسية")
         var inApp = isIOS && /Instagram|FBAN|FBAV|FB_IAB|FBIOS|TikTok|musical_ly|BytedanceWebview|Snapchat|Line\/|MicroMessenger|Twitter|LinkedInApp|Pinterest|GSA\//i.test(ua);
         var DKEY = "sgms-ios-bar-dismissed";
 
         function dismissed() {
           try { var t = Number(localStorage.getItem(DKEY) || 0); return t && Date.now() - t < 12 * 3600 * 1000; } catch (e) { return false; }
         }
-        function inPortal() { return location.pathname.indexOf("/portal") === 0; }
         // بوابة الرياضي: الشريط لآيفون فقط (أندرويد عنده تطبيق Google Play)
         function hidden() { return location.pathname.indexOf("/register") === 0 || (inPortal() && !isIOS) || (isIOS && dismissed()); }
         function syncManifest() {
           var l = document.querySelector('link[rel="manifest"]');
           var want = inPortal() ? "/manifest-portal.webmanifest" : "/manifest.webmanifest";
           if (l && l.getAttribute("href") !== want) l.setAttribute("href", want);
+          var m = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+          if (m && m.getAttribute("content") !== appName()) m.setAttribute("content", appName());
         }
         syncManifest();
         function remove() { if (bar && bar.parentNode) bar.parentNode.removeChild(bar); bar = null; }
@@ -140,6 +153,53 @@
           }
         }
         function btnStyle() { return "flex-shrink:0;border:0;border-radius:8px;padding:8px 14px;background:#a3e635;color:#0b0e11;font:700 13px system-ui,sans-serif;cursor:pointer"; }
+
+        // ── دليل التثبيت المصوَّر (آيفون) ───────────────────────────
+        var SHARE_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a84ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1"/></svg>';
+        var ADD_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" style="vertical-align:middle"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+        function closeSheet() { if (sheet && sheet.parentNode) sheet.parentNode.removeChild(sheet); sheet = null; }
+        function openGuide() {
+          if (sheet) return;
+          sheet = document.createElement("div");
+          sheet.setAttribute("dir", fr ? "ltr" : "rtl");
+          sheet.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center";
+          sheet.onclick = function (e) { if (e.target === sheet) closeSheet(); };
+          var step = function (n, icon, t1, t2) {
+            return '<div style="display:flex;gap:12px;align-items:center;padding:12px;background:#161b22;border:1px solid #262d38;border-radius:12px">' +
+              '<div style="flex-shrink:0;width:34px;height:34px;border-radius:50%;background:#a3e635;color:#0b0e11;font:800 16px system-ui;display:flex;align-items:center;justify-content:center">' + n + '</div>' +
+              '<div style="flex:1;min-width:0"><div style="font:700 14px/1.5 system-ui;color:#fff">' + t1 + ' ' + icon + '</div><div style="font:500 12px/1.5 system-ui;color:#9ca3af">' + t2 + '</div></div></div>';
+          };
+          var html = '<div style="width:100%;max-width:440px;background:#0b0e11;border-top:2px solid #a3e635;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto;color:#fff">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font:800 17px system-ui">📲 ' + T.title + ' — ' + appName() + '</div></div>';
+          if (inApp) {
+            html += '<div style="font:600 13px/1.6 system-ui;color:#fbbf24;background:#fbbf2418;border-radius:10px;padding:10px 12px;margin-bottom:12px">' + T.iab + '</div>' +
+              '<button id="sgms-copy" style="' + btnStyle() + ';width:100%;padding:12px;margin-bottom:10px">' + T.copy + '</button>';
+          } else if (isIOS) {
+            html += '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">' +
+              step(1, SHARE_SVG, T.s1, T.s1b) + step(2, ADD_SVG.replace("#fff", "#a3e635"), T.s2, T.s2b) + step(3, "", T.s3, T.s3b + "<b style='color:#a3e635'>" + appName() + "</b>") + '</div>' +
+              '<div style="font:500 12px/1.6 system-ui;color:#9ca3af;margin-bottom:12px">' + T.safari + '</div>';
+          } else {
+            html += '<div style="font:600 14px/1.7 system-ui;margin-bottom:12px">' + T.other + '</div>';
+          }
+          html += '<button id="sgms-close" style="width:100%;padding:12px;border:1px solid #262d38;border-radius:10px;background:transparent;color:#fff;font:700 14px system-ui;cursor:pointer">' + T.close + '</button></div>';
+          sheet.innerHTML = html;
+          document.body.appendChild(sheet);
+          var c = document.getElementById("sgms-close"); if (c) c.onclick = closeSheet;
+          var cp = document.getElementById("sgms-copy"); if (cp) cp.onclick = function () { copyLink(cp); };
+        }
+
+        // ── واجهة عامة تستخدمها صفحات الدخول ─────────────────────────
+        window.sgmsInstall = function () {
+          if (deferred) {
+            deferred.prompt();
+            deferred.userChoice.then(function (r) { if (r.outcome === "accepted") { deferred = null; remove(); notify(); } });
+          } else openGuide();
+        };
+        window.sgmsInstallState = function () {
+          return { show: isIOS || !!deferred, ios: isIOS, label: (isIOS && !deferred ? "📲 " + T.title : "📲 " + T.btn + " " + appName()) };
+        };
+        function notify() { try { window.dispatchEvent(new Event("sgms-install-state")); } catch (e) {} }
+
         function show() {
           if (bar || hidden()) return;
           bar = document.createElement("div");
@@ -151,21 +211,12 @@
           bar.appendChild(t);
           var actions = document.createElement("div");
           actions.style.cssText = "display:flex;align-items:center;gap:8px";
-          if (inApp) {
-            var c = document.createElement("button");
-            c.textContent = T.copy; c.style.cssText = btnStyle();
-            c.onclick = function () { copyLink(c); };
-            actions.appendChild(c);
-          } else if (!isIOS || deferred) {
-            var b = document.createElement("button");
-            b.textContent = T.btn; b.style.cssText = btnStyle();
-            b.onclick = function () {
-              if (!deferred) return;
-              deferred.prompt();
-              deferred.userChoice.then(function (r) { if (r.outcome === "accepted") remove(); });
-            };
-            actions.appendChild(b);
-          }
+          var b = document.createElement("button");
+          b.style.cssText = btnStyle();
+          if (inApp) { b.textContent = T.copy; b.onclick = function () { copyLink(b); }; }
+          else if (isIOS && !deferred) { b.textContent = T.how; b.onclick = openGuide; }
+          else { b.textContent = T.btn; b.onclick = window.sgmsInstall; }
+          actions.appendChild(b);
           if (isIOS) {
             // آيفون: لا يوجد حدث "تم التثبيت" فنسمح بالإغلاق 12 ساعة حتى لا يحجب الصفحة
             var x = document.createElement("button");
@@ -174,14 +225,14 @@
             x.onclick = function () { try { localStorage.setItem(DKEY, String(Date.now())); } catch (e) {} remove(); };
             actions.appendChild(x);
           }
-          if (actions.children.length) bar.appendChild(actions);
+          bar.appendChild(actions);
           document.body.appendChild(bar);
         }
 
         window.addEventListener("beforeinstallprompt", function (e) {
-          e.preventDefault(); deferred = e; remove(); show();
+          e.preventDefault(); deferred = e; remove(); show(); notify();
         });
-        window.addEventListener("appinstalled", function () { deferred = null; remove(); });
+        window.addEventListener("appinstalled", function () { deferred = null; remove(); notify(); });
         if (isIOS) window.addEventListener("load", function () { setTimeout(show, 1500); });
         // إخفاء/إظهار عند التنقل داخل التطبيق (SPA)
         setInterval(function () { syncManifest(); if (hidden()) remove(); else if (deferred || isIOS) show(); }, 1500);
