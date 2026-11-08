@@ -285,18 +285,30 @@ function SubscriptionsTab() {
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", gap: 6, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-                    <Button variant="secondary" size="sm" onClick={() => setDetailId(s.id)} style={{ flex: 1, justifyContent: "center", color: "var(--accent2)" }}>{t("subscriptions.actionDetails")}</Button>
-                    {Number(s.remaining) > 0 && s.status === "active" && (
-                      <Button variant="secondary" size="sm" onClick={() => setPaymentSub(s)} style={{ flex: 1, justifyContent: "center", color: "var(--accent)" }}>{t("subscriptions.actionPayment")}</Button>
-                    )}
-                    {canRenew(s) && (
-                      <Button variant="secondary" size="sm" onClick={() => openRenew(s)} style={{ flex: 1, justifyContent: "center", color: "var(--warning)" }}>🔁 {t("subscriptions.actionRenew")}</Button>
-                    )}
-                    {isOwner && (
-                      <Button variant="secondary" size="sm" onClick={() => setDeleteId(s.id)} style={{ color: "var(--danger)" }}>{t("subscriptions.actionDelete")}</Button>
-                    )}
-                  </div>
+                  {/* أزرار الإجراءات: شبكة بأعمدة متساوية (تفاصيل · دفعة · تجديد) + حذف في سطر مستقل — متناسقة بالعربية والفرنسية */}
+                  {(() => {
+                    const showPay = Number(s.remaining) > 0 && s.status === "active";
+                    const showRenew = canRenew(s);
+                    const cols = 1 + (showPay ? 1 : 0) + (showRenew ? 1 : 0);
+                    const btn = { display: "flex", alignItems: "center", justifyContent: "center", minWidth: 0, padding: "9px 3px", fontSize: 12, fontWeight: 600, width: "100%", overflow: "hidden" };
+                    const lab = (txt) => <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{txt}</span>;
+                    return (
+                      <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: 6 }}>
+                          <Button variant="secondary" size="sm" onClick={() => setDetailId(s.id)} style={{ ...btn, color: "var(--accent2)" }}>{lab(t("subscriptions.actionDetails"))}</Button>
+                          {showPay && (
+                            <Button variant="secondary" size="sm" onClick={() => setPaymentSub(s)} style={{ ...btn, color: "var(--accent)" }}>{lab(t("subscriptions.actionPayment"))}</Button>
+                          )}
+                          {showRenew && (
+                            <Button variant="secondary" size="sm" onClick={() => openRenew(s)} style={{ ...btn, color: "var(--warning)" }}>{lab("🔁 " + t("subscriptions.actionRenew"))}</Button>
+                          )}
+                        </div>
+                        {isOwner && (
+                          <Button variant="secondary" size="sm" onClick={() => setDeleteId(s.id)} style={{ ...btn, color: "var(--danger)", background: "var(--danger)10", borderColor: "var(--danger)40" }}>{lab("🗑️ " + t("subscriptions.actionDelete"))}</Button>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
