@@ -255,7 +255,9 @@
     "planDeletePermanently": "Supprimer définitivement",
     "planDeletePermanentlyTitle": "Supprimer définitivement le plan",
     "planDeletePermanentlyMessage": "Ce plan sera définitivement supprimé de la base de données et cette action est irréversible. Êtes-vous sûr ?",
-    "toastPlanDeletedPermanently": "Plan supprimé définitivement"
+    "toastPlanDeletedPermanently": "Plan supprimé définitivement",
+    "statusUpcoming": "À venir",
+    "actionRenew": "Renouveler"
   },
   "sessions": {
     "pageTitle": "Séances et horaires",
@@ -761,7 +763,11 @@
     "errorAthlete": "Choisissez d'abord l'athlète",
     "errorPlan": "Choisissez le plan",
     "errorPrice": "Le prix est requis",
-    "toastCreated": "Abonnement créé avec succès ✅"
+    "toastCreated": "Abonnement créé avec succès ✅",
+    "renewCurrent": "Cet athlète a un abonnement actif qui se termine le {{date}}",
+    "renewStarts": "Le nouvel abonnement commencera automatiquement après, le {{start}} — aucun jour perdu et pas de double comptage.",
+    "renewFromToday": "Commencer aujourd'hui à la place",
+    "renewOverlap": "⚠️ La date de début chevauche son abonnement actuel (fin le {{date}})."
   },
   "sessionModal": {
     "subtitleEdit": "Vous pouvez modifier la séance ici.",

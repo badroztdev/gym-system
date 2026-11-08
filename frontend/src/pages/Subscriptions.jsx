@@ -39,12 +39,20 @@ function useIsMobile() {
 //  Tab 1 — الاشتراكات
 // ════════════════════════════════════════════════════════════
 
+function localToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function subStatusInfo(s, t) {
   if (s.status === "cancelled") return { type: "expired", label: t("subscriptions.statusCancelled") };
   if (s.status === "suspended") return { type: "pending", label: t("subscriptions.statusSuspended") };
+  // ✅ اشتراك قادم (تجديد مسبق): لم يبدأ بعد
+  if (s.status === "active" && String(s.start_date).slice(0, 10) > localToday()) return { type: "pending", label: t("subscriptions.statusUpcoming") };
   const days = Math.ceil((new Date(s.end_date) - new Date()) / 86400000);
   if (days < 0) return { type: "expired", label: t("subscriptions.statusExpired") };
-  if (days <= 7) return { type: "expiring", label: t("subscriptions.statusExpiresInDays", { days }) };
+  // قريب الانتهاء فقط إن لم يُجدَّد (لا يوجد اشتراك لاحق)
+  if (days <= 7 && !s.has_next) return { type: "expiring", label: t("subscriptions.statusExpiresInDays", { days }) };
   return { type: "active", label: t("subscriptions.statusActive") };
 }
 
@@ -136,6 +144,7 @@ function SubscriptionsTab() {
   const [page, setPage] = useState(1);
 
   const [showForm, setShowForm] = useState(false);
+  const [renewAthlete, setRenewAthlete] = useState(null); // تجديد سريع لرياضي محدد
   const [paymentSub, setPaymentSub] = useState(null);
   const [detailId, setDetailId] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
@@ -166,9 +175,22 @@ function SubscriptionsTab() {
     qc.invalidateQueries({ queryKey: ["payments-stats"] });
   };
 
+  // زر "تجديد": اشتراك نشط ينتهي خلال 7 أيام (أو انتهى) ولم يُجدَّد بعد
+  const canRenew = (s) => {
+    if (s.status !== "active" || s.has_next) return false;
+    if (String(s.start_date).slice(0, 10) > localToday()) return false;
+    const days = Math.ceil((new Date(s.end_date) - new Date()) / 86400000);
+    return days <= 7;
+  };
+  const openRenew = (s) => {
+    setRenewAthlete({ id: s.athlete_id, full_name: s.athlete_name, phone: s.athlete_phone });
+    setShowForm(true);
+  };
+
   const STATUSES = [
     { value: "",         label: t("subscriptions.statusAll") },
     { value: "active",   label: t("subscriptions.statusActive") },
+    { value: "upcoming", label: t("subscriptions.statusUpcoming") },
     { value: "expiring", label: t("subscriptions.statusExpiring") },
     { value: "expired",  label: t("subscriptions.statusExpired") },
     { value: "suspended",label: t("subscriptions.statusSuspended") },
@@ -185,7 +207,7 @@ function SubscriptionsTab() {
     <>
       {/* زر اشتراك جديد — نفس مكان زر خطة جديدة */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-        <Button icon="+" onClick={() => setShowForm(true)}>{t("subscriptions.newSubscription")}</Button>
+        <Button icon="+" onClick={() => { setRenewAthlete(null); setShowForm(true); }}>{t("subscriptions.newSubscription")}</Button>
       </div>
 
       <StatsRow />
@@ -268,6 +290,9 @@ function SubscriptionsTab() {
                     {Number(s.remaining) > 0 && s.status === "active" && (
                       <Button variant="secondary" size="sm" onClick={() => setPaymentSub(s)} style={{ flex: 1, justifyContent: "center", color: "var(--accent)" }}>{t("subscriptions.actionPayment")}</Button>
                     )}
+                    {canRenew(s) && (
+                      <Button variant="secondary" size="sm" onClick={() => openRenew(s)} style={{ flex: 1, justifyContent: "center", color: "var(--warning)" }}>🔁 {t("subscriptions.actionRenew")}</Button>
+                    )}
                     {isOwner && (
                       <Button variant="secondary" size="sm" onClick={() => setDeleteId(s.id)} style={{ color: "var(--danger)" }}>{t("subscriptions.actionDelete")}</Button>
                     )}
@@ -323,6 +348,9 @@ function SubscriptionsTab() {
                           {Number(s.remaining) > 0 && s.status === "active" && (
                             <Button variant="ghost" size="sm" onClick={() => setPaymentSub(s)} style={{ color: "var(--accent)" }}>{t("subscriptions.actionPayment")}</Button>
                           )}
+                          {canRenew(s) && (
+                            <Button variant="ghost" size="sm" onClick={() => openRenew(s)} style={{ color: "var(--warning)" }}>🔁 {t("subscriptions.actionRenew")}</Button>
+                          )}
                           {isOwner && (
                             <Button variant="ghost" size="sm" onClick={() => setDeleteId(s.id)} style={{ color: "var(--danger)" }}>{t("subscriptions.actionDelete")}</Button>
                           )}
@@ -347,7 +375,7 @@ function SubscriptionsTab() {
         )}
       </div>
 
-      <SubscriptionForm open={showForm} onClose={() => setShowForm(false)} onSuccess={refresh} />
+      <SubscriptionForm open={showForm} onClose={() => { setShowForm(false); setRenewAthlete(null); }} onSuccess={refresh} presetAthlete={renewAthlete} />
 
       <PaymentForm
         open={!!paymentSub}

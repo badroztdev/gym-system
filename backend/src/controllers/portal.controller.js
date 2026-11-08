@@ -53,7 +53,7 @@ export const getDashboard = async (req, res) => {
 
     const athleteRes = await query(
       `SELECT id, full_name, phone, avatar_url, age_category, rank,
-              weight_kg, blood_group, date_of_birth, gym_id, group_name
+              weight_kg, blood_group, date_of_birth, gym_id
        FROM users WHERE id = $1`,
       [athleteId]
     );
@@ -67,7 +67,7 @@ export const getDashboard = async (req, res) => {
        FROM subscriptions s
        JOIN subscription_plans sp ON sp.id = s.plan_id
        WHERE s.athlete_id = $1
-       ORDER BY s.end_date DESC LIMIT 1`,
+       ORDER BY (s.status = 'active' AND s.start_date <= CURRENT_DATE) DESC, s.end_date DESC LIMIT 1`,
       [athleteId]
     );
 
@@ -85,12 +85,8 @@ export const getDashboard = async (req, res) => {
          AND s.session_date = (NOW() AT TIME ZONE 'Africa/Algiers')::date
          AND s.is_cancelled = FALSE
          AND (s.age_category IS NULL OR array_length(s.age_category,1) IS NULL OR $3::text = ANY(s.age_category))
-         AND (s.age_groups IS NULL
-              OR NOT (s.age_groups ? $3::text)
-              OR jsonb_array_length(s.age_groups -> $3::text) = 0
-              OR (s.age_groups -> $3::text) ? $4::text)
        ORDER BY s.start_time`,
-      [athlete.gym_id, athleteId, athlete.age_category, athlete.group_name]
+      [athlete.gym_id, athleteId, athlete.age_category]
     );
 
     const attStatsRes = await query(
@@ -129,9 +125,9 @@ export const getSchedule = async (req, res) => {
     if (!(await canAccessAthlete(req.user, athleteId)))
       return badRequest(res, "ليس لديك صلاحية الوصول لهذا الرياضي");
 
-    const athleteRes = await query("SELECT gym_id, age_category, group_name FROM users WHERE id = $1", [athleteId]);
+    const athleteRes = await query("SELECT gym_id, age_category FROM users WHERE id = $1", [athleteId]);
     if (!athleteRes.rows.length) return notFound(res, "الرياضي غير موجود");
-    const { gym_id, age_category, group_name } = athleteRes.rows[0];
+    const { gym_id, age_category } = athleteRes.rows[0];
 
     const { rows } = await query(
       `SELECT s.id, s.title, TO_CHAR(s.session_date,'YYYY-MM-DD') AS session_date,
@@ -146,12 +142,8 @@ export const getSchedule = async (req, res) => {
        WHERE s.gym_id = $1 AND s.is_cancelled = FALSE
          AND s.session_date BETWEEN $2 AND $3
          AND (s.age_category IS NULL OR array_length(s.age_category,1) IS NULL OR $5::text = ANY(s.age_category))
-         AND (s.age_groups IS NULL
-              OR NOT (s.age_groups ? $5::text)
-              OR jsonb_array_length(s.age_groups -> $5::text) = 0
-              OR (s.age_groups -> $5::text) ? $6::text)
        ORDER BY s.session_date, s.start_time`,
-      [gym_id, dateFrom, dateTo, athleteId, age_category, group_name]
+      [gym_id, dateFrom, dateTo, athleteId, age_category]
     );
     return ok(res, rows);
   } catch (err) { serverError(res, err); }

@@ -27,9 +27,14 @@ export const getSubscriptions = async (req, res) => {
       params.push(`%${search}%`); p++;
     }
     if (status === "active") {
-      conditions.push(`s.status = 'active' AND s.end_date >= CURRENT_DATE`);
+      // الحالي فقط: بدأ فعلاً ولم ينتهِ (الاشتراك القادم لا يُحسب نشطاً الآن)
+      conditions.push(`s.status = 'active' AND s.start_date <= CURRENT_DATE AND s.end_date >= CURRENT_DATE`);
+    } else if (status === "upcoming") {
+      conditions.push(`s.status = 'active' AND s.start_date > CURRENT_DATE`);
     } else if (status === "expiring") {
-      conditions.push(`s.status = 'active' AND s.end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'`);
+      // تنتهي قريباً ولم يُجدَّد بعد (لا يوجد اشتراك لاحق له)
+      conditions.push(`s.status = 'active' AND s.start_date <= CURRENT_DATE AND s.end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+        AND NOT EXISTS (SELECT 1 FROM subscriptions n WHERE n.athlete_id = s.athlete_id AND n.id <> s.id AND n.status = 'active' AND n.end_date > s.end_date)`);
     } else if (status === "expired") {
       conditions.push(`(s.status = 'expired' OR (s.status = 'active' AND s.end_date < CURRENT_DATE))`);
     } else if (status === "cancelled") {
@@ -51,6 +56,11 @@ export const getSubscriptions = async (req, res) => {
         s.plan_id, sp.name AS plan_name,
         s.start_date, s.end_date, s.status, s.sessions_remaining,
         sp.sessions_limit, s.price, s.notes, s.created_at,
+        EXISTS (
+          SELECT 1 FROM subscriptions n
+          WHERE n.athlete_id = s.athlete_id AND n.id <> s.id
+            AND n.status = 'active' AND n.end_date > s.end_date
+        ) AS has_next,
         COALESCE(pay.total_paid, 0) AS total_paid,
         (s.price - COALESCE(pay.total_paid, 0)) AS remaining
       FROM subscriptions s
@@ -143,7 +153,18 @@ export const createSubscription = async (req, res) => {
 
     const p = plan.rows[0];
     const finalPrice = price !== undefined && price !== null && price !== "" ? price : p.price;
-    const start = startDate || new Date().toISOString().slice(0, 10);
+    // ✅ تجديد مسبق: إن لم يُحدَّد تاريخ بداية، يبدأ الاشتراك الجديد في اليوم التالي لانتهاء الحالي
+    // (بدل أن يبدأ اليوم ويتداخل معه فيضيع على الرياضي ما تبقى من اشتراكه)
+    let start = startDate;
+    if (!start) {
+      const cur = await query(
+        `SELECT to_char(MAX(end_date) + 1, 'YYYY-MM-DD') AS d
+         FROM subscriptions
+         WHERE athlete_id = $1 AND status = 'active' AND end_date >= CURRENT_DATE`,
+        [athleteId]
+      );
+      start = cur.rows[0]?.d || new Date().toISOString().slice(0, 10);
+    }
 
     const { rows } = await query(
       `INSERT INTO subscriptions
@@ -239,8 +260,9 @@ export const getSubscriptionStats = async (req, res) => {
 
     const { rows } = await query(
       `SELECT
-         COUNT(*) FILTER (WHERE s.status = 'active' AND s.end_date >= CURRENT_DATE) AS active_count,
-         COUNT(*) FILTER (WHERE s.status = 'active' AND s.end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days') AS expiring_count,
+         COUNT(*) FILTER (WHERE s.status = 'active' AND s.start_date <= CURRENT_DATE AND s.end_date >= CURRENT_DATE) AS active_count,
+         COUNT(*) FILTER (WHERE s.status = 'active' AND s.start_date <= CURRENT_DATE AND s.end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+           AND NOT EXISTS (SELECT 1 FROM subscriptions n WHERE n.athlete_id = s.athlete_id AND n.id <> s.id AND n.status = 'active' AND n.end_date > s.end_date)) AS expiring_count,
          COUNT(*) FILTER (WHERE s.status = 'active' AND s.end_date < CURRENT_DATE) AS expired_count,
          COALESCE(SUM(s.price) FILTER (WHERE s.status = 'active'), 0) AS active_revenue_expected,
          COALESCE(SUM(s.price - COALESCE(pay.total_paid,0)) FILTER (WHERE s.status = 'active'), 0) AS total_due

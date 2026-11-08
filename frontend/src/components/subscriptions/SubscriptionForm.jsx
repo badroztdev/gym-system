@@ -6,6 +6,7 @@ import { Modal, Input, Select, Button, Spinner } from "@/components/ui";
 import { membersService } from "@/services/members.service";
 import { plansService } from "@/services/plans.service";
 import { subscriptionsService } from "@/services/subscriptions.service";
+import api from "@/services/api";
 import toast from "react-hot-toast";
 
 function toLocalDateString(d) {
@@ -16,6 +17,8 @@ function toLocalDateString(d) {
 }
 
 const today = () => toLocalDateString(new Date());
+// يحفظ ترتيب أرقام التاريخ داخل النص العربي (RTL)
+const ltr = (d) => `\u2066${d}\u2069`;
 
 export default function SubscriptionForm({ open, onClose, onSuccess, presetAthlete = null }) {
   const { t, i18n } = useTranslation();
@@ -42,14 +45,34 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
   const plans = (plansData?.data || []).filter(p => p.is_active);
 
   const [form, setForm] = useState({ planId: "", startDate: today(), price: "", notes: "" });
+  const [startTouched, setStartTouched] = useState(false);
+
+  // ── اشتراكاته النشطة الحالية (لاقتراح بداية بعد انتهاء الحالي: تجديد مسبق بلا تداخل) ──
+  const { data: currentSubs } = useQuery({
+    queryKey: ["athlete-active-subs", selectedAthlete?.id],
+    queryFn: () => api.get("/subscriptions", { params: { athleteId: selectedAthlete.id, status: "active", limit: 50 } }).then(r => r.data),
+    enabled: open && !!selectedAthlete?.id,
+  });
+  const lastEnd = (currentSubs?.data || [])
+    .map(s => String(s.end_date).slice(0, 10))
+    .filter(d => d >= today())
+    .sort()
+    .pop() || null;
 
   useEffect(() => {
     if (!open) return;
     setAthleteSearch("");
     setSelectedAthlete(presetAthlete || null);
     setForm({ planId: "", startDate: today(), price: "", notes: "" });
+    setStartTouched(false);
     setErrors({});
   }, [open, presetAthlete]);
+
+  // لديه اشتراك لم ينتهِ → يبدأ الجديد في اليوم التالي لانتهائه (ما لم يغيّر المستخدم التاريخ بنفسه)
+  useEffect(() => {
+    if (!open || startTouched) return;
+    setForm(f => ({ ...f, startDate: lastEnd ? addDays(lastEnd, 1) : today() }));
+  }, [lastEnd, open, startTouched, selectedAthlete?.id]); // eslint-disable-line
 
   const selectedPlan = plans.find(p => p.id === form.planId);
 
@@ -127,7 +150,7 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
                 <div className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>{selectedAthlete.phone}</div>
               </div>
               {!presetAthlete && (
-                <Button variant="ghost" size="sm" onClick={() => setSelectedAthlete(null)} style={{ color: "var(--danger)" }}>
+                <Button variant="ghost" size="sm" onClick={() => { setSelectedAthlete(null); setStartTouched(false); }} style={{ color: "var(--danger)" }}>
                   {t("subscriptionForm.changeAthlete")}
                 </Button>
               )}
@@ -184,12 +207,33 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
           error={errors.planId}
         />
 
+        {/* تجديد مسبق: لديه اشتراك لم ينتهِ بعد */}
+        {lastEnd && (
+          <div style={{
+            fontSize: 12, lineHeight: 1.7, padding: "10px 12px", borderRadius: "var(--radius-sm)",
+            background: "var(--accent2)15", border: "1px solid var(--accent2)40", color: "var(--text)",
+          }}>
+            <div style={{ fontWeight: 700, color: "var(--accent2)" }}>🔁 {t("subscriptionForm.renewCurrent", { date: ltr(lastEnd) })}</div>
+            {form.startDate > lastEnd ? (
+              <div style={{ color: "var(--muted-lt)" }}>{t("subscriptionForm.renewStarts", { start: ltr(form.startDate) })}</div>
+            ) : (
+              <div style={{ color: "var(--warning)" }}>{t("subscriptionForm.renewOverlap", { date: ltr(lastEnd) })}</div>
+            )}
+            {form.startDate !== today() && (
+              <button type="button" onClick={() => { setStartTouched(true); setForm(f => ({ ...f, startDate: today() })); }}
+                style={{ marginTop: 6, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--accent2)", fontSize: 12, textDecoration: "underline", fontFamily: "inherit" }}>
+                {t("subscriptionForm.renewFromToday")}
+              </button>
+            )}
+          </div>
+        )}
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Input
             label={t("subscriptionForm.startDateLabel")}
             type="date"
             value={form.startDate}
-            onChange={set("startDate")}
+            onChange={e => { setStartTouched(true); set("startDate")(e); }}
           />
           <Input
             label={t("subscriptionForm.priceLabel")}
@@ -225,7 +269,9 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
 
 function addDays(dateStr, days) {
   if (!dateStr) return null;
-  const d = new Date(dateStr);
+  // تحليل محلي (YYYY-MM-DD) لتفادي انزياح اليوم بسبب المنطقة الزمنية
+  const [y, m, dd] = String(dateStr).slice(0, 10).split("-").map(Number);
+  const d = new Date(y, (m || 1) - 1, dd || 1);
   if (isNaN(d.getTime())) return null;
   d.setDate(d.getDate() + Number(days));
   return toLocalDateString(d);

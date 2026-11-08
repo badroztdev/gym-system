@@ -255,7 +255,9 @@
     "planDeletePermanently": "حذف نهائي",
     "planDeletePermanentlyTitle": "حذف الخطة نهائياً",
     "planDeletePermanentlyMessage": "سيتم حذف هذه الخطة نهائياً من قاعدة البيانات ولا يمكن التراجع عن هذا الإجراء. هل أنت متأكد؟",
-    "toastPlanDeletedPermanently": "تم حذف الخطة نهائياً"
+    "toastPlanDeletedPermanently": "تم حذف الخطة نهائياً",
+    "statusUpcoming": "قادم",
+    "actionRenew": "تجديد"
   },
   "sessions": {
     "pageTitle": "الحصص والجداول",
@@ -761,7 +763,11 @@
     "errorAthlete": "اختر الرياضي أولاً",
     "errorPlan": "اختر الخطة",
     "errorPrice": "السعر مطلوب",
-    "toastCreated": "تم إنشاء الاشتراك بنجاح ✅"
+    "toastCreated": "تم إنشاء الاشتراك بنجاح ✅",
+    "renewCurrent": "لديه اشتراك نشط ينتهي في {{date}}",
+    "renewStarts": "سيبدأ الاشتراك الجديد بعده تلقائياً في {{start}} — لا يضيع عليه أي يوم ولا يُحسب مرتين.",
+    "renewFromToday": "ابدأ من اليوم بدلاً من ذلك",
+    "renewOverlap": "⚠️ تاريخ البداية يتداخل مع اشتراكه الحالي (ينتهي في {{date}})."
   },
   "sessionModal": {
     "subtitleEdit": "يمكنك تعديل حصة من هنا.",

@@ -58,6 +58,11 @@ export const getMembers = async (req, res) => {
         SELECT 1 FROM subscriptions s
         WHERE s.athlete_id = u.id AND s.status = 'active'
           AND s.end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+          AND NOT EXISTS (
+            SELECT 1 FROM subscriptions n
+            WHERE n.athlete_id = s.athlete_id AND n.id <> s.id
+              AND n.status = 'active' AND n.end_date > s.end_date
+          )
       )`);
     } else if (status === "expired") {
       conditions.push(`NOT EXISTS (
@@ -511,6 +516,11 @@ export const getMembersStats = async (req, res) => {
              SELECT 1 FROM subscriptions s
              WHERE s.athlete_id = u.id AND s.status = 'active'
                AND s.end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+               AND NOT EXISTS (
+                 SELECT 1 FROM subscriptions n
+                 WHERE n.athlete_id = s.athlete_id AND n.id <> s.id
+                   AND n.status = 'active' AND n.end_date > s.end_date
+               )
            )
          )                                                  AS expiring_soon,
          COUNT(*) FILTER (
