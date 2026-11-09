@@ -122,7 +122,9 @@
     "regPhoneExists": "Téléphone déjà enregistré",
     "regGuardian": "Tuteur",
     "regAge": "{{age}} ans",
-    "allGroups": "Tous les groupes"
+    "allGroups": "Tous les groupes",
+    "regPrintQr": "Imprimer le QR",
+    "regPrintError": "Impossible d'imprimer, réessayez"
   },
   "memberForm": {
     "addTitle": "Ajouter un nouveau membre",

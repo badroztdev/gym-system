@@ -122,7 +122,9 @@
     "regPhoneExists": "الرقم مسجل لدى عضو",
     "regGuardian": "ولي الأمر",
     "regAge": "{{age}} سنة",
-    "allGroups": "كل الأفواج"
+    "allGroups": "كل الأفواج",
+    "regPrintQr": "طباعة رمز QR",
+    "regPrintError": "تعذّرت الطباعة، حاول مرة أخرى"
   },
   "memberForm": {
     "addTitle": "إضافة عضو جديد",
