@@ -98,7 +98,7 @@ export default function PortalProfile() {
           )}
           {athlete.group_name && (
             <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "var(--accent)20", color: "var(--accent)", fontWeight: 600 }}>
-              الفوج: {athlete.group_name}
+              {athlete.group_name}
             </span>
           )}
           {athlete.rank && (
