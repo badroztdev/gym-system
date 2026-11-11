@@ -9,7 +9,7 @@ export const getMyAthletes = async (req, res) => {
 
     if (user.role === "athlete") {
       const { rows } = await query(
-        `SELECT id, full_name, phone, avatar_url, age_category, rank, weight_kg, blood_group
+        `SELECT id, full_name, phone, avatar_url, age_category, group_name, rank, weight_kg, blood_group
          FROM users WHERE id = $1`,
         [user.id]
       );
@@ -18,7 +18,7 @@ export const getMyAthletes = async (req, res) => {
 
     if (user.role === "guardian") {
       const { rows } = await query(
-        `SELECT u.id, u.full_name, u.phone, u.avatar_url, u.age_category, u.rank, u.weight_kg, u.blood_group
+        `SELECT u.id, u.full_name, u.phone, u.avatar_url, u.age_category, u.group_name, u.rank, u.weight_kg, u.blood_group
          FROM guardian_athlete ga
          JOIN users u ON u.id = ga.athlete_id
          WHERE ga.guardian_id = $1 AND u.is_active = TRUE
@@ -52,7 +52,7 @@ export const getDashboard = async (req, res) => {
       return badRequest(res, "ليس لديك صلاحية الوصول لهذا الرياضي");
 
     const athleteRes = await query(
-      `SELECT id, full_name, phone, avatar_url, age_category, rank,
+      `SELECT id, full_name, phone, avatar_url, age_category, group_name, rank,
               weight_kg, blood_group, date_of_birth, gym_id
        FROM users WHERE id = $1`,
       [athleteId]

@@ -89,13 +89,7 @@ export default function PortalLayout() {
         )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button onClick={toggleLanguage} aria-label="Language" style={{
-            width: 36, height: 36, borderRadius: 10,
-            background: "var(--card)", border: "1px solid var(--border)",
-            cursor: "pointer", fontSize: 12, fontWeight: 700, color: "var(--text)",
-            fontFamily: "'Sora', sans-serif",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>{i18n.language === "ar" ? "FR" : "AR"}</button>
+          
           <button onClick={toggleDark} aria-label="تبديل الوضع" style={{
             width: 36, height: 36, borderRadius: 10,
             background: "var(--card)", border: "1px solid var(--border)",

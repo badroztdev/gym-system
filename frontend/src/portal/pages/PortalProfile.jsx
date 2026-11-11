@@ -96,6 +96,11 @@ export default function PortalProfile() {
               {athlete.age_category}
             </span>
           )}
+          {athlete.group_name && (
+            <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "var(--accent)20", color: "var(--accent)", fontWeight: 600 }}>
+              الفوج: {athlete.group_name}
+            </span>
+          )}
           {athlete.rank && (
             <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "var(--accent2)20", color: "var(--accent2)", fontWeight: 600 }}>
               {athlete.rank}
