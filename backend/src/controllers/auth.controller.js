@@ -10,13 +10,41 @@ const signToken = (userId) =>
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   });
 
+const AR_DIGITS = "٠١٢٣٤٥٦٧٨٩";
+const toLatinDigits = (v) => String(v).replace(/[٠-٩]/g, (d) => String(AR_DIGITS.indexOf(d)))
+                                       .replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)));
+
+// يوحّد الرقم: أرقام عربية/فارسية ← لاتينية، وإزالة المسافات والرموز غير المرئية (آيفون يضيفها)
 function normalizePhone(raw) {
   if (!raw) return raw;
-  const arabicDigits = "٠١٢٣٤٥٦٧٨٩";
-  return String(raw)
-    .trim()
-    .replace(/[٠-٩]/g, (d) => String(arabicDigits.indexOf(d)))
-    .replace(/\s+/g, "");
+  return toLatinDigits(raw)
+    .replace(/[\s\u200e\u200f\u202a-\u202e\u2066-\u2069\u00a0]+/g, "")
+    .replace(/[-().]/g, "");
+}
+
+// كل الصيغ الممكنة لنفس الرقم الجزائري: 0778555951 | 778555951 | 213778555951 | +213778555951
+function phoneCandidates(raw) {
+  const p = normalizePhone(raw);
+  if (!p) return [];
+  const set = new Set([p]);
+  const d = p.replace(/^\+/, "").replace(/^00/, "");
+  let local = null;
+  if (/^213\d{9}$/.test(d)) local = "0" + d.slice(3);
+  else if (/^0\d{9}$/.test(d)) local = d;
+  else if (/^\d{9}$/.test(d)) local = "0" + d;
+  if (local) {
+    set.add(local); set.add(local.slice(1));
+    set.add("213" + local.slice(1)); set.add("+213" + local.slice(1));
+  }
+  return [...set];
+}
+
+// كلمات مرور مرشَّحة: كما أُرسلت، بعد حذف المسافات الطرفية، وبعد تحويل الأرقام العربية
+function passwordCandidates(raw) {
+  if (raw === undefined || raw === null) return [];
+  const base = String(raw);
+  const strip = base.replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069\u00a0]/g, "");
+  return [...new Set([base, base.trim(), strip.trim(), toLatinDigits(strip.trim())])].filter(Boolean);
 }
 
 // POST /api/auth/login
@@ -30,23 +58,37 @@ function normalizePhone(raw) {
 export const login = async (req, res) => {
   try {
     const { phone: rawPhone, password: rawPassword, selectedUserId } = req.body;
-    const phone = normalizePhone(rawPhone);
-    const password = rawPassword ? String(rawPassword).trim() : rawPassword;
+    const candidates = phoneCandidates(rawPhone);
+    const passwords  = passwordCandidates(rawPassword);
+    if (!candidates.length || !passwords.length)
+      return unauthorized(res, "رقم الهاتف أو كلمة المرور غير صحيحة");
 
-    const { rows } = await query(
-      `SELECT u.*, g.name AS gym_name, g.slug AS gym_slug
-       FROM users u
-       LEFT JOIN gyms g ON g.id = u.gym_id
-       WHERE u.phone = $1 AND u.is_active = TRUE`,
-      [phone]
+    const SELECT = `SELECT u.*, g.name AS gym_name, g.slug AS gym_slug
+                    FROM users u LEFT JOIN gyms g ON g.id = u.gym_id`;
+    let { rows } = await query(
+      `${SELECT} WHERE u.phone = ANY($1::text[]) AND u.is_active = TRUE`, [candidates]
     );
+    // احتياط: أرقام مخزَّنة قديماً بأرقام عربية أو بمسافات
+    if (!rows.length) {
+      ({ rows } = await query(
+        `${SELECT}
+         WHERE u.is_active = TRUE
+           AND translate(regexp_replace(u.phone, '[\\s\\-()]', '', 'g'), '٠١٢٣٤٥٦٧٨٩', '0123456789') = ANY($1::text[])`,
+        [candidates]
+      ));
+    }
 
     if (!rows.length)
       return unauthorized(res, "رقم الهاتف أو كلمة المرور غير صحيحة");
 
-    // تحقق من كلمة المرور مقابل كل الحسابات المطابقة (بالتوازي لسرعة أعلى)
+    // تحقق من كلمة المرور مقابل كل الحسابات المطابقة (بالتوازي) مع تجربة الصيغ المرشَّحة
     const checks = await Promise.all(
-      rows.map(async (u) => ({ user: u, valid: await bcrypt.compare(password, u.password_hash) }))
+      rows.map(async (u) => {
+        for (const pw of passwords) {
+          if (await bcrypt.compare(pw, u.password_hash)) return { user: u, valid: true };
+        }
+        return { user: u, valid: false };
+      })
     );
     let matches = checks.filter(c => c.valid).map(c => c.user);
 

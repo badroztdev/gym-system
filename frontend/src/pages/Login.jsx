@@ -32,14 +32,25 @@ export default function Login() {
   const attemptLogin = async (selectedUserId) => {
     setLoading(true); setError("");
     try {
-      const { data } = await api.post("/auth/login", { ...form, selectedUserId });
+      // آيفون: أرقام عربية/مسافات خفية في الهاتف — نوحّدها قبل الإرسال
+      const phone = String(form.phone)
+        .replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d))
+        .replace(/[\s\u200e\u200f\u00a0]+/g, "");
+      const { data } = await api.post("/auth/login", { phone, password: form.password, selectedUserId });
       if (data.data.requiresSelection) {
         setOptions(data.data.options);
       } else {
         finishLogin(data.data);
       }
     } catch (err) {
-      setError(err.response?.data?.message || "فشل تسجيل الدخول");
+      const st = err.response?.status;
+      const msg = err.response?.data?.message;
+      setError(
+        msg ||
+        (!err.response ? "تعذّر الاتصال بالخادم، تحقّق من الإنترنت وحاول مرة أخرى"
+          : st === 429 ? "محاولات كثيرة، انتظر دقيقة ثم حاول مجدداً"
+          : `فشل تسجيل الدخول (${st})`)
+      );
     } finally {
       setLoading(false);
     }
@@ -114,7 +125,8 @@ export default function Login() {
                 رقم الهاتف
               </label>
               <input
-                type="tel" placeholder="0550000000"
+                type="tel" placeholder="0550000000" name="phone"
+                autoComplete="username" inputMode="tel" autoCapitalize="none" autoCorrect="off" spellCheck={false}
                 value={form.phone}
                 onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
                 style={{
@@ -130,7 +142,8 @@ export default function Login() {
                 كلمة المرور
               </label>
               <input
-                type="password" placeholder="••••••••"
+                type="password" placeholder="••••••••" name="password"
+                autoComplete="current-password" autoCapitalize="none" autoCorrect="off" spellCheck={false}
                 value={form.password}
                 onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                 style={{

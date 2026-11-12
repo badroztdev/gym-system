@@ -48,7 +48,9 @@ export default function SignUp() {
       const { data } = await api.post("/onboarding/register", {
         gymName:    form.gymName.trim(),
         ownerName:  form.ownerName.trim(),
-        ownerPhone: form.ownerPhone.trim(),
+        ownerPhone: form.ownerPhone
+                    .replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d))
+                    .replace(/[\s\u200e\u200f\u00a0]+/g, ""),
         ownerEmail: form.ownerEmail.trim() || undefined,
         password:   form.password,
       });
@@ -126,7 +128,8 @@ export default function SignUp() {
             <div>
               <label style={labelStyle}>رقم الهاتف *</label>
               <input
-                type="tel" placeholder="0550000000"
+                type="tel" placeholder="0550000000" name="phone" autoComplete="username" inputMode="tel"
+                autoCapitalize="none" autoCorrect="off" spellCheck={false}
                 value={form.ownerPhone}
                 onChange={set("ownerPhone")}
                 style={inputStyle}
@@ -147,7 +150,7 @@ export default function SignUp() {
             <div>
               <label style={labelStyle}>كلمة المرور *</label>
               <input
-                type="password" placeholder="6 أحرف على الأقل"
+                type="password" placeholder="6 أحرف على الأقل" name="new-password" autoComplete="new-password" autoCapitalize="none" autoCorrect="off" spellCheck={false}
                 value={form.password}
                 onChange={set("password")}
                 style={inputStyle}
@@ -156,7 +159,7 @@ export default function SignUp() {
             <div>
               <label style={labelStyle}>تأكيد كلمة المرور *</label>
               <input
-                type="password" placeholder="أعد كتابتها"
+                type="password" placeholder="أعد كتابتها" autoComplete="new-password" autoCapitalize="none" autoCorrect="off" spellCheck={false}
                 value={form.confirmPassword}
                 onChange={set("confirmPassword")}
                 style={inputStyle}
