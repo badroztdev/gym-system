@@ -3,8 +3,11 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { useAuthStore } from "@/store/authStore";
 
+// في الإنتاج: كل الطلبات تذهب إلى /api على نفس نطاق الموقع (sgms.site)، وVercel يمرّرها
+// إلى Railway (انظر vercel.json). هذا يتجاوز حجب نطاق railway.app عند بعض مزوّدي الإنترنت.
+// في التطوير المحلي فقط يُستخدم VITE_API_URL إن وُجد.
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL
+  baseURL: !import.meta.env.PROD && import.meta.env.VITE_API_URL
     ? `${import.meta.env.VITE_API_URL}/api`
     : "/api",
   timeout: 15000,
