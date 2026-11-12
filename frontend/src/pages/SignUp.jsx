@@ -28,7 +28,10 @@ export default function SignUp() {
       try {
         const { data } = await api.get("/onboarding/check-slug", { params: { name: form.gymName } });
         setSlugInfo(data.data);
-      } catch { /* تجاهل */ }
+      } catch (err) {
+        // لا نُخفي الفشل: غياب رد الخادم يعني مشكلة اتصال (شبكة/حجب) لا اسماً غير متاح
+        setSlugInfo(err.response ? null : { offline: true });
+      }
     }, 500);
     return () => clearTimeout(slugTimer.current);
   }, [form.gymName]);
@@ -59,7 +62,13 @@ export default function SignUp() {
       toast.success(data.data.message || "تم إنشاء صالتك بنجاح! 🎉");
       navigate("/dashboard");
     } catch (err) {
-      setError(err.response?.data?.message || "فشل إنشاء الحساب، يرجى المحاولة مجدداً");
+      const st = err.response?.status;
+      setError(
+        err.response?.data?.message ||
+        (!err.response ? "تعذّر الاتصال بالخادم، تحقّق من الإنترنت أو جرّب شبكة أخرى (واي فاي) ثم أعد المحاولة"
+          : st === 429 ? "محاولات كثيرة، انتظر دقيقة ثم حاول مجدداً"
+          : `فشل إنشاء الحساب (${st})، يرجى المحاولة مجدداً`)
+      );
     } finally {
       setLoading(false);
     }
@@ -105,7 +114,12 @@ export default function SignUp() {
               }}
               style={inputStyle}
             />
-            {slugInfo && (
+            {slugInfo?.offline && (
+              <div style={{ fontSize: 10, marginTop: 4, color: "var(--danger)" }}>
+                ✕ تعذّر الاتصال بالخادم — تحقّق من الإنترنت أو جرّب شبكة أخرى (واي فاي)
+              </div>
+            )}
+            {slugInfo && !slugInfo.offline && (
               <div style={{ fontSize: 10, marginTop: 4, color: slugInfo.available ? "var(--accent)" : "var(--danger)" }}>
                 {slugInfo.available
                   ? `✓ الرابط متاح: sgms.site/${slugInfo.slug}`
