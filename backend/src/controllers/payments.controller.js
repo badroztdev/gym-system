@@ -1,14 +1,17 @@
 // src/controllers/payments.controller.js
 import { query } from "../utils/db.js";
 import { sendMulticast } from "../services/fcm.service.js";
-import { athleteScopeSql, subscriptionInScope } from "../utils/access.js";
+import { athleteScopeSql, subscriptionInScope, hasPermission } from "../utils/access.js";
 import {
-  ok, created, noContent, notFound, badRequest, serverError, paginate,
+  ok, created, noContent, notFound, badRequest, forbidden, serverError, paginate,
 } from "../utils/response.js";
 
 // ── GET /api/payments ───────────────────────────────────────────
 export const getPayments = async (req, res) => {
   try {
+    // كان المسار يقبل subscriptions.view أيضاً؛ عرض المدفوعات يتطلب payments.view حصراً
+    if (!hasPermission(req.user, "payments.view"))
+      return forbidden(res, "ليس لديك صلاحية عرض المدفوعات");
     const { page, limit, offset } = paginate(req.query.page, req.query.limit);
     const { search, method, subscriptionId, dateFrom, dateTo } = req.query;
     const gymId = req.user.gym_id;
@@ -250,6 +253,8 @@ export const deletePayment = async (req, res) => {
 // ── GET /api/payments/stats ─────────────────────────────────────
 export const getPaymentsStats = async (req, res) => {
   try {
+    if (!hasPermission(req.user, "payments.view"))
+      return forbidden(res, "ليس لديك صلاحية عرض المدفوعات");
     const gymId = req.user.gym_id;
     const stParams = [gymId];
     const stScope = athleteScopeSql(req.user, "u", stParams);

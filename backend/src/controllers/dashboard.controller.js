@@ -1,6 +1,7 @@
 // src/controllers/dashboard.controller.js
 import { query } from "../utils/db.js";
-import { ok, serverError } from "../utils/response.js";
+import { ok, forbidden, serverError } from "../utils/response.js";
+import { hasPermission } from "../utils/access.js";
 
 // ── GET /api/dashboard/overview ─────────────────────────────────
 export const getOverview = async (req, res) => {
@@ -59,7 +60,8 @@ export const getOverview = async (req, res) => {
     return ok(res, {
       members:    members.rows[0],
       subscriptions: subs.rows[0],
-      revenue:    revenue.rows[0],
+      // الإيرادات والمستحقات لا تُرسل لمن لا يملك صلاحية عرض المدفوعات
+      revenue:    hasPermission(req.user, "payments.view") ? revenue.rows[0] : {},
       sessions:   sessions.rows[0],
       attendance: attendance.rows[0],
       staff:      staff.rows[0],
@@ -70,6 +72,8 @@ export const getOverview = async (req, res) => {
 // ── GET /api/dashboard/revenue-chart?period=week|month|year ────
 export const getRevenueChart = async (req, res) => {
   try {
+    if (!hasPermission(req.user, "payments.view"))
+      return forbidden(res, "ليس لديك صلاحية عرض المدفوعات");
     const { period = "week" } = req.query;
     const gymId = req.user.gym_id;
 
@@ -224,6 +228,7 @@ export const getRecentActivity = async (req, res) => {
       ORDER BY ts DESC LIMIT 10
     `, [gymId]);
 
-    return ok(res, rows);
+    // دفعات النشاط الأخير مخفية عمّن لا يملك صلاحية المدفوعات
+    return ok(res, hasPermission(req.user, "payments.view") ? rows : rows.filter(r => r.type !== "payment"));
   } catch (err) { serverError(res, err); }
 };

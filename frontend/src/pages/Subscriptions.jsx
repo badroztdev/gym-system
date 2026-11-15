@@ -6,6 +6,7 @@ import { subscriptionsService } from "@/services/subscriptions.service";
 import { plansService } from "@/services/plans.service";
 import { paymentsService } from "@/services/payments.service";
 import { useAuthStore } from "@/store/authStore";
+import { userCan } from "@/utils/permissions";
 import PageHeader from "@/components/layout/PageHeader";
 import { Button, Badge, Spinner, Empty, Confirm } from "@/components/ui";
 import SubscriptionForm from "@/components/subscriptions/SubscriptionForm";
@@ -87,19 +88,23 @@ function useHiddenStats() {
 function StatsRow() {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
+  const { user } = useAuthStore();
+  const canPay = userCan(user, "payments.view");
   const { data } = useQuery({ queryKey: ["subscriptions-stats"], queryFn: subscriptionsService.getStats });
   const s = data?.data || {};
   const [hidden, toggleHidden] = useHiddenStats();
 
-  const cards = [
+  const allCards = [
     { key: "activeCount",   label: t("subscriptions.statActiveCount"),   value: s.active_count,        color: "var(--accent)" },
     { key: "expiringCount", label: t("subscriptions.statExpiringCount"), value: s.expiring_count,      color: "var(--warning)" },
     { key: "revenueMonth",  label: t("subscriptions.statRevenueMonth"),  value: s.revenue_this_month,  color: "var(--accent2)", suffix: " دج", maskable: true },
     { key: "totalDue",      label: t("subscriptions.statTotalDue"),      value: s.total_due,           color: "var(--danger)",  suffix: " دج", maskable: true },
   ];
+  // الإيرادات والمستحقات تُخفى كلياً عمّن لا يملك صلاحية عرض المدفوعات
+  const cards = canPay ? allCards : allCards.filter(c => !c.maskable);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 10 : 12, marginBottom: isMobile ? 14 : 20 }}>
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : `repeat(${cards.length}, 1fr)`, gap: isMobile ? 10 : 12, marginBottom: isMobile ? 14 : 20 }}>
       {cards.map((c, i) => {
         const isHidden = c.maskable && hidden[c.key];
         return (
@@ -137,6 +142,8 @@ function SubscriptionsTab() {
   const { t, i18n } = useTranslation();
   const { user } = useAuthStore();
   const isOwner = user?.role === "owner";
+  const canPayView = userCan(user, "payments.view");
+  const canPayAdd  = canPayView && userCan(user, "payments.add");
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -231,9 +238,11 @@ function SubscriptionsTab() {
         <select value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} style={selectStyle(!!status)}>
           {STATUSES.map(s => <option key={s.value} value={s.value} style={optionStyle}>{s.label}</option>)}
         </select>
-        <select value={paymentStatus} onChange={e => { setPaymentStatus(e.target.value); setPage(1); }} style={selectStyle(!!paymentStatus)}>
-          {PAY_STATUSES.map(s => <option key={s.value} value={s.value} style={optionStyle}>{s.label}</option>)}
-        </select>
+        {canPayView && (
+          <select value={paymentStatus} onChange={e => { setPaymentStatus(e.target.value); setPage(1); }} style={selectStyle(!!paymentStatus)}>
+            {PAY_STATUSES.map(s => <option key={s.value} value={s.value} style={optionStyle}>{s.label}</option>)}
+          </select>
+        )}
       </div>
 
       {/* الجدول */}
@@ -247,7 +256,7 @@ function SubscriptionsTab() {
           <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 12 }}>
             {subs.map(s => {
               const st = subStatusInfo(s, t);
-              const pay = paymentStatusInfo(s, t);
+              const pay = canPayView ? paymentStatusInfo(s, t) : null;
               return (
                 <div key={s.id} className="fade-in" style={{
                   background: "var(--surface)", border: "1px solid var(--border)",
@@ -260,7 +269,7 @@ function SubscriptionsTab() {
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
                       <Badge label={st.label} type={st.type} />
-                      <Badge label={pay.label} type={pay.type} />
+                      {pay && <Badge label={pay.label} type={pay.type} />}
                     </div>
                   </div>
 
@@ -275,19 +284,23 @@ function SubscriptionsTab() {
                       <div style={{ fontSize: 10, color: "var(--muted)" }}>{t("subscriptions.price")}</div>
                       <div className="mono" style={{ color: "var(--text)" }}>{Number(s.price).toFixed(0)}</div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 10, color: "var(--muted)" }}>{t("subscriptions.paid")}</div>
-                      <div className="mono" style={{ color: "var(--accent)" }}>{Number(s.total_paid).toFixed(0)}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 10, color: "var(--muted)" }}>{t("subscriptions.remaining")}</div>
-                      <div className="mono" style={{ color: Number(s.remaining) > 0 ? "var(--warning)" : "var(--muted)" }}>{Number(s.remaining).toFixed(0)}</div>
-                    </div>
+                    {canPayView && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--muted)" }}>{t("subscriptions.paid")}</div>
+                        <div className="mono" style={{ color: "var(--accent)" }}>{Number(s.total_paid).toFixed(0)}</div>
+                      </div>
+                    )}
+                    {canPayView && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--muted)" }}>{t("subscriptions.remaining")}</div>
+                        <div className="mono" style={{ color: Number(s.remaining) > 0 ? "var(--warning)" : "var(--muted)" }}>{Number(s.remaining).toFixed(0)}</div>
+                      </div>
+                    )}
                   </div>
 
                   {/* أزرار الإجراءات: شبكة بأعمدة متساوية (تفاصيل · دفعة · تجديد) + حذف في سطر مستقل — متناسقة بالعربية والفرنسية */}
                   {(() => {
-                    const showPay = Number(s.remaining) > 0 && s.status === "active";
+                    const showPay = canPayAdd && Number(s.remaining) > 0 && s.status === "active";
                     const showRenew = canRenew(s);
                     const cols = 1 + (showPay ? 1 : 0) + (showRenew ? 1 : 0);
                     const btn = { display: "flex", alignItems: "center", justifyContent: "center", minWidth: 0, padding: "9px 3px", fontSize: 12, fontWeight: 600, width: "100%", overflow: "hidden" };
@@ -318,7 +331,11 @@ function SubscriptionsTab() {
             <table style={{ width: "100%", borderCollapse: "collapse", direction: i18n.language === "ar" ? "rtl" : "ltr" }}>
               <thead>
                 <tr style={{ background: "var(--surface)" }}>
-                  {[t("subscriptions.colAthlete"), t("subscriptions.colPlan"), t("subscriptions.colPeriod"), t("subscriptions.colPrice"), t("subscriptions.colPaid"), t("subscriptions.colRemaining"), t("subscriptions.colStatus"), t("subscriptions.colPayment"), t("subscriptions.colActions")].map(h => (
+                  {[t("subscriptions.colAthlete"), t("subscriptions.colPlan"), t("subscriptions.colPeriod"), t("subscriptions.colPrice"),
+                    ...(canPayView ? [t("subscriptions.colPaid"), t("subscriptions.colRemaining")] : []),
+                    t("subscriptions.colStatus"),
+                    ...(canPayView ? [t("subscriptions.colPayment")] : []),
+                    t("subscriptions.colActions")].map(h => (
                     <th key={h} style={{ padding: "11px 16px", fontSize: 11, color: "var(--muted)", fontWeight: 500, textAlign: "right", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
@@ -326,7 +343,7 @@ function SubscriptionsTab() {
               <tbody>
                 {subs.map(s => {
                   const st = subStatusInfo(s, t);
-                  const pay = paymentStatusInfo(s, t);
+                  const pay = canPayView ? paymentStatusInfo(s, t) : null;
                   return (
                     <tr key={s.id} className="fade-in" style={{ borderTop: "1px solid var(--border)" }}
                       onMouseEnter={e => e.currentTarget.style.background = "var(--surface)"}
@@ -344,20 +361,24 @@ function SubscriptionsTab() {
                       <td style={{ padding: "12px 16px" }}>
                         <span className="mono" style={{ fontSize: 12, color: "var(--text)" }}>{Number(s.price).toFixed(0)}</span>
                       </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <span className="mono" style={{ fontSize: 12, color: "var(--accent)" }}>{Number(s.total_paid).toFixed(0)}</span>
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <span className="mono" style={{ fontSize: 12, color: Number(s.remaining) > 0 ? "var(--warning)" : "var(--muted)" }}>
-                          {Number(s.remaining).toFixed(0)}
-                        </span>
-                      </td>
+                      {canPayView && (
+                        <td style={{ padding: "12px 16px" }}>
+                          <span className="mono" style={{ fontSize: 12, color: "var(--accent)" }}>{Number(s.total_paid).toFixed(0)}</span>
+                        </td>
+                      )}
+                      {canPayView && (
+                        <td style={{ padding: "12px 16px" }}>
+                          <span className="mono" style={{ fontSize: 12, color: Number(s.remaining) > 0 ? "var(--warning)" : "var(--muted)" }}>
+                            {Number(s.remaining).toFixed(0)}
+                          </span>
+                        </td>
+                      )}
                       <td style={{ padding: "12px 16px" }}><Badge label={st.label} type={st.type} /></td>
-                      <td style={{ padding: "12px 16px" }}><Badge label={pay.label} type={pay.type} /></td>
+                      {canPayView && <td style={{ padding: "12px 16px" }}><Badge label={pay.label} type={pay.type} /></td>}
                       <td style={{ padding: "12px 16px" }}>
                         <div style={{ display: "flex", gap: 6 }}>
                           <Button variant="ghost" size="sm" onClick={() => setDetailId(s.id)} style={{ color: "var(--accent2)" }}>{t("subscriptions.actionDetails")}</Button>
-                          {Number(s.remaining) > 0 && s.status === "active" && (
+                          {canPayAdd && Number(s.remaining) > 0 && s.status === "active" && (
                             <Button variant="ghost" size="sm" onClick={() => setPaymentSub(s)} style={{ color: "var(--accent)" }}>{t("subscriptions.actionPayment")}</Button>
                           )}
                           {canRenew(s) && (
@@ -748,7 +769,9 @@ const optionStyle = { background: "var(--card)", color: "var(--text)" };
 
 export default function SubscriptionsPage() {
   const { t } = useTranslation();
-  const TABS = getTabs(t);
+  const { user } = useAuthStore();
+  // تبويب المدفوعات يظهر فقط لمن يملك صلاحية عرض المدفوعات
+  const TABS = getTabs(t).filter(x => x.id !== "payments" || userCan(user, "payments.view"));
   const [tab, setTab] = useState("subscriptions");
   const isMobile = useIsMobile();
 
@@ -774,7 +797,7 @@ export default function SubscriptionsPage() {
       <main style={{ padding: isMobile ? "14px 12px" : "24px 28px", flex: 1 }}>
         {tab === "subscriptions" && <SubscriptionsTab />}
         {tab === "plans" && <PlansTab />}
-        {tab === "payments" && <PaymentsTab />}
+        {tab === "payments" && userCan(user, "payments.view") && <PaymentsTab />}
       </main>
     </>
   );

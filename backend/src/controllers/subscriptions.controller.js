@@ -1,6 +1,10 @@
 // src/controllers/subscriptions.controller.js
 import { query, transaction } from "../utils/db.js";
-import { athleteScopeSql, athleteInScope, subscriptionInScope } from "../utils/access.js";
+import { athleteScopeSql, athleteInScope, subscriptionInScope, hasPermission } from "../utils/access.js";
+
+// المبالغ (المدفوع/المتبقي/الدفعات/الإيرادات) لا تُرسل إلا لمن يملك payments.view
+const canSeePayments = (user) => hasPermission(user, "payments.view");
+const stripMoney = (row) => { delete row.total_paid; delete row.remaining; return row; };
 import {
   ok, created, notFound, badRequest, serverError, paginate,
 } from "../utils/response.js";
@@ -46,7 +50,9 @@ export const getSubscriptions = async (req, res) => {
     const where = conditions.join(" AND ");
 
     let paymentFilter = "";
-    if (paymentStatus === "paid")    paymentFilter = "WHERE x.remaining <= 0";
+    const canPay = canSeePayments(req.user);
+    if (!canPay) { /* لا فلترة بحالة الدفع لمن لا يرى المدفوعات */ }
+    else if (paymentStatus === "paid")    paymentFilter = "WHERE x.remaining <= 0";
     if (paymentStatus === "partial") paymentFilter = "WHERE x.remaining > 0 AND x.total_paid > 0";
     if (paymentStatus === "unpaid")  paymentFilter = "WHERE x.total_paid = 0";
 
@@ -87,7 +93,7 @@ export const getSubscriptions = async (req, res) => {
       [...params, limit, offset]
     );
 
-    return ok(res, rows, {
+    return ok(res, canPay ? rows : rows.map(stripMoney), {
       meta: { total, page, limit, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
@@ -117,6 +123,9 @@ export const getSubscription = async (req, res) => {
       gParams
     );
     if (!rows.length) return notFound(res, "الاشتراك غير موجود");
+
+    if (!canSeePayments(req.user))
+      return ok(res, { ...stripMoney(rows[0]), payments: [], payments_hidden: true });
 
     const payments = await query(
       `SELECT id, amount, method, status, notes, paid_at, created_at
@@ -286,6 +295,10 @@ export const getSubscriptionStats = async (req, res) => {
       stParams
     );
 
+    if (!canSeePayments(req.user)) {
+      const { active_revenue_expected, total_due, ...counts } = rows[0];
+      return ok(res, counts);
+    }
     return ok(res, { ...rows[0], ...revenue.rows[0] });
   } catch (err) {
     serverError(res, err);

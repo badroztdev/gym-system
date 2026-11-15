@@ -9,6 +9,8 @@ import {
 import PageHeader from "@/components/layout/PageHeader";
 import { Spinner, Badge } from "@/components/ui";
 import { dashboardService } from "@/services/dashboard.service";
+import { useAuthStore } from "@/store/authStore";
+import { userCan } from "@/utils/permissions";
 
 const getPeriods = (t) => [
   { value: "week",  label: t("dashboard.periodWeek") },
@@ -60,6 +62,9 @@ function PeriodSelector({ value, onChange, periods }) {
 export default function DashboardPage() {
   const { t } = useTranslation();
   const PERIODS = getPeriods(t);
+  const { user } = useAuthStore();
+  // الإيرادات والمستحقات (بطاقات + رسم) تُخفى عمّن لا يملك صلاحية عرض المدفوعات
+  const canPay = userCan(user, "payments.view");
 
   const [revenuePeriod, setRevenuePeriod]     = useState("week");
   const [attendancePeriod, setAttendancePeriod] = useState("week");
@@ -80,6 +85,7 @@ export default function DashboardPage() {
   const { data: revenueData } = useQuery({
     queryKey: ["revenue-chart", revenuePeriod],
     queryFn: () => dashboardService.getRevenueChart(revenuePeriod),
+    enabled: canPay,
   });
 
   const { data: attendanceData } = useQuery({
@@ -125,11 +131,11 @@ export default function DashboardPage() {
       <main style={{ padding: isMobile ? "14px 12px" : "24px 28px", flex: 1 }}>
 
         {/* ══ الصف 1 — الأعضاء والاشتراكات ══ */}
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 10 : 14, marginBottom: isMobile ? 10 : 14 }} className="stats-grid">
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : `repeat(${canPay ? 4 : 2}, 1fr)`, gap: isMobile ? 10 : 14, marginBottom: isMobile ? 10 : 14 }} className="stats-grid">
           <StatCard icon="👥" label={t("dashboard.statTotalAthletes")} value={o.members?.total_athletes || 0} sub={t("dashboard.statNewThisMonth", { count: o.members?.new_this_month || 0 })} color="var(--accent2)" delay={1} isMobile={isMobile} />
           <StatCard icon="🎫" label={t("dashboard.statActiveSubs")} value={o.subscriptions?.active_count || 0} sub={t("dashboard.statExpiringSoon", { count: o.subscriptions?.expiring_count || 0 })} color="var(--accent)" delay={2} isMobile={isMobile} />
-          <StatCard icon="💰" label={t("dashboard.statRevenueMonth")} value={`${Number(o.revenue?.this_month || 0).toLocaleString()} ${t("common.currency")}`} sub={t("dashboard.statRevenueToday", { amount: `${Number(o.revenue?.today || 0).toLocaleString()} ${t("common.currency")}` })} color="var(--accent3)" delay={3} isMobile={isMobile} />
-          <StatCard icon="⚠️" label={t("dashboard.statPendingDue")} value={`${Number(o.revenue?.total_due || 0).toLocaleString()} ${t("common.currency")}`} sub={t("dashboard.statOverdueCount", { count: o.subscriptions?.overdue_count || 0 })} color="var(--danger)" delay={4} isMobile={isMobile} />
+          {canPay && <StatCard icon="💰" label={t("dashboard.statRevenueMonth")} value={`${Number(o.revenue?.this_month || 0).toLocaleString()} ${t("common.currency")}`} sub={t("dashboard.statRevenueToday", { amount: `${Number(o.revenue?.today || 0).toLocaleString()} ${t("common.currency")}` })} color="var(--accent3)" delay={3} isMobile={isMobile} />}
+          {canPay && <StatCard icon="⚠️" label={t("dashboard.statPendingDue")} value={`${Number(o.revenue?.total_due || 0).toLocaleString()} ${t("common.currency")}`} sub={t("dashboard.statOverdueCount", { count: o.subscriptions?.overdue_count || 0 })} color="var(--danger)" delay={4} isMobile={isMobile} />}
         </div>
 
         {/* ══ الصف 2 — الحصص والحضور والفريق ══ */}
@@ -141,7 +147,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ══ رسم الإيرادات ══ */}
-        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? 14 : 20, marginBottom: 16 }}>
+        {canPay && <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? 14 : 20, marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{t("dashboard.revenueChartTitle")}</div>
             <PeriodSelector value={revenuePeriod} onChange={setRevenuePeriod} periods={PERIODS} />
@@ -155,7 +161,7 @@ export default function DashboardPage() {
               <Line type="monotone" dataKey="value" stroke="#6ee7b7" strokeWidth={2.5} dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </div>}
 
         {/* ══ رسم الحضور ══ */}
         <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: isMobile ? 14 : 20, marginBottom: 16 }}>
