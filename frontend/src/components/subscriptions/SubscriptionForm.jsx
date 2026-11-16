@@ -8,8 +8,6 @@ import { plansService } from "@/services/plans.service";
 import { subscriptionsService } from "@/services/subscriptions.service";
 import api from "@/services/api";
 import toast from "react-hot-toast";
-import { useAuthStore } from "@/store/authStore";
-import { userCan } from "@/utils/permissions";
 
 function toLocalDateString(d) {
   const year  = d.getFullYear();
@@ -26,9 +24,7 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
   const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const { user } = useAuthStore();
   const isAr = i18n.language === "ar";
-  const canPayAdd = userCan(user, "payments.add");
 
   // ── حصة لزائر غير مسجَّل ──
   const EMPTY_DROP = { visitorName: "", visitorPhone: "", sessionLabel: "", price: "", paidAmount: "", method: "cash", sessionDate: today(), notes: "" };
@@ -55,7 +51,7 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
   });
   const plans = (plansData?.data || []).filter(p => p.is_active);
 
-  const [form, setForm] = useState({ planId: "", startDate: today(), price: "", notes: "" });
+  const [form, setForm] = useState({ planId: "", startDate: today(), price: "", notes: "", paidAmount: "", method: "cash" });
   const [startTouched, setStartTouched] = useState(false);
 
   // ── اشتراكاته النشطة الحالية (لاقتراح بداية بعد انتهاء الحالي: تجديد مسبق بلا تداخل) ──
@@ -74,7 +70,7 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
     if (!open) return;
     setAthleteSearch("");
     setSelectedAthlete(presetAthlete || null);
-    setForm({ planId: "", startDate: today(), price: "", notes: "" });
+    setForm({ planId: "", startDate: today(), price: "", notes: "", paidAmount: "", method: "cash" });
     setStartTouched(false);
     setErrors({});
     setDropMode(false);
@@ -103,6 +99,7 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
     if (!selectedAthlete) errs.athlete = t("subscriptionForm.errorAthlete");
     if (!form.planId) errs.planId = t("subscriptionForm.errorPlan");
     if (form.price === "" || Number(form.price) < 0) errs.price = t("subscriptionForm.errorPrice");
+    if (form.paidAmount !== "" && Number(form.paidAmount) > Number(form.price)) errs.paidAmount = t("subscriptionForm.dropIn.errPaid");
     return errs;
   };
 
@@ -111,7 +108,7 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
     if (drop.visitorName.trim().length < 2) errs.visitorName = t("subscriptionForm.dropIn.errName");
     if (!drop.sessionLabel.trim()) errs.sessionLabel = t("subscriptionForm.dropIn.errLabel");
     if (drop.price === "" || Number(drop.price) < 0) errs.price = t("subscriptionForm.dropIn.errPrice");
-    if (canPayAdd && drop.paidAmount !== "" && Number(drop.paidAmount) > Number(drop.price)) errs.paidAmount = t("subscriptionForm.dropIn.errPaid");
+    if (drop.paidAmount !== "" && Number(drop.paidAmount) > Number(drop.price)) errs.paidAmount = t("subscriptionForm.dropIn.errPaid");
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setErrors({});
     setLoading(true);
@@ -122,7 +119,7 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
         visitorPhone: drop.visitorPhone.trim() || null,
         sessionLabel: drop.sessionLabel.trim(),
         price: Number(drop.price),
-        paidAmount: canPayAdd && drop.paidAmount !== "" ? Number(drop.paidAmount) : 0,
+        paidAmount: drop.paidAmount !== "" ? Number(drop.paidAmount) : 0,
         method: drop.method,
         sessionDate: drop.sessionDate,
         notes: drop.notes || null,
@@ -150,6 +147,8 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
         startDate: form.startDate,
         price:     Number(form.price),
         notes:     form.notes || null,
+        paidAmount: form.paidAmount !== "" ? Number(form.paidAmount) : 0,
+        method:    form.method,
       });
       toast.success(t("subscriptionForm.toastCreated"));
       onSuccess?.();
@@ -203,7 +202,7 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
                 onChange={e => setDrop(d => ({ ...d, price: e.target.value, paidAmount: d.paidAmount === "" || d.paidAmount === d.price ? e.target.value : d.paidAmount }))} error={errors.price} />
               <Input label={t("subscriptionForm.dropIn.sessionDate")} type="date" value={drop.sessionDate} onChange={setD("sessionDate")} />
             </div>
-            {canPayAdd && (
+            {(
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
                 <Input label={t("subscriptionForm.dropIn.paidAmount")} type="number" min="0" step="0.01" value={drop.paidAmount} onChange={setD("paidAmount")} error={errors.paidAmount} />
                 <Select label={t("subscriptionForm.dropIn.method")} value={drop.method} onChange={setD("method")}
@@ -336,6 +335,23 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
             {t("subscriptionForm.endDateInfo")}<span className="mono">{addDays(form.startDate, selectedPlan.duration_days)}</span>
             {selectedPlan.sessions_limit && <>{t("subscriptionForm.sessionsCountInfo")}<span className="mono">{selectedPlan.sessions_limit}</span></>}
           </div>
+        )}
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, alignItems: "end" }}>
+          <Input label={t("subscriptionForm.paidNow")} type="number" min="0" step="0.01" value={form.paidAmount} onChange={set("paidAmount")} error={errors.paidAmount} />
+          <Select label={t("subscriptionForm.dropIn.method")} value={form.method} onChange={set("method")}
+            options={[
+              { value: "cash", label: t("subscriptionForm.dropIn.cash") },
+              { value: "card", label: t("subscriptionForm.dropIn.card") },
+              { value: "bank_transfer", label: t("subscriptionForm.dropIn.bank") },
+              { value: "online", label: t("subscriptionForm.dropIn.online") },
+            ]} />
+        </div>
+        {form.price !== "" && (
+          <button type="button" onClick={() => setForm(f => ({ ...f, paidAmount: f.price }))}
+            style={{ alignSelf: "flex-start", background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--accent2)", fontSize: 12, textDecoration: "underline", fontFamily: "inherit" }}>
+            {t("subscriptionForm.payFull")}
+          </button>
         )}
 
         <Input

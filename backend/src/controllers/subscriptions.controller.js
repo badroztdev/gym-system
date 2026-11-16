@@ -4,6 +4,8 @@ import crypto from "crypto";
 import { query, transaction } from "../utils/db.js";
 import { athleteScopeSql, athleteInScope, subscriptionInScope, hasPermission } from "../utils/access.js";
 
+const METHODS = ["cash", "card", "bank_transfer", "online"];
+
 // المبالغ (المدفوع/المتبقي/الدفعات/الإيرادات) لا تُرسل إلا لمن يملك payments.view
 const canSeePayments = (user) => hasPermission(user, "payments.view");
 const stripMoney = (row) => { delete row.total_paid; delete row.remaining; return row; };
@@ -150,6 +152,12 @@ export const createSubscription = async (req, res) => {
     if (req.body?.dropIn) return createDropIn(req, res);
     const { athleteId, planId, startDate, price, notes } = req.body;
     const gymId = req.user.gym_id;
+    // ✅ دفعة أولى اختيارية عند إنشاء الاشتراك: متاحة لكل من يملك subscriptions.add
+    // (لا تتطلب أي صلاحية على المدفوعات ولا تكشف الإيرادات)
+    const method = METHODS.includes(req.body.method) ? req.body.method : "cash";
+    const paid = req.body.paidAmount === undefined || req.body.paidAmount === "" || req.body.paidAmount === null
+      ? 0 : Number(req.body.paidAmount);
+    if (!Number.isFinite(paid) || paid < 0) return badRequest(res, "المبلغ المدفوع غير صحيح");
 
     const athlete = await query(
       "SELECT id FROM users WHERE id = $1 AND gym_id = $2",
@@ -180,20 +188,32 @@ export const createSubscription = async (req, res) => {
       start = cur.rows[0]?.d || new Date().toISOString().slice(0, 10);
     }
 
-    const { rows } = await query(
-      `INSERT INTO subscriptions
-         (athlete_id, plan_id, start_date, end_date, status,
-          sessions_remaining, price, notes, created_by)
-       VALUES (
-         $1, $2, $3::date,
-         ($3::date + ($4 || ' days')::interval)::date,
-         'active', $5, $6, $7, $8
-       )
-       RETURNING *`,
-      [athleteId, planId, start, p.duration_days, p.sessions_limit, finalPrice, notes || null, req.user.id]
-    );
+    if (paid > Number(finalPrice) + 0.01) return badRequest(res, "المبلغ المدفوع أكبر من السعر");
 
-    return created(res, rows[0]);
+    const row = await transaction(async (client) => {
+      const ins = await client.query(
+        `INSERT INTO subscriptions
+           (athlete_id, plan_id, start_date, end_date, status,
+            sessions_remaining, price, notes, created_by)
+         VALUES (
+           $1, $2, $3::date,
+           ($3::date + ($4 || ' days')::interval)::date,
+           'active', $5, $6, $7, $8
+         )
+         RETURNING *`,
+        [athleteId, planId, start, p.duration_days, p.sessions_limit, finalPrice, notes || null, req.user.id]
+      );
+      if (paid > 0) {
+        await client.query(
+          `INSERT INTO payments (subscription_id, amount, method, status, notes, recorded_by, paid_at)
+           VALUES ($1, $2, $3, 'paid', NULL, $4, NOW())`,
+          [ins.rows[0].id, paid, method, req.user.id]
+        );
+      }
+      return ins.rows[0];
+    });
+
+    return created(res, row);
   } catch (err) {
     serverError(res, err);
   }
@@ -316,7 +336,6 @@ export const getSubscriptionStats = async (req, res) => {
 // ويرتبط بحساب داخلي واحد معطَّل لكل صالة (phone = '__visitor__') لا يظهر في الأعضاء ولا يمكنه الدخول.
 const GUEST_PHONE = "__visitor__";
 const GUEST_PLAN  = "حصة واحدة (زائر)";
-const METHODS = ["cash", "card", "bank_transfer", "online"];
 
 async function createDropIn(req, res) {
   try {
@@ -334,9 +353,8 @@ async function createDropIn(req, res) {
     if (!label)           return badRequest(res, "اسم الحصة مطلوب");
     if (!Number.isFinite(price) || price < 0) return badRequest(res, "السعر غير صحيح");
 
-    // المبلغ المدفوع: يُسجَّل فقط لمن يملك صلاحية إضافة المدفوعات
-    const canAddPay = hasPermission(req.user, "payments.add");
-    let paid = canAddPay && b.paidAmount !== undefined && b.paidAmount !== "" ? Number(b.paidAmount) : 0;
+    // المبلغ المدفوع: متاح لكل من يملك subscriptions.add (لا يكشف الإيرادات)
+    let paid = b.paidAmount !== undefined && b.paidAmount !== "" && b.paidAmount !== null ? Number(b.paidAmount) : 0;
     if (!Number.isFinite(paid) || paid < 0) return badRequest(res, "المبلغ المدفوع غير صحيح");
     if (paid > price + 0.01) return badRequest(res, "المبلغ المدفوع أكبر من السعر");
 

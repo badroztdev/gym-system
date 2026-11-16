@@ -794,7 +794,9 @@
       "errPaid": "Le montant payé dépasse le prix",
       "toast": "Séance enregistrée ✅",
       "visitorHint": "💡 Pour un visiteur non inscrit : la séance est enregistrée avec son paiement et compte dans les revenus."
-    }
+    },
+    "paidNow": "Montant payé maintenant (optionnel)",
+    "payFull": "Payer la totalité"
   },
   "sessionModal": {
     "subtitleEdit": "Vous pouvez modifier la séance ici.",
