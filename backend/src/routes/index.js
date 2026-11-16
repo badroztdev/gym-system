@@ -121,8 +121,17 @@ router.get   ("/subscriptions/stats", authenticate, perm("subscriptions.view", "
 router.get   ("/subscriptions",       authenticate, perm("subscriptions.view", "payments.view"), getSubscriptions);
 router.get   ("/subscriptions/:id",   authenticate, perm("subscriptions.view", "payments.view"), getSubscription);
 router.post  ("/subscriptions",       authenticate, perm("subscriptions.add"), [
-  body("athleteId").notEmpty().withMessage("الرياضي مطلوب"),
-  body("planId").notEmpty().withMessage("الخطة مطلوبة"),
+  // حصة الزائر (dropIn) لا تحتاج athleteId/planId — تُتحقق حقولها داخل المتحكم
+  body("athleteId").custom((v, { req }) => {
+    if (req.body.dropIn) return true;
+    if (!v) throw new Error("الرياضي مطلوب");
+    return true;
+  }),
+  body("planId").custom((v, { req }) => {
+    if (req.body.dropIn) return true;
+    if (!v) throw new Error("الخطة مطلوبة");
+    return true;
+  }),
   validate,
 ], createSubscription);
 router.patch ("/subscriptions/:id",   authenticate, perm("subscriptions.edit"), updateSubscription);
