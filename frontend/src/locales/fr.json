@@ -259,7 +259,10 @@
     "planDeletePermanentlyMessage": "Ce plan sera définitivement supprimé de la base de données et cette action est irréversible. Êtes-vous sûr ?",
     "toastPlanDeletedPermanently": "Plan supprimé définitivement",
     "statusUpcoming": "À venir",
-    "actionRenew": "Renouveler"
+    "actionRenew": "Renouveler",
+    "visitorBadge": "Visiteur",
+    "sessionLabelShort": "Séance",
+    "planLabelShort": "Plan"
   },
   "sessions": {
     "pageTitle": "Séances et horaires",
@@ -769,7 +772,29 @@
     "renewCurrent": "Cet athlète a un abonnement actif qui se termine le {{date}}",
     "renewStarts": "Le nouvel abonnement commencera automatiquement après, le {{start}} — aucun jour perdu et pas de double comptage.",
     "renewFromToday": "Commencer aujourd'hui à la place",
-    "renewOverlap": "⚠️ La date de début chevauche son abonnement actuel (fin le {{date}})."
+    "renewOverlap": "⚠️ La date de début chevauche son abonnement actuel (fin le {{date}}).",
+    "dropIn": {
+      "tabMember": "Membre inscrit",
+      "tabVisitor": "Séance visiteur",
+      "visitorName": "Nom du visiteur *",
+      "visitorPhone": "Téléphone (optionnel)",
+      "sessionLabel": "Séance *",
+      "sessionPlaceholder": "Ex : séance de judo",
+      "price": "Prix (DA) *",
+      "sessionDate": "Date de la séance",
+      "paidAmount": "Montant payé (DA)",
+      "method": "Mode de paiement",
+      "cash": "Espèces",
+      "card": "Carte",
+      "bank": "Virement bancaire",
+      "online": "En ligne",
+      "errName": "Le nom du visiteur est requis",
+      "errLabel": "Saisissez le nom de la séance",
+      "errPrice": "Le prix est requis",
+      "errPaid": "Le montant payé dépasse le prix",
+      "toast": "Séance enregistrée ✅",
+      "visitorHint": "💡 Pour un visiteur non inscrit : la séance est enregistrée avec son paiement et compte dans les revenus."
+    }
   },
   "sessionModal": {
     "subtitleEdit": "Vous pouvez modifier la séance ici.",
@@ -874,5 +899,37 @@
     "tooMany": "Trop de tentatives, réessayez plus tard",
     "errorGeneric": "Échec de l'envoi, réessayez",
     "privacy": "Vos données sont transmises uniquement au club"
+  },
+  "subscriptionDetail": {
+    "title": "Détails de l'abonnement",
+    "planLbl": "Plan",
+    "price": "Prix",
+    "start": "Date de début",
+    "end": "Date de fin",
+    "sessionsLeft": "Séances restantes",
+    "notes": "Notes",
+    "total": "Total",
+    "paid": "Payé",
+    "remaining": "Restant",
+    "addPayment": "+ Enregistrer un paiement",
+    "history": "Historique des paiements",
+    "noPayments": "Aucun paiement enregistré",
+    "suspend": "Suspendre l'abonnement",
+    "cancel": "Annuler l'abonnement",
+    "reactivate": "Réactiver",
+    "cancelled": "Annulé",
+    "suspended": "Suspendu",
+    "expired": "Expiré",
+    "active": "Actif",
+    "endsIn": "Expire dans {{days}}j",
+    "toastCancelled": "Abonnement annulé ✅",
+    "toastSuspended": "Abonnement suspendu ✅",
+    "toastActive": "Abonnement réactivé ✅",
+    "toastUpdated": "Abonnement mis à jour ✅",
+    "cash": "Espèces",
+    "card": "Carte",
+    "bank_transfer": "Virement bancaire",
+    "online": "En ligne",
+    "da": "DA"
   }
 }

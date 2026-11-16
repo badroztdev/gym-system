@@ -142,6 +142,7 @@ function SubscriptionsTab() {
   const { t, i18n } = useTranslation();
   const { user } = useAuthStore();
   const isOwner = user?.role === "owner";
+  const isAr = i18n.language === "ar";
   const canPayView = userCan(user, "payments.view");
   const canPayAdd  = canPayView && userCan(user, "payments.add");
   const isMobile = useIsMobile();
@@ -184,7 +185,7 @@ function SubscriptionsTab() {
 
   // زر "تجديد": اشتراك نشط ينتهي خلال 7 أيام (أو انتهى) ولم يُجدَّد بعد
   const canRenew = (s) => {
-    if (s.status !== "active" || s.has_next) return false;
+    if (s.is_drop_in || s.status !== "active" || s.has_next) return false;
     if (String(s.start_date).slice(0, 10) > localToday()) return false;
     const days = Math.ceil((new Date(s.end_date) - new Date()) / 86400000);
     return days <= 7;
@@ -264,7 +265,7 @@ function SubscriptionsTab() {
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{s.athlete_name}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{s.athlete_name}{s.is_drop_in && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent2)", border: "1px solid var(--accent2)", borderRadius: 6, padding: "1px 6px", marginInlineStart: 6 }}>{t("subscriptions.visitorBadge")}</span>}</div>
                       <div className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>{s.athlete_phone}</div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
@@ -350,7 +351,7 @@ function SubscriptionsTab() {
                       onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                     >
                       <td style={{ padding: "12px 16px" }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{s.athlete_name}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{s.athlete_name}{s.is_drop_in && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent2)", border: "1px solid var(--accent2)", borderRadius: 6, padding: "1px 6px", marginInlineStart: 6 }}>{t("subscriptions.visitorBadge")}</span>}</div>
                         <div className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>{s.athlete_phone}</div>
                       </td>
                       <td style={{ padding: "12px 16px", fontSize: 12, color: "var(--muted-lt)" }}>{s.plan_name}</td>

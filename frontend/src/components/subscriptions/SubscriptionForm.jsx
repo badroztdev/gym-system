@@ -8,6 +8,8 @@ import { plansService } from "@/services/plans.service";
 import { subscriptionsService } from "@/services/subscriptions.service";
 import api from "@/services/api";
 import toast from "react-hot-toast";
+import { useAuthStore } from "@/store/authStore";
+import { userCan } from "@/utils/permissions";
 
 function toLocalDateString(d) {
   const year  = d.getFullYear();
@@ -24,6 +26,15 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
   const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const { user } = useAuthStore();
+  const isAr = i18n.language === "ar";
+  const canPayAdd = userCan(user, "payments.add");
+
+  // ── حصة لزائر غير مسجَّل ──
+  const EMPTY_DROP = { visitorName: "", visitorPhone: "", sessionLabel: "", price: "", paidAmount: "", method: "cash", sessionDate: today(), notes: "" };
+  const [dropMode, setDropMode] = useState(false);
+  const [drop, setDrop] = useState(EMPTY_DROP);
+  const setD = (f) => (e) => setDrop(d => ({ ...d, [f]: e.target.value }));
 
   // ── الرياضي ──────────────────────────────────────────────────
   const [athleteSearch, setAthleteSearch] = useState("");
@@ -66,7 +77,9 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
     setForm({ planId: "", startDate: today(), price: "", notes: "" });
     setStartTouched(false);
     setErrors({});
-  }, [open, presetAthlete]);
+    setDropMode(false);
+    setDrop({ ...EMPTY_DROP, sessionDate: today() });
+  }, [open, presetAthlete]); // eslint-disable-line
 
   // لديه اشتراك لم ينتهِ → يبدأ الجديد في اليوم التالي لانتهائه (ما لم يغيّر المستخدم التاريخ بنفسه)
   useEffect(() => {
@@ -93,7 +106,39 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
     return errs;
   };
 
+  const handleDropSubmit = async () => {
+    const errs = {};
+    if (drop.visitorName.trim().length < 2) errs.visitorName = t("subscriptionForm.dropIn.errName");
+    if (!drop.sessionLabel.trim()) errs.sessionLabel = t("subscriptionForm.dropIn.errLabel");
+    if (drop.price === "" || Number(drop.price) < 0) errs.price = t("subscriptionForm.dropIn.errPrice");
+    if (canPayAdd && drop.paidAmount !== "" && Number(drop.paidAmount) > Number(drop.price)) errs.paidAmount = t("subscriptionForm.dropIn.errPaid");
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    setErrors({});
+    setLoading(true);
+    try {
+      await subscriptionsService.create({
+        dropIn: true,
+        visitorName: drop.visitorName.trim(),
+        visitorPhone: drop.visitorPhone.trim() || null,
+        sessionLabel: drop.sessionLabel.trim(),
+        price: Number(drop.price),
+        paidAmount: canPayAdd && drop.paidAmount !== "" ? Number(drop.paidAmount) : 0,
+        method: drop.method,
+        sessionDate: drop.sessionDate,
+        notes: drop.notes || null,
+      });
+      toast.success(t("subscriptionForm.dropIn.toast"));
+      onSuccess?.();
+      onClose();
+    } catch {
+      // handled by interceptor
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async () => {
+    if (dropMode) return handleDropSubmit();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setErrors({});
@@ -132,6 +177,48 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
   return (
     <Modal open={open} onClose={onClose} title={t("subscriptionForm.addTitle")} width={520}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+        {/* ── نوع الاشتراك: منخرط / حصة لزائر ── */}
+        {!presetAthlete && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, background: "var(--surface)", padding: 4, borderRadius: "var(--radius-sm)" }}>
+            {[[false, t("subscriptionForm.dropIn.tabMember")], [true, t("subscriptionForm.dropIn.tabVisitor")]].map(([v, label]) => (
+              <button key={String(v)} type="button" onClick={() => { setDropMode(v); setErrors({}); }}
+                style={{
+                  padding: "9px 8px", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer",
+                  fontFamily: "inherit", fontSize: 13, fontWeight: 600,
+                  background: dropMode === v ? "var(--accent)" : "transparent",
+                  color: dropMode === v ? "#fff" : "var(--muted-lt)",
+                }}>{label}</button>
+            ))}
+          </div>
+        )}
+
+        {dropMode ? (
+          <>
+            <Input label={t("subscriptionForm.dropIn.visitorName")} value={drop.visitorName} onChange={setD("visitorName")} error={errors.visitorName} />
+            <Input label={t("subscriptionForm.dropIn.visitorPhone")} type="tel" inputMode="tel" value={drop.visitorPhone} onChange={setD("visitorPhone")} />
+            <Input label={t("subscriptionForm.dropIn.sessionLabel")} placeholder={t("subscriptionForm.dropIn.sessionPlaceholder")} value={drop.sessionLabel} onChange={setD("sessionLabel")} error={errors.sessionLabel} />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+              <Input label={t("subscriptionForm.dropIn.price")} type="number" min="0" step="0.01" value={drop.price}
+                onChange={e => setDrop(d => ({ ...d, price: e.target.value, paidAmount: d.paidAmount === "" || d.paidAmount === d.price ? e.target.value : d.paidAmount }))} error={errors.price} />
+              <Input label={t("subscriptionForm.dropIn.sessionDate")} type="date" value={drop.sessionDate} onChange={setD("sessionDate")} />
+            </div>
+            {canPayAdd && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+                <Input label={t("subscriptionForm.dropIn.paidAmount")} type="number" min="0" step="0.01" value={drop.paidAmount} onChange={setD("paidAmount")} error={errors.paidAmount} />
+                <Select label={t("subscriptionForm.dropIn.method")} value={drop.method} onChange={setD("method")}
+                  options={[
+                    { value: "cash", label: t("subscriptionForm.dropIn.cash") },
+                    { value: "card", label: t("subscriptionForm.dropIn.card") },
+                    { value: "bank_transfer", label: t("subscriptionForm.dropIn.bank") },
+                    { value: "online", label: t("subscriptionForm.dropIn.online") },
+                  ]} />
+              </div>
+            )}
+            <Input label={t("subscriptionForm.notesLabel")} value={drop.notes} onChange={setD("notes")} />
+            <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.6 }}>{t("subscriptionForm.dropIn.visitorHint")}</div>
+          </>
+        ) : (<>
 
         {/* ── اختيار الرياضي ── */}
         <div>
@@ -228,7 +315,7 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
           <Input
             label={t("subscriptionForm.startDateLabel")}
             type="date"
@@ -257,6 +344,7 @@ export default function SubscriptionForm({ open, onClose, onSuccess, presetAthle
           value={form.notes}
           onChange={set("notes")}
         />
+        </>)}
 
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
           <Button variant="secondary" onClick={onClose} disabled={loading}>{t("subscriptionForm.cancel")}</Button>

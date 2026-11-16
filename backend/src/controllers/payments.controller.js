@@ -27,7 +27,7 @@ export const getPayments = async (req, res) => {
       params.push(subscriptionId); p++;
     }
     if (search) {
-      conditions.push(`(u.full_name ILIKE $${p} OR u.phone ILIKE $${p})`);
+      conditions.push(`(u.full_name ILIKE $${p} OR u.phone ILIKE $${p} OR s.visitor_name ILIKE $${p} OR s.visitor_phone ILIKE $${p})`);
       params.push(`%${search}%`); p++;
     }
     if (method) {
@@ -59,8 +59,8 @@ export const getPayments = async (req, res) => {
       `SELECT
          pay.id, pay.amount, pay.method, pay.status, pay.notes,
          pay.paid_at, pay.created_at,
-         s.id AS subscription_id, sp.name AS plan_name,
-         u.id AS athlete_id, u.full_name AS athlete_name, u.phone AS athlete_phone,
+         s.id AS subscription_id, COALESCE(s.session_label, sp.name) AS plan_name,
+         u.id AS athlete_id, COALESCE(s.visitor_name, u.full_name) AS athlete_name, COALESCE(s.visitor_phone, u.phone) AS athlete_phone,
          rec.full_name AS recorded_by_name
        FROM payments pay
        JOIN subscriptions s ON s.id = pay.subscription_id

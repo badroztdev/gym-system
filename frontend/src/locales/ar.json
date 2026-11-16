@@ -259,7 +259,10 @@
     "planDeletePermanentlyMessage": "سيتم حذف هذه الخطة نهائياً من قاعدة البيانات ولا يمكن التراجع عن هذا الإجراء. هل أنت متأكد؟",
     "toastPlanDeletedPermanently": "تم حذف الخطة نهائياً",
     "statusUpcoming": "قادم",
-    "actionRenew": "تجديد"
+    "actionRenew": "تجديد",
+    "visitorBadge": "زائر",
+    "sessionLabelShort": "الحصة",
+    "planLabelShort": "الخطة"
   },
   "sessions": {
     "pageTitle": "الحصص والجداول",
@@ -769,7 +772,29 @@
     "renewCurrent": "لديه اشتراك نشط ينتهي في {{date}}",
     "renewStarts": "سيبدأ الاشتراك الجديد بعده تلقائياً في {{start}} — لا يضيع عليه أي يوم ولا يُحسب مرتين.",
     "renewFromToday": "ابدأ من اليوم بدلاً من ذلك",
-    "renewOverlap": "⚠️ تاريخ البداية يتداخل مع اشتراكه الحالي (ينتهي في {{date}})."
+    "renewOverlap": "⚠️ تاريخ البداية يتداخل مع اشتراكه الحالي (ينتهي في {{date}}).",
+    "dropIn": {
+      "tabMember": "منخرط مسجَّل",
+      "tabVisitor": "حصة لزائر",
+      "visitorName": "اسم الزائر *",
+      "visitorPhone": "الهاتف (اختياري)",
+      "sessionLabel": "الحصة *",
+      "sessionPlaceholder": "مثال: حصة جودو",
+      "price": "السعر (دج) *",
+      "sessionDate": "تاريخ الحصة",
+      "paidAmount": "المبلغ المدفوع (دج)",
+      "method": "طريقة الدفع",
+      "cash": "نقدي",
+      "card": "بطاقة",
+      "bank": "تحويل بنكي",
+      "online": "عبر الإنترنت",
+      "errName": "اسم الزائر مطلوب",
+      "errLabel": "اكتب اسم الحصة",
+      "errPrice": "السعر مطلوب",
+      "errPaid": "المدفوع أكبر من السعر",
+      "toast": "تم تسجيل الحصة ✅",
+      "visitorHint": "💡 للزائر غير المنخرط: تُسجَّل الحصة مع الدفعة وتدخل في الإيرادات."
+    }
   },
   "sessionModal": {
     "subtitleEdit": "يمكنك تعديل حصة من هنا.",
@@ -874,5 +899,37 @@
     "tooMany": "محاولات كثيرة، حاول لاحقاً",
     "errorGeneric": "تعذّر الإرسال، حاول مرة أخرى",
     "privacy": "بياناتك تُرسل إلى النادي فقط"
+  },
+  "subscriptionDetail": {
+    "title": "تفاصيل الاشتراك",
+    "planLbl": "الخطة",
+    "price": "السعر",
+    "start": "تاريخ البداية",
+    "end": "تاريخ الانتهاء",
+    "sessionsLeft": "الحصص المتبقية",
+    "notes": "ملاحظات",
+    "total": "الإجمالي",
+    "paid": "المدفوع",
+    "remaining": "المتبقي",
+    "addPayment": "+ تسجيل دفعة جديدة",
+    "history": "سجل المدفوعات",
+    "noPayments": "لا توجد مدفوعات مسجّلة",
+    "suspend": "تعليق الاشتراك",
+    "cancel": "إلغاء الاشتراك",
+    "reactivate": "إعادة تفعيل",
+    "cancelled": "ملغى",
+    "suspended": "معلّق",
+    "expired": "منتهي",
+    "active": "نشط",
+    "endsIn": "ينتهي بعد {{days}}ي",
+    "toastCancelled": "تم إلغاء الاشتراك ✅",
+    "toastSuspended": "تم تعليق الاشتراك ✅",
+    "toastActive": "تمت إعادة تفعيل الاشتراك ✅",
+    "toastUpdated": "تم تحديث الاشتراك ✅",
+    "cash": "نقدي",
+    "card": "بطاقة",
+    "bank_transfer": "تحويل بنكي",
+    "online": "عبر الإنترنت",
+    "da": "دج"
   }
 }

@@ -18,8 +18,8 @@ export const getOverview = async (req, res) => {
 
       query(`
         SELECT
-          COUNT(*) FILTER (WHERE s.status='active' AND s.start_date<=CURRENT_DATE AND s.end_date>=CURRENT_DATE)    AS active_count,
-          COUNT(*) FILTER (WHERE s.status='active' AND s.start_date<=CURRENT_DATE AND s.end_date BETWEEN CURRENT_DATE AND CURRENT_DATE+INTERVAL '7 days'
+          COUNT(*) FILTER (WHERE s.status='active' AND s.visitor_name IS NULL AND s.start_date<=CURRENT_DATE AND s.end_date>=CURRENT_DATE)    AS active_count,
+          COUNT(*) FILTER (WHERE s.status='active' AND s.visitor_name IS NULL AND s.start_date<=CURRENT_DATE AND s.end_date BETWEEN CURRENT_DATE AND CURRENT_DATE+INTERVAL '7 days'
             AND NOT EXISTS (SELECT 1 FROM subscriptions n WHERE n.athlete_id=s.athlete_id AND n.id<>s.id AND n.status='active' AND n.end_date>s.end_date)) AS expiring_count,
           COUNT(*) FILTER (WHERE s.status='active' AND s.end_date<CURRENT_DATE)                                     AS overdue_count
         FROM subscriptions s JOIN users u ON u.id=s.athlete_id WHERE u.gym_id=$1`, [gymId]),
@@ -214,13 +214,13 @@ export const getRecentActivity = async (req, res) => {
       (SELECT 'member' AS type, full_name AS title, created_at AS ts, NULL::text AS detail
        FROM users WHERE gym_id=$1 AND role='athlete' ORDER BY created_at DESC LIMIT 5)
       UNION ALL
-      (SELECT 'payment' AS type, u.full_name AS title, p.paid_at AS ts, p.amount::text AS detail
+      (SELECT 'payment' AS type, COALESCE(s.visitor_name, u.full_name) AS title, p.paid_at AS ts, p.amount::text AS detail
        FROM payments p
        JOIN subscriptions s ON s.id=p.subscription_id
        JOIN users u ON u.id=s.athlete_id
        WHERE u.gym_id=$1 AND p.status='paid' ORDER BY p.paid_at DESC LIMIT 5)
       UNION ALL
-      (SELECT 'subscription' AS type, u.full_name AS title, s.created_at AS ts, sp.name AS detail
+      (SELECT 'subscription' AS type, COALESCE(s.visitor_name, u.full_name) AS title, s.created_at AS ts, COALESCE(s.session_label, sp.name) AS detail
        FROM subscriptions s
        JOIN users u ON u.id=s.athlete_id
        JOIN subscription_plans sp ON sp.id=s.plan_id

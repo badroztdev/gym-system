@@ -1,4 +1,6 @@
 // src/controllers/subscriptions.controller.js
+import bcrypt from "bcrypt";
+import crypto from "crypto";
 import { query, transaction } from "../utils/db.js";
 import { athleteScopeSql, athleteInScope, subscriptionInScope, hasPermission } from "../utils/access.js";
 
@@ -27,7 +29,7 @@ export const getSubscriptions = async (req, res) => {
       params.push(athleteId); p++;
     }
     if (search) {
-      conditions.push(`(u.full_name ILIKE $${p} OR u.phone ILIKE $${p})`);
+      conditions.push(`(u.full_name ILIKE $${p} OR u.phone ILIKE $${p} OR s.visitor_name ILIKE $${p} OR s.visitor_phone ILIKE $${p})`);
       params.push(`%${search}%`); p++;
     }
     if (status === "active") {
@@ -58,8 +60,9 @@ export const getSubscriptions = async (req, res) => {
 
     const baseQuery = `
       SELECT
-        s.id, s.athlete_id, u.full_name AS athlete_name, u.phone AS athlete_phone,
-        s.plan_id, sp.name AS plan_name,
+        s.id, s.athlete_id, COALESCE(s.visitor_name, u.full_name) AS athlete_name, COALESCE(s.visitor_phone, u.phone) AS athlete_phone,
+        s.visitor_name IS NOT NULL AS is_drop_in,
+        s.plan_id, COALESCE(s.session_label, sp.name) AS plan_name,
         s.start_date, s.end_date, s.status, s.sessions_remaining,
         sp.sessions_limit, s.price, s.notes, s.created_at,
         EXISTS (
@@ -108,8 +111,9 @@ export const getSubscription = async (req, res) => {
     const gScope = athleteScopeSql(req.user, "u", gParams);
     const { rows } = await query(
       `SELECT
-         s.*, u.full_name AS athlete_name, u.phone AS athlete_phone,
-         sp.name AS plan_name, sp.sessions_limit,
+         s.*, COALESCE(s.visitor_name, u.full_name) AS athlete_name, COALESCE(s.visitor_phone, u.phone) AS athlete_phone,
+         s.visitor_name IS NOT NULL AS is_drop_in,
+         COALESCE(s.session_label, sp.name) AS plan_name, sp.sessions_limit,
          COALESCE(pay.total_paid, 0) AS total_paid,
          (s.price - COALESCE(pay.total_paid, 0)) AS remaining
        FROM subscriptions s
@@ -143,6 +147,7 @@ export const getSubscription = async (req, res) => {
 // ── POST /api/subscriptions ────────────────────────────────────
 export const createSubscription = async (req, res) => {
   try {
+    if (req.body?.dropIn) return createDropIn(req, res);
     const { athleteId, planId, startDate, price, notes } = req.body;
     const gymId = req.user.gym_id;
 
@@ -269,11 +274,11 @@ export const getSubscriptionStats = async (req, res) => {
 
     const { rows } = await query(
       `SELECT
-         COUNT(*) FILTER (WHERE s.status = 'active' AND s.start_date <= CURRENT_DATE AND s.end_date >= CURRENT_DATE) AS active_count,
-         COUNT(*) FILTER (WHERE s.status = 'active' AND s.start_date <= CURRENT_DATE AND s.end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+         COUNT(*) FILTER (WHERE s.status = 'active' AND s.visitor_name IS NULL AND s.start_date <= CURRENT_DATE AND s.end_date >= CURRENT_DATE) AS active_count,
+         COUNT(*) FILTER (WHERE s.status = 'active' AND s.visitor_name IS NULL AND s.start_date <= CURRENT_DATE AND s.end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
            AND NOT EXISTS (SELECT 1 FROM subscriptions n WHERE n.athlete_id = s.athlete_id AND n.id <> s.id AND n.status = 'active' AND n.end_date > s.end_date)) AS expiring_count,
-         COUNT(*) FILTER (WHERE s.status = 'active' AND s.end_date < CURRENT_DATE) AS expired_count,
-         COALESCE(SUM(s.price) FILTER (WHERE s.status = 'active'), 0) AS active_revenue_expected,
+         COUNT(*) FILTER (WHERE s.status = 'active' AND s.visitor_name IS NULL AND s.end_date < CURRENT_DATE) AS expired_count,
+         COALESCE(SUM(s.price) FILTER (WHERE s.status = 'active' AND s.visitor_name IS NULL), 0) AS active_revenue_expected,
          COALESCE(SUM(s.price - COALESCE(pay.total_paid,0)) FILTER (WHERE s.status = 'active'), 0) AS total_due
        FROM subscriptions s
        JOIN users u ON u.id = s.athlete_id
@@ -304,3 +309,83 @@ export const getSubscriptionStats = async (req, res) => {
     serverError(res, err);
   }
 };
+
+// ── POST /api/subscriptions  { dropIn: true, ... } ─────────────
+// ✅ حصة واحدة لزائر غير مسجَّل/منخرط: تُسجَّل كاشتراك + دفعة ضمن نفس جداول الاشتراكات والمدفوعات
+// فتدخل في الإيرادات تلقائياً. بيانات الزائر (الاسم/الهاتف/اسم الحصة) تُحفظ على الاشتراك نفسه،
+// ويرتبط بحساب داخلي واحد معطَّل لكل صالة (phone = '__visitor__') لا يظهر في الأعضاء ولا يمكنه الدخول.
+const GUEST_PHONE = "__visitor__";
+const GUEST_PLAN  = "حصة واحدة (زائر)";
+const METHODS = ["cash", "card", "bank_transfer", "online"];
+
+async function createDropIn(req, res) {
+  try {
+    const gymId = req.user.gym_id;
+    const b = req.body;
+    const name  = String(b.visitorName || "").trim().slice(0, 120);
+    const phone = String(b.visitorPhone || "").trim().slice(0, 30) || null;
+    const label = String(b.sessionLabel || "").trim().slice(0, 150);
+    const price = Number(b.price);
+    const method = METHODS.includes(b.method) ? b.method : "cash";
+    const notes = String(b.notes || "").trim().slice(0, 500) || null;
+    const date  = /^\d{4}-\d{2}-\d{2}$/.test(String(b.sessionDate || "")) ? b.sessionDate : null;
+
+    if (name.length < 2)  return badRequest(res, "اسم الزائر مطلوب");
+    if (!label)           return badRequest(res, "اسم الحصة مطلوب");
+    if (!Number.isFinite(price) || price < 0) return badRequest(res, "السعر غير صحيح");
+
+    // المبلغ المدفوع: يُسجَّل فقط لمن يملك صلاحية إضافة المدفوعات
+    const canAddPay = hasPermission(req.user, "payments.add");
+    let paid = canAddPay && b.paidAmount !== undefined && b.paidAmount !== "" ? Number(b.paidAmount) : 0;
+    if (!Number.isFinite(paid) || paid < 0) return badRequest(res, "المبلغ المدفوع غير صحيح");
+    if (paid > price + 0.01) return badRequest(res, "المبلغ المدفوع أكبر من السعر");
+
+    const result = await transaction(async (client) => {
+      // الحساب الداخلي للزوار (يُنشأ مرة واحدة لكل صالة)
+      let g = await client.query("SELECT id FROM users WHERE gym_id = $1 AND phone = $2", [gymId, GUEST_PHONE]);
+      if (!g.rows.length) {
+        const hash = await bcrypt.hash(crypto.randomBytes(24).toString("hex"), 10);
+        g = await client.query(
+          `INSERT INTO users (gym_id, full_name, phone, role, password_hash, is_active)
+           VALUES ($1, 'زائر (حصة واحدة)', $2, 'athlete', $3, FALSE) RETURNING id`,
+          [gymId, GUEST_PHONE, hash]
+        );
+      }
+      const guestId = g.rows[0].id;
+
+      // خطة داخلية معطَّلة (لا تظهر عند إنشاء اشتراك عادي)
+      let pl = await client.query("SELECT id FROM subscription_plans WHERE gym_id = $1 AND name = $2", [gymId, GUEST_PLAN]);
+      if (!pl.rows.length) {
+        pl = await client.query(
+          `INSERT INTO subscription_plans (gym_id, name, duration_days, price, sessions_limit, is_active)
+           VALUES ($1, $2, 1, 0, 1, FALSE) RETURNING id`,
+          [gymId, GUEST_PLAN]
+        );
+      }
+
+      const sub = await client.query(
+        `INSERT INTO subscriptions
+           (athlete_id, plan_id, start_date, end_date, status, sessions_remaining, price, notes, created_by,
+            visitor_name, visitor_phone, session_label)
+         VALUES ($1, $2, COALESCE($3::date, (NOW() AT TIME ZONE 'Africa/Algiers')::date),
+                 COALESCE($3::date, (NOW() AT TIME ZONE 'Africa/Algiers')::date),
+                 'active', NULL, $4, $5, $6, $7, $8, $9)
+         RETURNING *`,
+        [guestId, pl.rows[0].id, date, price, notes, req.user.id, name, phone, label]
+      );
+
+      if (paid > 0) {
+        await client.query(
+          `INSERT INTO payments (subscription_id, amount, method, status, notes, recorded_by, paid_at)
+           VALUES ($1, $2, $3, 'paid', $4, $5, NOW())`,
+          [sub.rows[0].id, paid, method, notes, req.user.id]
+        );
+      }
+      return sub.rows[0];
+    });
+
+    return created(res, result);
+  } catch (err) {
+    serverError(res, err);
+  }
+}
