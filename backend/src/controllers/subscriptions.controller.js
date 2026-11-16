@@ -8,6 +8,8 @@ const METHODS = ["cash", "card", "bank_transfer", "online"];
 
 // المبالغ (المدفوع/المتبقي/الدفعات/الإيرادات) لا تُرسل إلا لمن يملك payments.view
 const canSeePayments = (user) => hasPermission(user, "payments.view");
+// من يستطيع تسجيل دفعة (زر «دفعة») يحتاج مبلغ الاشتراك المتبقي لاشتراكه فقط (لا إجماليات ولا سجل مدفوعات)
+const canRecordPay = (user) => hasPermission(user, "payments.add") || hasPermission(user, "subscriptions.add");
 const stripMoney = (row) => { delete row.total_paid; delete row.remaining; return row; };
 import {
   ok, created, notFound, badRequest, serverError, paginate,
@@ -98,7 +100,7 @@ export const getSubscriptions = async (req, res) => {
       [...params, limit, offset]
     );
 
-    return ok(res, canPay ? rows : rows.map(stripMoney), {
+    return ok(res, canPay || canRecordPay(req.user) ? rows : rows.map(stripMoney), {
       meta: { total, page, limit, pages: Math.ceil(total / limit) },
     });
   } catch (err) {
@@ -131,7 +133,7 @@ export const getSubscription = async (req, res) => {
     if (!rows.length) return notFound(res, "الاشتراك غير موجود");
 
     if (!canSeePayments(req.user))
-      return ok(res, { ...stripMoney(rows[0]), payments: [], payments_hidden: true });
+      return ok(res, { ...(canRecordPay(req.user) ? rows[0] : stripMoney(rows[0])), payments: [], payments_hidden: true });
 
     const payments = await query(
       `SELECT id, amount, method, status, notes, paid_at, created_at

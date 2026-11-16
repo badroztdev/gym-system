@@ -140,7 +140,7 @@ router.delete("/subscriptions/:id",   authenticate, perm("subscriptions.delete")
 // ── Payments ──────────────────────────────────────────────────
 router.get   ("/payments/stats", authenticate, perm("payments.view", "subscriptions.view"), getPaymentsStats);
 router.get   ("/payments",       authenticate, perm("payments.view", "subscriptions.view"), getPayments);
-router.post  ("/payments",       authenticate, perm("payments.add"), [
+router.post  ("/payments",       authenticate, perm("payments.add", "subscriptions.add"), [
   body("subscriptionId").notEmpty().withMessage("الاشتراك مطلوب"),
   body("amount").isFloat({ min: 0.01 }).withMessage("المبلغ يجب أن يكون أكبر من صفر"),
   validate,

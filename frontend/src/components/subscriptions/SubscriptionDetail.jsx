@@ -112,6 +112,13 @@ export default function SubscriptionDetail({ open, onClose, subscriptionId, onAd
 
           </>}
 
+          {/* بلا صلاحية عرض المدفوعات: زر تسجيل دفعة فقط (دون عرض الإجماليات أو السجل) */}
+          {sub.payments_hidden && Number(sub.remaining) > 0 && onAddPayment && (
+            <Button onClick={() => onAddPayment(sub)} style={{ width: "100%", justifyContent: "center" }}>
+              {t("subscriptionDetail.addPayment")}
+            </Button>
+          )}
+
           {/* إجراءات الحالة */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
             {sub.status === "active" && (

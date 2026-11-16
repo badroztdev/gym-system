@@ -144,7 +144,8 @@ function SubscriptionsTab() {
   const isOwner = user?.role === "owner";
   const isAr = i18n.language === "ar";
   const canPayView = userCan(user, "payments.view");
-  const canPayAdd  = canPayView && userCan(user, "payments.add");
+  // زر «دفعة»: لمن يملك payments.add أو subscriptions.add (دون كشف الإيرادات/المدفوعات)
+  const canPayAdd  = userCan(user, "payments.add") || userCan(user, "subscriptions.add");
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -422,7 +423,7 @@ function SubscriptionsTab() {
         open={!!detailId}
         onClose={() => setDetailId(null)}
         subscriptionId={detailId}
-        onAddPayment={(sub) => { setDetailId(null); setPaymentSub(sub); }}
+        onAddPayment={canPayAdd ? (sub) => { setDetailId(null); setPaymentSub(sub); } : undefined}
       />
 
       {/* ✅ تأكيد الحذف النهائي — لتصحيح أخطاء الإدخال (مثل تاريخ خاطئ)، وليس لإنهاء اشتراك صحيح */}
