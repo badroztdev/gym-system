@@ -17,7 +17,7 @@ export const getMembers = async (req, res) => {
     const gymId = req.user.gym_id;
 
     // حساب "الزائر" الداخلي (حصص الزوار غير المنخرطين) لا يظهر ضمن الأعضاء
-    const conditions = ["u.gym_id = $1", "u.role IN ('athlete','guardian')", "u.phone <> '__visitor__'"];
+    const conditions = ["u.gym_id = $1", "u.role IN ('athlete','guardian')", "(u.phone IS NULL OR u.phone <> '__visitor__')"];
     const params = [gymId];
     // ✅ نطاق المدرب (فئات/أفواج) — المالك بلا قيود
     const scopeSql = memberScopeSql(req.user, "u", params);
@@ -528,7 +528,7 @@ export const getMembersStats = async (req, res) => {
            WHERE u.created_at >= DATE_TRUNC('month', NOW())
          )                                                  AS new_this_month
        FROM users u
-       WHERE u.gym_id = $1 AND u.role = 'athlete' AND u.phone <> '__visitor__' ${sScope ? "AND " + sScope : ""}`,
+       WHERE u.gym_id = $1 AND u.role = 'athlete' AND (u.phone IS NULL OR u.phone <> '__visitor__') ${sScope ? "AND " + sScope : ""}`,
       sParams
     );
     return ok(res, rows[0]);
