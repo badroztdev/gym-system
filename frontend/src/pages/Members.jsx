@@ -182,8 +182,8 @@ export default function MembersPage() {
   // أزرار ثانوية بيضاء (لون البطاقة): أيقونة + نص كامل
   const actBtn = () => ({
     position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
-    flex: isMobile ? "1 1 0" : "none", minWidth: 0, boxSizing: "border-box",
-    padding: isMobile ? "12px 8px" : "12px 20px", fontSize: 14, fontWeight: 600, fontFamily: "'Sora', sans-serif",
+    flex: isMobile ? "none" : "none", minWidth: 0, boxSizing: "border-box", width: isMobile ? "100%" : "auto",
+    padding: isMobile ? "12px 6px" : "12px 20px", fontSize: isMobile ? 13 : 14, fontWeight: 600, fontFamily: "'Sora', sans-serif",
     color: "var(--text)", background: "var(--card)", border: "1px solid var(--border)",
     borderRadius: "var(--radius-sm)", cursor: "pointer",
   });
@@ -292,14 +292,16 @@ export default function MembersPage() {
 
       <main style={{ padding: isMobile ? "14px 12px" : "24px 28px", flex: 1 }}>
         {/* شريط الإجراءات: عضو جديد (رئيسي) + رابط التسجيل + التأمين */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, justifyContent: isMobile ? "stretch" : "flex-end" }}>
+        <div style={isMobile
+          ? { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 16 }
+          : { display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, justifyContent: "flex-end" }}>
           <Button icon="+" onClick={() => { setEditMember(null); setShowForm(true); }}
-            style={{ order: isMobile ? 0 : 3, flex: isMobile ? "1 1 100%" : "none", justifyContent: "center", padding: "12px 20px", fontSize: 14, fontWeight: 700 }}>
+            style={{ order: isMobile ? 0 : 3, width: isMobile ? "100%" : "auto", minWidth: 0, justifyContent: "center", padding: isMobile ? "12px 6px" : "12px 20px", fontSize: isMobile ? 13 : 14, fontWeight: 700, whiteSpace: "nowrap" }}>
             {t("members.newMember")}
           </Button>
-          <button type="button" onClick={() => setShowReg(true)} style={{ ...actBtn(), order: isMobile ? 1 : 1 }}>
+          <button type="button" onClick={() => setShowReg(true)} style={{ ...actBtn(), order: 1 }}>
             <span style={{ fontSize: 18, lineHeight: 1 }}>🔗</span>
-            <span style={{ whiteSpace: "nowrap" }}>{t("members.regBtn")}</span>
+            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t("members.regBtn")}</span>
             {regCount > 0 && (
               <span style={{
                 position: "absolute", top: -8, insetInlineEnd: -6, minWidth: 20, height: 20, padding: "0 5px", borderRadius: 10,
@@ -308,13 +310,13 @@ export default function MembersPage() {
               }}>{regCount > 99 ? "99+" : regCount}</span>
             )}
           </button>
-          <button type="button" onClick={() => setShowScan(true)} style={{ ...actBtn(), order: isMobile ? 1 : 1 }}>
+          <button type="button" onClick={() => setShowScan(true)} style={{ ...actBtn(), order: isMobile ? 2 : 1 }}>
             <span style={{ fontSize: 18, lineHeight: 1 }}>📷</span>
-            <span style={{ whiteSpace: "nowrap" }}>{t("card.scanBtn")}</span>
+            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t("card.scanBtn")}</span>
           </button>
-          <button type="button" onClick={() => setShowInsurance(true)} style={{ ...actBtn(), order: isMobile ? 2 : 2 }}>
+          <button type="button" onClick={() => setShowInsurance(true)} style={{ ...actBtn(), order: isMobile ? 3 : 2 }}>
             <span style={{ fontSize: 18, lineHeight: 1 }}>🛡️</span>
-            <span style={{ whiteSpace: "nowrap" }}>{t("members.insuranceBtn")}</span>
+            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t("members.insuranceBtn")}</span>
           </button>
         </div>
 
