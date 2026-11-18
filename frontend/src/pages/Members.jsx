@@ -8,6 +8,8 @@ import PageHeader from "@/components/layout/PageHeader";
 import MemberForm from "@/components/members/MemberForm";
 import MemberDetail from "@/components/members/MemberDetail";
 import InsuranceExportModal from "@/components/members/InsuranceExportModal";
+import MemberCard from "@/components/members/MemberCard";
+import CardScanner from "@/components/members/CardScanner";
 import RegistrationsModal, { useRegistrations } from "@/components/members/RegistrationsModal";
 import api from "@/services/api";
 import { Button, Badge, Spinner, Empty, Confirm, Modal } from "@/components/ui";
@@ -203,6 +205,8 @@ export default function MembersPage() {
   const [customPass, setCustomPass] = useState("");
   const [showInsurance, setShowInsurance] = useState(false);
   const [showReg, setShowReg] = useState(false);
+  const [cardMember, setCardMember] = useState(null); // بطاقة الرياضي
+  const [showScan, setShowScan] = useState(false);
   const [regPrefill, setRegPrefill] = useState(null); // طلب تسجيل قيد القبول
   const { data: regData } = useRegistrations();
   const regCount = regData?.data?.length || 0;
@@ -304,6 +308,10 @@ export default function MembersPage() {
               }}>{regCount > 99 ? "99+" : regCount}</span>
             )}
           </button>
+          <button type="button" onClick={() => setShowScan(true)} style={{ ...actBtn(), order: isMobile ? 1 : 1 }}>
+            <span style={{ fontSize: 18, lineHeight: 1 }}>📷</span>
+            <span style={{ whiteSpace: "nowrap" }}>{t("card.scanBtn")}</span>
+          </button>
           <button type="button" onClick={() => setShowInsurance(true)} style={{ ...actBtn(), order: isMobile ? 2 : 2 }}>
             <span style={{ fontSize: 18, lineHeight: 1 }}>🛡️</span>
             <span style={{ whiteSpace: "nowrap" }}>{t("members.insuranceBtn")}</span>
@@ -366,7 +374,8 @@ export default function MembersPage() {
                     )}
 
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-                      <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(m); }} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--accent2)" }}>{t("members.actionEdit")}</Button>
+                      <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); setCardMember(m); }} aria-label={t("card.title")} title={t("card.title")} style={{ padding: "2px 10px", fontSize: 20, lineHeight: 1, fontWeight: 800, color: "var(--text)" }}>⋯</Button>
+                            <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(m); }} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--accent2)" }}>{t("members.actionEdit")}</Button>
                       {isOwner && (
                         <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); setResetId(m.id); setCustomPass(""); setResetModal(true); }} style={{ color: "var(--accent3)" }}>🔑</Button>
                       )}
@@ -466,6 +475,7 @@ export default function MembersPage() {
                         </td>
                         <td style={{ padding: "12px 16px" }}>
                           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setCardMember(m); }} aria-label={t("card.title")} title={t("card.title")} style={{ padding: "2px 10px", fontSize: 20, lineHeight: 1, fontWeight: 800, color: "var(--text)" }}>⋯</Button>
                             <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(m); }} style={{ padding: "4px 8px", fontSize: 10.5, whiteSpace: "nowrap", color: "var(--accent2)" }}>{t("members.actionEdit")}</Button>
                             {isOwner && (
                               <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setResetId(m.id); setCustomPass(""); setResetModal(true); }} style={{ color: "var(--accent3)" }}>🔑</Button>
@@ -575,6 +585,10 @@ export default function MembersPage() {
 
       {/* ✅ رابط التسجيل الذاتي + طلبات الرياضيين */}
       <RegistrationsModal open={showReg} onClose={() => setShowReg(false)} onAccept={acceptRegistration} />
+
+      {/* ✅ بطاقة الرياضي + ماسح البطاقات */}
+      <MemberCard open={!!cardMember} onClose={() => setCardMember(null)} member={cardMember} onScan={() => { setCardMember(null); setShowScan(true); }} />
+      <CardScanner open={showScan} onClose={() => setShowScan(false)} />
 
       {/* ✅ تصدير جدول التأمين (Word) */}
       <InsuranceExportModal open={showInsurance} onClose={() => setShowInsurance(false)} />

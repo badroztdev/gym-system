@@ -794,9 +794,7 @@
       "errPaid": "Le montant payé dépasse le prix",
       "toast": "Séance enregistrée ✅",
       "visitorHint": "💡 Pour un visiteur non inscrit : la séance est enregistrée avec son paiement et compte dans les revenus."
-    },
-    "paidNow": "Montant payé maintenant (optionnel)",
-    "payFull": "Payer la totalité"
+    }
   },
   "sessionModal": {
     "subtitleEdit": "Vous pouvez modifier la séance ici.",
@@ -933,5 +931,26 @@
     "bank_transfer": "Virement bancaire",
     "online": "En ligne",
     "da": "DA"
+  },
+  "card": {
+    "title": "Carte de l'athlète",
+    "hint": "Scannez pour pointer la présence et vérifier l'abonnement",
+    "print": "Imprimer la carte",
+    "printError": "Impression impossible",
+    "scanBtn": "Scanner une carte",
+    "scanTitle": "Scanner la carte d'un athlète",
+    "scanDesc": "Pointez le lecteur QR vers la carte (ou saisissez le code) ou utilisez la caméra.",
+    "scanPlaceholder": "En attente du scan…",
+    "camStart": "Activer la caméra",
+    "camStop": "Arrêter la caméra",
+    "camError": "Impossible d'ouvrir la caméra. Vérifiez l'autorisation d'accès.",
+    "invalid": "Carte invalide",
+    "paid": "Abonnement entièrement payé",
+    "unpaid": "Abonnement non entièrement payé",
+    "noSub": "Aucun abonnement en cours",
+    "inactive": "Compte désactivé",
+    "remaining": "Reste à payer",
+    "attDone": "Présence enregistrée — {{title}}",
+    "attNoSession": "Aucune séance en cours pour la présence"
   }
 }
