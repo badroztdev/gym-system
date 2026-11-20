@@ -5,7 +5,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import api from "@/services/api";
 import { Modal } from "@/components/ui";
 
-export default function CardScanner({ open, onClose }) {
+// يستخرج معرّف الرياضي من رابط البطاقة أو الصيغة القديمة
+export const extractCode = (v) => {
+  const m = String(v || "").match(/(?:[?&]scan=|SGMS-A:)\s*([0-9a-fA-F-]{8,40})/);
+  return m ? `SGMS-A:${m[1]}` : null;
+};
+
+export default function CardScanner({ open, onClose, autoCode }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const [result, setResult] = useState(null);   // {color, ...} | {error}
@@ -65,7 +71,7 @@ export default function CardScanner({ open, onClose }) {
       const loop = async () => {
         if (!streamRef.current) return;
         if (!busyRef.current) {
-          try { const val = await detect(); if (val && String(val).startsWith("SGMS-A:")) await submit(val); } catch {}
+          try { const val = await detect(); const c = extractCode(val); if (c) await submit(c); } catch {}
         }
         setTimeout(loop, 350);
       };
@@ -76,14 +82,14 @@ export default function CardScanner({ open, onClose }) {
   };
 
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 100);
+    if (open) { setTimeout(() => inputRef.current?.focus(), 100); if (autoCode) { const c = extractCode(autoCode); if (c) submit(c); } }
     else { stopCam(); busyRef.current = false; setResult(null); }
     return () => { stopCam(); clearTimeout(timerRef.current); };
-  }, [open, stopCam]);
+  }, [open, stopCam, autoCode]);
 
   // الماسح الخارجي (لوحة مفاتيح وهمية) يكتب الرمز ثم Enter
   const onKey = (e) => {
-    if (e.key === "Enter") { const v = e.currentTarget.value.trim(); e.currentTarget.value = ""; submit(v); }
+    if (e.key === "Enter") { const v = e.currentTarget.value.trim(); e.currentTarget.value = ""; const c = extractCode(v); if (c) submit(c); else if (v) setResult({ color: "red", error: t("card.invalid") }); }
   };
 
   const green = result?.color === "green";

@@ -206,7 +206,13 @@ export default function MembersPage() {
   const [showInsurance, setShowInsurance] = useState(false);
   const [showReg, setShowReg] = useState(false);
   const [cardMember, setCardMember] = useState(null); // بطاقة الرياضي
-  const [showScan, setShowScan] = useState(false);
+  // رابط البطاقة (?scan=<id>) من كاميرا الهاتف أو قارئ QR: يفتح النتيجة مباشرة
+  const [autoCode, setAutoCode] = useState(() => { try { return new URLSearchParams(window.location.search).get("scan") || ""; } catch { return ""; } });
+  const [showScan, setShowScan] = useState(!!autoCode);
+  const closeScan = () => {
+    setShowScan(false); setAutoCode("");
+    try { if (autoCode) window.history.replaceState({}, "", window.location.pathname); } catch { /* تجاهل */ }
+  };
   const [regPrefill, setRegPrefill] = useState(null); // طلب تسجيل قيد القبول
   const { data: regData } = useRegistrations();
   const regCount = regData?.data?.length || 0;
@@ -590,7 +596,7 @@ export default function MembersPage() {
 
       {/* ✅ بطاقة الرياضي + ماسح البطاقات */}
       <MemberCard open={!!cardMember} onClose={() => setCardMember(null)} member={cardMember} onScan={() => { setCardMember(null); setShowScan(true); }} />
-      <CardScanner open={showScan} onClose={() => setShowScan(false)} />
+      <CardScanner open={showScan} onClose={closeScan} autoCode={autoCode} />
 
       {/* ✅ تصدير جدول التأمين (Word) */}
       <InsuranceExportModal open={showInsurance} onClose={() => setShowInsurance(false)} />

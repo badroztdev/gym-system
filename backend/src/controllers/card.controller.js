@@ -10,8 +10,10 @@ const PREFIX = "SGMS-A:";
 export const cardScan = async (req, res) => {
   try {
     const raw = String(req.body.code || "").trim();
-    const id  = raw.startsWith(PREFIX) ? raw.slice(PREFIX.length).trim() : "";
-    if (!/^[0-9a-fA-F-]{8,40}$/.test(id)) return badRequest(res, "رمز غير صالح");
+    // يقبل: رابط البطاقة (…/members?scan=<id>) أو الصيغة القديمة SGMS-A:<id>
+    const m = raw.match(/(?:[?&]scan=|SGMS-A:)\s*([0-9a-fA-F-]{8,40})/);
+    const id = m ? m[1] : "";
+    if (!id) return badRequest(res, "رمز غير صالح");
 
     const gymId = req.user.gym_id || req.user.gymId;
     const a = await query(
@@ -28,7 +30,7 @@ export const cardScan = async (req, res) => {
     const subs = await query(
       `SELECT s.id, s.price, s.start_date, s.end_date, p.name AS plan_name,
               COALESCE((SELECT SUM(amount) FROM payments WHERE subscription_id = s.id AND status = 'paid'), 0) AS paid
-         FROM subscriptions s LEFT JOIN plans p ON p.id = s.plan_id
+         FROM subscriptions s LEFT JOIN subscription_plans p ON p.id = s.plan_id
         WHERE s.athlete_id = $1 AND s.status = 'active' AND s.visitor_name IS NULL
           AND s.start_date <= CURRENT_DATE AND s.end_date >= CURRENT_DATE
         ORDER BY s.end_date DESC`,

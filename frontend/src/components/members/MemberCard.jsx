@@ -5,7 +5,8 @@ import { Modal, Button } from "@/components/ui";
 import { qrPath, qrSvgString } from "@/utils/qr";
 import toast from "react-hot-toast";
 
-export const cardCode = (id) => `SGMS-A:${id}`;
+// رابط يفتح صفحة الأعضاء ويُظهر نتيجة المسح (يعمل مع أي قارئ QR أو كاميرا الهاتف)
+export const cardCode = (id) => `${window.location.origin}/members?scan=${id}`;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 export default function MemberCard({ open, onClose, member, onScan }) {
