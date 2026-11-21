@@ -24,9 +24,14 @@ try {
   console.warn("Firebase init error:", err.message);
 }
 
+// آخر خطأ في تسجيل الجهاز (يُعرض في لوحة الإشعارات للتشخيص)
+let lastFcmError = "";
+export const getLastFcmError = () => lastFcmError;
+
 export const requestNotificationPermission = async () => {
+  lastFcmError = "";
   try {
-    if (!messaging) return null;
+    if (!messaging) { lastFcmError = "Firebase init failed"; return null; }
 
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
@@ -49,6 +54,7 @@ export const requestNotificationPermission = async () => {
     return token;
   } catch (err) {
     console.error("FCM permission error:", err.message);
+    lastFcmError = err.code ? `${err.code}: ${err.message}` : err.message;
     return null;
   }
 };

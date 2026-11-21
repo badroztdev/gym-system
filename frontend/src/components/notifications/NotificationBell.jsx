@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationsService } from "@/services/notifications.service";
 import toast from "react-hot-toast";
-import { requestNotificationPermission } from "@/services/firebase";
+import { requestNotificationPermission, getLastFcmError } from "@/services/firebase";
 
 const TYPE_COLORS = {
   attendance:           { bg: "var(--danger)20",  color: "var(--danger)",  icon: "✅" },
@@ -51,11 +51,12 @@ function PushSetup({ lang }) {
   const supported = typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator;
   const [perm, setPerm] = useState(supported ? Notification.permission : "unsupported");
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
 
   // إذا كان الإذن ممنوحاً مسبقاً: جدّد تسجيل الجهاز بصمت (يصلح التوكن المنتهي)
   useEffect(() => {
     if (perm !== "granted") return;
-    requestNotificationPermission().then(tk => tk && notificationsService.saveToken(tk)).catch(() => {});
+    requestNotificationPermission().then(tk => { if (tk) return notificationsService.saveToken(tk); setErr(getLastFcmError()); }).catch(() => {});
   }, [perm]);
 
   const enable = async () => {            // يجب أن يكون داخل نقرة المستخدم ليظهر طلب الإذن في أندرويد
@@ -63,15 +64,15 @@ function PushSetup({ lang }) {
     try {
       const tk = await requestNotificationPermission();
       setPerm(Notification.permission);
-      if (tk) { await notificationsService.saveToken(tk); toast.success(T.done); }
-      else if (Notification.permission !== "denied") toast.error(T.fail);
+      if (tk) { await notificationsService.saveToken(tk); setErr(""); toast.success(T.done); }
+      else { setErr(getLastFcmError()); if (Notification.permission !== "denied") toast.error(T.fail); }
     } catch { toast.error(T.fail); } finally { setBusy(false); }
   };
   const test = async () => {
     setBusy(true);
     try {
       const r = (await notificationsService.testPush())?.data;
-      if (!r?.devices) toast.error(T.noDevice);
+      if (!r?.devices) { toast.error(T.noDevice); await enable(); }
       else if (r.sent) toast.success(T.sent);
       else toast.error(`${T.sendFail}: ${(r.errors || []).join(" | ").slice(0, 120)}`);
     } catch { /* يعرضه المعترض */ } finally { setBusy(false); }
@@ -88,6 +89,7 @@ function PushSetup({ lang }) {
         <button type="button" onClick={enable} disabled={busy} style={{ ...btn, background: "var(--accent)", color: "#0d0f14", border: "none" }}>{T.enable}</button>
       </>)}
       {perm === "granted" && <button type="button" onClick={test} disabled={busy} style={btn}>{T.test}</button>}
+      {err && <div dir="ltr" style={{ fontSize: 10.5, color: "var(--danger)", wordBreak: "break-word", lineHeight: 1.5, textAlign: "left" }}>⚠ {err}</div>}
     </div>
   );
 }
