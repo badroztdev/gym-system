@@ -1,5 +1,9 @@
 // src/components/members/MemberCard.jsx — بطاقة الرياضي (اسم النادي + الصورة + الاسم + QR)
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
+import api from "@/services/api";
+import { userCan } from "@/utils/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { Modal, Button } from "@/components/ui";
 import { qrPath, qrSvgString } from "@/utils/qr";
@@ -12,6 +16,24 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 export default function MemberCard({ open, onClose, member, onScan }) {
   const { t } = useTranslation();
   const { user } = useAuthStore();
+  const canEdit = userCan(user, "members.edit");
+  const [uid, setUid] = useState("");
+  const [saving, setSaving] = useState(false);
+  const { data: rfidData, refetch } = useQuery({
+    queryKey: ["member-rfid", member?.id],
+    queryFn: () => api.get(`/members/${member.id}/rfid`).then(r => r.data?.data || r.data),
+    enabled: open && !!member?.id,
+  });
+  const savedUid = rfidData?.uid || "";
+  useEffect(() => { setUid(savedUid); }, [savedUid, member?.id]);
+  const saveUid = async (value) => {
+    setSaving(true);
+    try {
+      await api.put(`/members/${member.id}/rfid`, { uid: value });
+      toast.success(value ? t("card.rfidSaved") : t("card.rfidRemoved"));
+      await refetch();
+    } catch { /* يعرضه المعترض */ } finally { setSaving(false); }
+  };
   if (!member) return null;
   const gym = user?.gymName || "SGMS";
   const code = cardCode(member.id);
@@ -66,6 +88,18 @@ body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;text-align:center;color:#111
             </svg>
           </div>
           <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("card.hint")}</div>
+        </div>
+        {/* بطاقة RFID: ضع المؤشر في الحقل ثم مرّر البطاقة على القارئ (يكتب الرقم تلقائياً) */}
+        <div style={{ width: "100%", maxWidth: 320, display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>📡 {t("card.rfidTitle")}</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input value={uid} onChange={e => setUid(e.target.value)} disabled={!canEdit} dir="ltr" placeholder={t("card.rfidPlaceholder")}
+              onKeyDown={e => { if (e.key === "Enter" && canEdit && uid.trim() && uid.trim() !== savedUid) { e.preventDefault(); saveUid(uid); } }}
+              style={{ flex: 1, minWidth: 0, boxSizing: "border-box", padding: "9px 10px", fontSize: 13, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", color: "var(--text)", outline: "none" }} />
+            {canEdit && <Button size="sm" onClick={() => saveUid(uid)} loading={saving} disabled={!uid.trim() || uid.trim() === savedUid}>{t("card.rfidSave")}</Button>}
+            {canEdit && savedUid && <Button size="sm" variant="secondary" onClick={() => saveUid("")} disabled={saving} style={{ color: "var(--danger)" }}>✕</Button>}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--muted)" }}>{savedUid ? t("card.rfidLinked") : t("card.rfidHint")}</div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", width: "100%" }}>
           {onScan && <Button variant="secondary" onClick={onScan}>📷 {t("card.scanBtn")}</Button>}

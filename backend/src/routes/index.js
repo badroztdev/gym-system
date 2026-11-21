@@ -16,7 +16,7 @@ import { getPayments, createPayment, deletePayment, getPaymentsStats } from "../
 import { getRooms, createRoom, updateRoom, deleteRoom, deleteRoomPermanently, regenerateQR } from "../controllers/rooms.controller.js";
 import { getSessions, getSession, createSession, updateSession, cancelSession, deleteRecurringSeries, getTodaySessions, getSessionResults, saveSessionResults } from "../controllers/sessions.controller.js";
 import { scanQR, getSessionAttendance, manualAttendance, bulkAttendance, getAthleteAttendance, getAttendanceOverview, getAttendanceTrend, getAttendanceLeaderboard, getAttendanceByCategory, getRecentSessionsAttendance } from "../controllers/attendance.controller.js";
-import { cardScan } from "../controllers/card.controller.js";
+import { cardScan, getRfid, setRfid } from "../controllers/card.controller.js";
 import { saveToken, getNotifications, markRead, sendManual, notifyExpiringSubscriptions } from "../controllers/notifications.controller.js";
 import { getRegistrationInfo, submitRegistration, listRegistrations, updateRegistration } from "../controllers/registrations.controller.js";
 import { getMyAthletes, getDashboard, getSchedule, getAttendanceHistory, getSubscriptionHistory, scanAttendance } from "../controllers/portal.controller.js";
@@ -177,6 +177,8 @@ router.post("/attendance/scan",                   authenticate, [
   body("athleteId").notEmpty().withMessage("الرياضي مطلوب"),
   validate,
 ], scanQR);
+router.get ("/members/:id/rfid", authenticate, perm("members.view", "members.edit"), getRfid);
+router.put ("/members/:id/rfid", authenticate, perm("members.edit"), setRfid);
 router.post("/attendance/card-scan",              authenticate, perm("attendance.manage", "members.view", "subscriptions.view", "payments.view"), cardScan);
 router.get ("/attendance/session/:sessionId",     authenticate, perm("attendance.view", "sessions.view"), getSessionAttendance);
 router.post("/attendance/manual",                 authenticate, perm("attendance.manage"), [

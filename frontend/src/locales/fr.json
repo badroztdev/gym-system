@@ -951,6 +951,13 @@
     "inactive": "Compte désactivé",
     "remaining": "Reste à payer",
     "attDone": "Présence enregistrée — {{title}}",
-    "attNoSession": "Aucune séance en cours pour la présence"
+    "attNoSession": "Aucune séance en cours pour la présence",
+    "rfidTitle": "Carte RFID",
+    "rfidPlaceholder": "Passez la carte sur le lecteur…",
+    "rfidSave": "Lier",
+    "rfidSaved": "Carte liée",
+    "rfidRemoved": "Carte supprimée",
+    "rfidLinked": "Carte liée. Passez-la dans « Scanner une carte » pour l'entrée.",
+    "rfidHint": "Cliquez dans le champ puis passez la carte pour saisir son numéro, puis « Lier »."
   }
 }

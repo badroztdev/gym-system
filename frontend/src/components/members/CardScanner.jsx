@@ -89,7 +89,7 @@ export default function CardScanner({ open, onClose, autoCode }) {
 
   // الماسح الخارجي (لوحة مفاتيح وهمية) يكتب الرمز ثم Enter
   const onKey = (e) => {
-    if (e.key === "Enter") { const v = e.currentTarget.value.trim(); e.currentTarget.value = ""; const c = extractCode(v); if (c) submit(c); else if (v) setResult({ color: "red", error: t("card.invalid") }); }
+    if (e.key === "Enter") { const v = e.currentTarget.value.trim(); e.currentTarget.value = ""; const c = extractCode(v) || (v ? `RFID:${v}` : null); if (c) submit(c); }
   };
 
   const green = result?.color === "green";

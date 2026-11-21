@@ -3,7 +3,40 @@ import { query } from "../utils/db.js";
 import { ok, badRequest, notFound, forbidden, serverError } from "../utils/response.js";
 import { hasPermission, memberInScope } from "../utils/access.js";
 
-const PREFIX = "SGMS-A:";
+// توحيد رقم البطاقة: أحرف وأرقام فقط، بحروف كبيرة (القارئ قد يضيف فواصل أو مسافات)
+const normUid = (v) => String(v || "").replace(/[^0-9a-zA-Z]/g, "").toUpperCase();
+
+// ── GET /api/members/:id/rfid ────────────────────────────────
+export const getRfid = async (req, res) => {
+  try {
+    if (!(await memberInScope(req.user, req.params.id))) return notFound(res, "العضو غير موجود");
+    const { rows } = await query("SELECT rfid_uid FROM users WHERE id = $1 AND gym_id = $2", [req.params.id, req.user.gym_id]);
+    if (!rows.length) return notFound(res, "العضو غير موجود");
+    return ok(res, { uid: rows[0].rfid_uid || "" });
+  } catch (err) { serverError(res, err); }
+};
+
+// ── PUT /api/members/:id/rfid  { uid }  (uid فارغ = إزالة البطاقة) ──
+export const setRfid = async (req, res) => {
+  try {
+    if (!(await memberInScope(req.user, req.params.id))) return notFound(res, "العضو غير موجود");
+    const uid = normUid(req.body.uid);
+    if (uid) {
+      if (uid.length < 4 || uid.length > 32) return badRequest(res, "رقم البطاقة غير صالح");
+      const dup = await query(
+        "SELECT full_name FROM users WHERE gym_id = $1 AND rfid_uid = $2 AND id <> $3",
+        [req.user.gym_id, uid, req.params.id]
+      );
+      if (dup.rows.length) return badRequest(res, `هذه البطاقة مرتبطة بالفعل بـ "${dup.rows[0].full_name}"`);
+    }
+    const { rows } = await query(
+      "UPDATE users SET rfid_uid = $1, updated_at = NOW() WHERE id = $2 AND gym_id = $3 RETURNING id",
+      [uid || null, req.params.id, req.user.gym_id]
+    );
+    if (!rows.length) return notFound(res, "العضو غير موجود");
+    return ok(res, { uid });
+  } catch (err) { serverError(res, err); }
+};
 
 // ── POST /api/attendance/card-scan  { code, record?: boolean } ─
 // يعيد: green (اشتراك ساري ومدفوع بالكامل) | red (غير مدفوع كلياً أو لا اشتراك)
@@ -12,15 +45,16 @@ export const cardScan = async (req, res) => {
     const raw = String(req.body.code || "").trim();
     // يقبل: رابط البطاقة (…/members?scan=<id>) أو الصيغة القديمة SGMS-A:<id>
     const m = raw.match(/(?:[?&]scan=|SGMS-A:)\s*([0-9a-fA-F-]{8,40})/);
-    const id = m ? m[1] : "";
-    if (!id) return badRequest(res, "رمز غير صالح");
+    const rf = raw.startsWith("RFID:") ? normUid(raw.slice(5)) : "";
+    if (!m && !rf) return badRequest(res, "رمز غير صالح");
 
     const gymId = req.user.gym_id || req.user.gymId;
+    // الرياضي إما عبر معرّفه (QR) أو عبر رقم بطاقة RFID
     const a = await query(
       `SELECT id, full_name, avatar_url, age_category, group_name, is_active, role
-         FROM users WHERE id::text = $1 AND gym_id = $2 AND role = 'athlete'
+         FROM users WHERE ${m ? "id::text = $1" : "rfid_uid = $1"} AND gym_id = $2 AND role = 'athlete'
           AND (phone IS NULL OR phone <> '__visitor__')`,
-      [id, gymId]
+      [m ? m[1] : rf, gymId]
     );
     if (!a.rows.length) return notFound(res, "الرياضي غير موجود في هذا النادي");
     const ath = a.rows[0];
