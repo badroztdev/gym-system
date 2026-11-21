@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationsService } from "@/services/notifications.service";
 import toast from "react-hot-toast";
+import { requestNotificationPermission } from "@/services/firebase";
 
 const TYPE_COLORS = {
   attendance:           { bg: "var(--danger)20",  color: "var(--danger)",  icon: "✅" },
@@ -23,6 +24,72 @@ function useIsMobile() {
     return () => window.removeEventListener("resize", handler);
   }, []);
   return isMobile;
+}
+
+// ── تفعيل إشعارات الهاتف (تظهر في شريط الحالة كفيسبوك/واتساب) ──
+const PUSH_TXT = {
+  ar: {
+    title: "إشعارات الهاتف", on: "مفعّلة على هذا الجهاز ✓", enable: "تفعيل إشعارات الهاتف", test: "إرسال إشعار تجريبي",
+    off: "فعّلها لتصلك التنبيهات في شريط الهاتف حتى والموقع مغلق.",
+    denied: "الإشعارات محظورة. اضغط 🔒 بجانب عنوان الموقع ← «الإذن/Permissions» ← «الإشعارات» ← سماح، ثم أعد تحميل الصفحة.",
+    unsupported: "هذا المتصفح لا يدعم إشعارات الهاتف. على iPhone: ثبّت الموقع على الشاشة الرئيسية أولاً (مشاركة ← إضافة إلى الشاشة الرئيسية).",
+    done: "تم تفعيل الإشعارات", fail: "تعذّر تفعيل الإشعارات",
+    sent: "أُرسل إشعار تجريبي — انظر شريط هاتفك", noDevice: "هذا الجهاز غير مسجَّل بعد. اضغط «تفعيل» أولاً.", sendFail: "فشل الإرسال",
+  },
+  fr: {
+    title: "Notifications du téléphone", on: "Activées sur cet appareil ✓", enable: "Activer les notifications", test: "Envoyer une notification test",
+    off: "Activez-les pour recevoir les alertes dans la barre du téléphone, même site fermé.",
+    denied: "Notifications bloquées. Appuyez sur 🔒 près de l'adresse → « Autorisations » → « Notifications » → Autoriser, puis rechargez la page.",
+    unsupported: "Ce navigateur ne prend pas en charge les notifications. Sur iPhone : installez d'abord le site sur l'écran d'accueil.",
+    done: "Notifications activées", fail: "Activation impossible",
+    sent: "Notification test envoyée — regardez la barre de votre téléphone", noDevice: "Appareil non enregistré. Appuyez d'abord sur « Activer ».", sendFail: "Échec de l'envoi",
+  },
+};
+
+function PushSetup({ lang }) {
+  const T = PUSH_TXT[lang === "fr" ? "fr" : "ar"];
+  const supported = typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator;
+  const [perm, setPerm] = useState(supported ? Notification.permission : "unsupported");
+  const [busy, setBusy] = useState(false);
+
+  // إذا كان الإذن ممنوحاً مسبقاً: جدّد تسجيل الجهاز بصمت (يصلح التوكن المنتهي)
+  useEffect(() => {
+    if (perm !== "granted") return;
+    requestNotificationPermission().then(tk => tk && notificationsService.saveToken(tk)).catch(() => {});
+  }, [perm]);
+
+  const enable = async () => {            // يجب أن يكون داخل نقرة المستخدم ليظهر طلب الإذن في أندرويد
+    setBusy(true);
+    try {
+      const tk = await requestNotificationPermission();
+      setPerm(Notification.permission);
+      if (tk) { await notificationsService.saveToken(tk); toast.success(T.done); }
+      else if (Notification.permission !== "denied") toast.error(T.fail);
+    } catch { toast.error(T.fail); } finally { setBusy(false); }
+  };
+  const test = async () => {
+    setBusy(true);
+    try {
+      const r = (await notificationsService.testPush())?.data;
+      if (!r?.devices) toast.error(T.noDevice);
+      else if (r.sent) toast.success(T.sent);
+      else toast.error(`${T.sendFail}: ${(r.errors || []).join(" | ").slice(0, 120)}`);
+    } catch { /* يعرضه المعترض */ } finally { setBusy(false); }
+  };
+
+  const btn = { padding: "8px 12px", fontSize: 12, fontWeight: 600, borderRadius: 8, cursor: "pointer", fontFamily: "'Sora', sans-serif", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)" };
+  return (
+    <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>📲 {T.title}{perm === "granted" && <span style={{ color: "var(--accent)", fontWeight: 600 }}> — {T.on}</span>}</div>
+      {perm === "unsupported" && <div style={{ fontSize: 11, color: "var(--muted-lt)", lineHeight: 1.6 }}>{T.unsupported}</div>}
+      {perm === "denied" && <div style={{ fontSize: 11, color: "var(--warning)", lineHeight: 1.6 }}>{T.denied}</div>}
+      {perm === "default" && (<>
+        <div style={{ fontSize: 11, color: "var(--muted-lt)", lineHeight: 1.6 }}>{T.off}</div>
+        <button type="button" onClick={enable} disabled={busy} style={{ ...btn, background: "var(--accent)", color: "#0d0f14", border: "none" }}>{T.enable}</button>
+      </>)}
+      {perm === "granted" && <button type="button" onClick={test} disabled={busy} style={btn}>{T.test}</button>}
+    </div>
+  );
 }
 
 export default function NotificationBell() {
@@ -159,6 +226,8 @@ export default function NotificationBell() {
               }}>{t("notificationBell.markAllRead")}</button>
             )}
           </div>
+
+          <PushSetup lang={i18n.language} />
 
           {/* القائمة */}
           {notifications.length === 0 ? (

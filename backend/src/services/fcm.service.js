@@ -1,21 +1,16 @@
 // src/services/fcm.service.js
-// ✅ الإصلاح الجوهري النهائي: firebase-admin v14+ يتطلب "الاستيراد المُجزَّأ"
-// (Modular API) بدل النمط القديم (import admin from "firebase-admin" ثم
-// admin.credential.cert(...)) — النمط القديم كان يجعل admin.credential غير
-// معرَّف إطلاقاً (undefined) في هذا الإصدار، مسبِّباً فشل التهيئة صامتاً
-// من نوع "Cannot read properties of undefined (reading 'cert')"
+// ✅ تحويل كامل لاستخدام مكتبة Firebase الرسمية (firebase-admin) بدل إعادة
+// تطبيق بروتوكول OAuth/JWT يدوياً — يُزيل أي احتمال لخطأ خفي في التطبيق اليدوي
+// السابق، ويعتمد كلياً على الكود المُختبَر رسمياً من جوجل نفسها
 import { readFileSync } from "fs";
-import { initializeApp, cert, getApps } from "firebase-admin/app";
-import { getMessaging } from "firebase-admin/messaging";
+import admin from "firebase-admin";
 
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "gym-pro-fe5fb";
 
-console.log("📦 [FCM] fcm.service.js module loaded");
-
-let messagingInstance = null;
+let initialized = false;
 
 function ensureInitialized() {
-  if (messagingInstance) return messagingInstance;
+  if (initialized) return;
 
   let serviceAccount;
   try {
@@ -27,40 +22,45 @@ function ensureInitialized() {
     }
   } catch (err) {
     console.warn("⚠️  Firebase Service Account not found — notifications disabled:", err.message);
-    return null;
+    return;
   }
 
-  try {
-    // ✅ تجنّب تهيئة مضاعفة إن استُدعيت هذه الدالة أكثر من مرة
-    const app = getApps().length
-      ? getApps()[0]
-      : initializeApp({ credential: cert(serviceAccount), projectId: PROJECT_ID });
-
-    messagingInstance = getMessaging(app);
-    console.log("✅ [FCM] Firebase Admin SDK initialized (modular API)");
-    return messagingInstance;
-  } catch (err) {
-    console.error("❌ [FCM] initializeApp failed:", err.message);
-    return null;
-  }
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    projectId: PROJECT_ID,
+  });
+  initialized = true;
+  console.log("✅ [FCM] Firebase Admin SDK initialized");
 }
 
 export const sendNotification = async ({ token, title, body, data = {} }) => {
-  const messaging = ensureInitialized();
-  if (!messaging) return { success: false, error: "Firebase Service Account not configured" };
+  ensureInitialized();
+  if (!initialized) return { success: false, error: "Firebase Service Account not configured" };
 
   try {
-    const messageId = await messaging.send({
+    const messageId = await admin.messaging().send({
       token,
       notification: { title, body },
       data: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])),
+      // الويب (كروم/أندرويد): icon = الصورة الكبيرة، badge = الأيقونة الأحادية في شريط الحالة
       webpush: {
-        notification: { title, body, icon: "/icon-192.png" },
-        fcmOptions: { link: "/" },
+        headers: { Urgency: "high", TTL: "86400" },
+        notification: {
+          title, body,
+          icon: "/icon-192.png",
+          badge: "/badge-72.png",
+          tag: String(data.tag || `sgms-${Date.now()}`),
+          dir: "auto",
+          vibrate: [120, 60, 120],
+        },
+        fcmOptions: { link: data.url || "/" },
       },
+      // أندرويد الأصلي (تطبيق الرياضي): أولوية عالية لتصل فور الإرسال
+      android: { priority: "high", notification: { channelId: "sgms_channel" } },
     });
     return { success: true, messageId };
   } catch (err) {
+    // ✅ رسالة الخطأ الآن تأتي مباشرة من مكتبة Google الرسمية — أكثر دقة ووضوحاً
     console.error("❌ [FCM] send error:", err.code || err.message, "—", err.message);
     return { success: false, error: err.message };
   }
