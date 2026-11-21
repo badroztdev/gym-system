@@ -17,7 +17,8 @@ import { getRooms, createRoom, updateRoom, deleteRoom, deleteRoomPermanently, re
 import { getSessions, getSession, createSession, updateSession, cancelSession, deleteRecurringSeries, getTodaySessions, getSessionResults, saveSessionResults } from "../controllers/sessions.controller.js";
 import { scanQR, getSessionAttendance, manualAttendance, bulkAttendance, getAthleteAttendance, getAttendanceOverview, getAttendanceTrend, getAttendanceLeaderboard, getAttendanceByCategory, getRecentSessionsAttendance } from "../controllers/attendance.controller.js";
 import { cardScan, getRfid, setRfid } from "../controllers/card.controller.js";
-import { saveToken, getNotifications, markRead, sendManual, notifyExpiringSubscriptions, testPush } from "../controllers/notifications.controller.js";
+import { saveToken, getNotifications, markRead, sendManual, notifyExpiringSubscriptions } from "../controllers/notifications.controller.js";
+import { testPush } from "../controllers/push.controller.js";
 import { getRegistrationInfo, submitRegistration, listRegistrations, updateRegistration } from "../controllers/registrations.controller.js";
 import { getMyAthletes, getDashboard, getSchedule, getAttendanceHistory, getSubscriptionHistory, scanAttendance } from "../controllers/portal.controller.js";
 import { getPortalRecipients, getPortalThreads, getPortalUnread, getPortalMessages, sendPortalMessage, getStaffThreads, getStaffUnread, getStaffMessages, sendStaffMessage } from "../controllers/chat.controller.js";
