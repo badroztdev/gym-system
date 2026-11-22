@@ -45,10 +45,25 @@ export const requestNotificationPermission = async () => {
       { scope: "/" }
     );
 
-    const token = await getToken(messaging, {
-      vapidKey: VAPID_KEY,
-      serviceWorkerRegistration: registration,
-    });
+    const fetchToken = (reg) => getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+    let token;
+    try {
+      token = await fetchToken(registration);
+    } catch (e1) {
+      // بيانات تسجيل قديمة/تالفة في المتصفح: نمسحها ونعيد المحاولة مرة واحدة
+      console.warn("FCM retry after clearing stale data:", e1.code || e1.message);
+      try {
+        await registration.pushManager.getSubscription().then(sub => sub && sub.unsubscribe());
+      } catch { /* تجاهل */ }
+      await Promise.all(["firebase-installations-database", "firebase-messaging-database", "firebase-heartbeat-database"].map(
+        (name) => new Promise((res) => { try { const r = indexedDB.deleteDatabase(name); r.onsuccess = r.onerror = r.onblocked = () => res(); } catch { res(); } })
+      ));
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.filter(r => r.active && r.active.scriptURL.includes("firebase-messaging-sw")).map(r => r.unregister()));
+      const fresh = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" });
+      await navigator.serviceWorker.ready;
+      token = await fetchToken(fresh);
+    }
 
     console.log("✅ FCM Token obtained:", token?.slice(0, 20) + "...");
     return token;
