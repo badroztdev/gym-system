@@ -3,7 +3,9 @@
 // تطبيق بروتوكول OAuth/JWT يدوياً — يُزيل أي احتمال لخطأ خفي في التطبيق اليدوي
 // السابق، ويعتمد كلياً على الكود المُختبَر رسمياً من جوجل نفسها
 import { readFileSync } from "fs";
-import admin from "firebase-admin";
+// firebase-admin v12+ : واجهة modular (الاستيراد الافتراضي لم يعد يحوي credential/messaging)
+import { initializeApp, getApps, cert } from "firebase-admin/app";
+import { getMessaging } from "firebase-admin/messaging";
 
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "gym-pro-fe5fb";
 
@@ -26,10 +28,9 @@ function ensureInitialized() {
   }
 
   try {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      projectId: PROJECT_ID,
-    });
+    if (!getApps().length) {
+      initializeApp({ credential: cert(serviceAccount), projectId: PROJECT_ID });
+    }
   } catch (err) {
     console.error("❌ [FCM] init error:", err.message);
     throw new Error("Firebase init failed: " + err.message);
@@ -42,7 +43,7 @@ export const sendNotification = async ({ token, title, body, data = {} }) => {
   try {
     ensureInitialized();
     if (!initialized) return { success: false, error: "Firebase Service Account not configured" };
-    const messageId = await admin.messaging().send({
+    const messageId = await getMessaging().send({
       token,
       notification: { title, body },
       data: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])),
