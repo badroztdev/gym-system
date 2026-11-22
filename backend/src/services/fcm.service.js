@@ -25,19 +25,23 @@ function ensureInitialized() {
     return;
   }
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    projectId: PROJECT_ID,
-  });
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      projectId: PROJECT_ID,
+    });
+  } catch (err) {
+    console.error("❌ [FCM] init error:", err.message);
+    throw new Error("Firebase init failed: " + err.message);
+  }
   initialized = true;
   console.log("✅ [FCM] Firebase Admin SDK initialized");
 }
 
 export const sendNotification = async ({ token, title, body, data = {} }) => {
-  ensureInitialized();
-  if (!initialized) return { success: false, error: "Firebase Service Account not configured" };
-
   try {
+    ensureInitialized();
+    if (!initialized) return { success: false, error: "Firebase Service Account not configured" };
     const messageId = await admin.messaging().send({
       token,
       notification: { title, body },
