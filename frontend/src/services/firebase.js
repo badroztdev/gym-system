@@ -76,5 +76,23 @@ export const requestNotificationPermission = async () => {
 
 export const onForegroundMessage = (callback) => {
   if (!messaging) return () => {};
-  return onMessage(messaging, callback);
+  return onMessage(messaging, (payload) => {
+    callback(payload);
+    // الصفحة مفتوحة: Firebase يسلّم الرسالة للصفحة ولا يعرض إشعاراً للنظام،
+    // فنعرضه بأنفسنا ليظهر في شريط الهاتف مثل بقية التطبيقات
+    try {
+      const n = payload.notification || {};
+      if (!n.title || typeof Notification === "undefined" || Notification.permission !== "granted") return;
+      navigator.serviceWorker.ready.then((reg) =>
+        reg.showNotification(n.title, {
+          body: n.body || "",
+          icon: "/icon-192.png",
+          badge: "/badge-72.png",
+          tag: (payload.data && payload.data.tag) || undefined,
+          dir: "auto",
+          vibrate: [120, 60, 120],
+        })
+      ).catch(() => {});
+    } catch { /* تجاهل */ }
+  });
 };
