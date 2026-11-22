@@ -13,7 +13,7 @@ const firebaseConfig = {
   measurementId: "G-G44TQPLBHX"
 };
 
-const VAPID_KEY = "BKOqhlNjzYnTAfze9y4jbXl6xpc4QzeSZK3aRR3cH6pTSrc2rS_GEkSrM0RXf_USj42ODjMnY2H5Y_kQ6QJc0VQ";
+const VAPID_KEY = "BK0qhlNjzYnTAfze9y4jbXl6xpc4QzeSZK3aRR3cH6pTSrc2rS_GEkSrM0RXf_USj42ODjMnY2H5Y_kQ6QJc0VQ";
 
 let app, messaging;
 
