@@ -29,20 +29,20 @@ function useIsMobile() {
 // ── تفعيل إشعارات الهاتف (تظهر في شريط الحالة كفيسبوك/واتساب) ──
 const PUSH_TXT = {
   ar: {
-    title: "إشعارات الهاتف", on: "مفعّلة على هذا الجهاز ✓", enable: "تفعيل إشعارات الهاتف", test: "إرسال إشعار تجريبي",
+    title: "إشعارات الهاتف", on: "مفعّلة على هذا الجهاز ✓", enable: "تفعيل إشعارات الهاتف", test: "إرسال إشعار تجريبي (بعد 10 ثوانٍ)",
     off: "فعّلها لتصلك التنبيهات في شريط الهاتف حتى والموقع مغلق.",
     denied: "الإشعارات محظورة. اضغط 🔒 بجانب عنوان الموقع ← «الإذن/Permissions» ← «الإشعارات» ← سماح، ثم أعد تحميل الصفحة.",
     unsupported: "هذا المتصفح لا يدعم إشعارات الهاتف. على iPhone: ثبّت الموقع على الشاشة الرئيسية أولاً (مشاركة ← إضافة إلى الشاشة الرئيسية).",
     done: "تم تفعيل الإشعارات", fail: "تعذّر تفعيل الإشعارات",
-    sent: "أُرسل إشعار تجريبي — انظر شريط هاتفك", noDevice: "هذا الجهاز غير مسجَّل بعد. اضغط «تفعيل» أولاً.", sendFail: "فشل الإرسال",
+    sent: "أُرسل إشعار تجريبي — انظر شريط هاتفك", later: "سيصل الإشعار بعد 10 ثوانٍ. اخرج الآن من الصفحة (زر الرئيسية) أو اقفل الشاشة وانتظر.", noDevice: "هذا الجهاز غير مسجَّل بعد. اضغط «تفعيل» أولاً.", sendFail: "فشل الإرسال",
   },
   fr: {
-    title: "Notifications du téléphone", on: "Activées sur cet appareil ✓", enable: "Activer les notifications", test: "Envoyer une notification test",
+    title: "Notifications du téléphone", on: "Activées sur cet appareil ✓", enable: "Activer les notifications", test: "Envoyer une notification test (dans 10 s)",
     off: "Activez-les pour recevoir les alertes dans la barre du téléphone, même site fermé.",
     denied: "Notifications bloquées. Appuyez sur 🔒 près de l'adresse → « Autorisations » → « Notifications » → Autoriser, puis rechargez la page.",
     unsupported: "Ce navigateur ne prend pas en charge les notifications. Sur iPhone : installez d'abord le site sur l'écran d'accueil.",
     done: "Notifications activées", fail: "Activation impossible",
-    sent: "Notification test envoyée — regardez la barre de votre téléphone", noDevice: "Appareil non enregistré. Appuyez d'abord sur « Activer ».", sendFail: "Échec de l'envoi",
+    sent: "Notification test envoyée — regardez la barre de votre téléphone", later: "La notification arrive dans 10 s. Quittez la page maintenant (bouton Accueil) ou verrouillez l'écran.", noDevice: "Appareil non enregistré. Appuyez d'abord sur « Activer ».", sendFail: "Échec de l'envoi",
   },
 };
 
@@ -71,8 +71,9 @@ function PushSetup({ lang }) {
   const test = async () => {
     setBusy(true);
     try {
-      const r = (await notificationsService.testPush())?.data;
+      const r = (await notificationsService.testPush(10))?.data;
       if (!r?.devices) { toast.error(T.noDevice); await enable(); }
+      else if (r.scheduled) toast.success(T.later, { duration: 8000 });
       else if (r.sent) toast.success(T.sent);
       else toast.error(`${T.sendFail}: ${(r.errors || []).join(" | ").slice(0, 120)}`);
     } catch { /* يعرضه المعترض */ } finally { setBusy(false); }

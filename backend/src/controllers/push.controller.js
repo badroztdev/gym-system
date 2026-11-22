@@ -12,12 +12,25 @@ export const testPush = async (req, res) => {
       [req.user.id]
     );
     if (!tokens.rows.length) return ok(res, { devices: 0, sent: 0, errors: [] });
-    const results = await Promise.all(tokens.rows.map(r => sendNotification({
+
+    // تأخير اختياري (حتى 30 ثانية): الإشعار لا يظهر في شريط الهاتف والصفحة مفتوحة أمامك،
+    // فنمنحك وقتاً لتخرج من الصفحة أو تقفل الشاشة قبل وصوله
+    const delay = Math.min(30, Math.max(0, Number(req.body?.delay) || 0));
+    const sendAll = () => Promise.all(tokens.rows.map(r => sendNotification({
       token: r.token,
       title: "SGMS 🔔",
       body: "هذا إشعار تجريبي — إذا ظهر في شريط هاتفك فكل شيء يعمل",
       data: { tag: "sgms-test" },
     })));
+
+    if (delay > 0) {
+      setTimeout(() => sendAll().then(rs => {
+        const bad = rs.filter(r => !r.success);
+        if (bad.length) console.error("❌ [push test] failed:", bad.map(b => b.error).join(" | "));
+      }).catch(e => console.error("❌ [push test]:", e.message)), delay * 1000);
+      return ok(res, { devices: tokens.rows.length, scheduled: delay, sent: tokens.rows.length, errors: [] });
+    }
+    const results = await sendAll();
     return ok(res, {
       devices: results.length,
       sent: results.filter(r => r.success).length,
