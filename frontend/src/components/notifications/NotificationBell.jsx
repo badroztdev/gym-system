@@ -34,6 +34,7 @@ const PUSH_TXT = {
     denied: "الإشعارات محظورة. اضغط 🔒 بجانب عنوان الموقع ← «الإذن/Permissions» ← «الإشعارات» ← سماح، ثم أعد تحميل الصفحة.",
     unsupported: "هذا المتصفح لا يدعم إشعارات الهاتف. على iPhone: ثبّت الموقع على الشاشة الرئيسية أولاً (مشاركة ← إضافة إلى الشاشة الرئيسية).",
     done: "تم تفعيل الإشعارات", fail: "تعذّر تفعيل الإشعارات",
+    local: "اختبار العرض على هذا الهاتف (بدون خادم)", localDone: "طُلب عرض الإشعار الآن — انظر الشريط العلوي. إن لم يظهر فالهاتف يمنع إشعارات Chrome.",
     sent: "أُرسل إشعار تجريبي — انظر شريط هاتفك", later: "سيصل الإشعار بعد 10 ثوانٍ. اخرج الآن من الصفحة (زر الرئيسية) أو اقفل الشاشة وانتظر.", noDevice: "هذا الجهاز غير مسجَّل بعد. اضغط «تفعيل» أولاً.", sendFail: "فشل الإرسال",
   },
   fr: {
@@ -42,6 +43,7 @@ const PUSH_TXT = {
     denied: "Notifications bloquées. Appuyez sur 🔒 près de l'adresse → « Autorisations » → « Notifications » → Autoriser, puis rechargez la page.",
     unsupported: "Ce navigateur ne prend pas en charge les notifications. Sur iPhone : installez d'abord le site sur l'écran d'accueil.",
     done: "Notifications activées", fail: "Activation impossible",
+    local: "Test d'affichage sur ce téléphone (sans serveur)", localDone: "Notification demandée — regardez la barre du haut. Si rien n'apparaît, le téléphone bloque les notifications de Chrome.",
     sent: "Notification test envoyée — regardez la barre de votre téléphone", later: "La notification arrive dans 10 s. Quittez la page maintenant (bouton Accueil) ou verrouillez l'écran.", noDevice: "Appareil non enregistré. Appuyez d'abord sur « Activer ».", sendFail: "Échec de l'envoi",
   },
 };
@@ -79,6 +81,18 @@ function PushSetup({ lang }) {
     } catch { /* يعرضه المعترض */ } finally { setBusy(false); }
   };
 
+  // عرض إشعار محلي مباشرة من الصفحة (بلا Firebase ولا خادم): يفصل مشكلة الهاتف عن مشكلة الإرسال
+  const local = async () => {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification("SGMS 🔔", {
+        body: "اختبار محلي — إذا رأيت هذا في الشريط فعرض الإشعارات يعمل على هاتفك",
+        icon: "/icon-192.png", badge: "/badge-72.png", tag: "sgms-local-" + Date.now(), dir: "auto", vibrate: [120, 60, 120],
+      });
+      toast.success(T.localDone, { duration: 9000 });
+    } catch (e) { toast.error(String(e.message || e).slice(0, 120)); }
+  };
+
   const btn = { padding: "8px 12px", fontSize: 12, fontWeight: 600, borderRadius: 8, cursor: "pointer", fontFamily: "'Sora', sans-serif", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)" };
   return (
     <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
@@ -89,6 +103,7 @@ function PushSetup({ lang }) {
         <div style={{ fontSize: 11, color: "var(--muted-lt)", lineHeight: 1.6 }}>{T.off}</div>
         <button type="button" onClick={enable} disabled={busy} style={{ ...btn, background: "var(--accent)", color: "#0d0f14", border: "none" }}>{T.enable}</button>
       </>)}
+      {perm === "granted" && <button type="button" onClick={local} style={btn}>{T.local}</button>}
       {perm === "granted" && <button type="button" onClick={test} disabled={busy} style={btn}>{T.test}</button>}
       {err && <div dir="ltr" style={{ fontSize: 10.5, color: "var(--danger)", wordBreak: "break-word", lineHeight: 1.5, textAlign: "left" }}>⚠ {err}</div>}
     </div>
