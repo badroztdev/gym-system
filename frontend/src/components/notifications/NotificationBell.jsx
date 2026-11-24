@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationsService } from "@/services/notifications.service";
 import toast from "react-hot-toast";
 import { requestNotificationPermission, getLastFcmError } from "@/services/firebase";
+import { useAuthStore } from "@/store/authStore";
 
 const TYPE_COLORS = {
   attendance:           { bg: "var(--danger)20",  color: "var(--danger)",  icon: "✅" },
@@ -34,7 +35,9 @@ const PUSH_TXT = {
     denied: "الإشعارات محظورة. اضغط 🔒 بجانب عنوان الموقع ← «الإذن/Permissions» ← «الإشعارات» ← سماح، ثم أعد تحميل الصفحة.",
     unsupported: "هذا المتصفح لا يدعم إشعارات الهاتف. على iPhone: ثبّت الموقع على الشاشة الرئيسية أولاً (مشاركة ← إضافة إلى الشاشة الرئيسية).",
     done: "تم تفعيل الإشعارات", fail: "تعذّر تفعيل الإشعارات",
+    diag: "🛠 أدوات التشخيص (للمالك)",
     local: "اختبار العرض على هذا الهاتف (بدون خادم)", localDone: "طُلب عرض الإشعار الآن — انظر الشريط العلوي. إن لم يظهر فالهاتف يمنع إشعارات Chrome.",
+    arrived: "آخر رسالة وصلت لهذا الجهاز:", noArrival: "لم تصل أي رسالة دفع لهذا الجهاز بعد.",
     sent: "أُرسل إشعار تجريبي — انظر شريط هاتفك", later: "سيصل الإشعار بعد 10 ثوانٍ. اخرج الآن من الصفحة (زر الرئيسية) أو اقفل الشاشة وانتظر.", noDevice: "هذا الجهاز غير مسجَّل بعد. اضغط «تفعيل» أولاً.", sendFail: "فشل الإرسال",
   },
   fr: {
@@ -43,7 +46,9 @@ const PUSH_TXT = {
     denied: "Notifications bloquées. Appuyez sur 🔒 près de l'adresse → « Autorisations » → « Notifications » → Autoriser, puis rechargez la page.",
     unsupported: "Ce navigateur ne prend pas en charge les notifications. Sur iPhone : installez d'abord le site sur l'écran d'accueil.",
     done: "Notifications activées", fail: "Activation impossible",
+    diag: "🛠 Outils de diagnostic (propriétaire)",
     local: "Test d'affichage sur ce téléphone (sans serveur)", localDone: "Notification demandée — regardez la barre du haut. Si rien n'apparaît, le téléphone bloque les notifications de Chrome.",
+    arrived: "Dernier message reçu par cet appareil :", noArrival: "Aucun message push reçu par cet appareil pour l'instant.",
     sent: "Notification test envoyée — regardez la barre de votre téléphone", later: "La notification arrive dans 10 s. Quittez la page maintenant (bouton Accueil) ou verrouillez l'écran.", noDevice: "Appareil non enregistré. Appuyez d'abord sur « Activer ».", sendFail: "Échec de l'envoi",
   },
 };
@@ -54,6 +59,18 @@ function PushSetup({ lang }) {
   const [perm, setPerm] = useState(supported ? Notification.permission : "unsupported");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [lastPush, setLastPush] = useState("");
+  const isOwner = useAuthStore(s => s.user?.role === "owner");
+
+  // وقت آخر رسالة دفع وصلت إلى هذا الجهاز (يسجّله الـ Service Worker)
+  const readLastPush = async () => {
+    try {
+      const r = await caches.match("/__last-push");
+      const ts = r ? Number(await r.text()) : 0;
+      setLastPush(ts ? new Date(ts).toLocaleTimeString() : "");
+    } catch { /* تجاهل */ }
+  };
+  useEffect(() => { readLastPush(); }, []);
 
   // إذا كان الإذن ممنوحاً مسبقاً: جدّد تسجيل الجهاز بصمت (يصلح التوكن المنتهي)
   useEffect(() => {
@@ -75,7 +92,10 @@ function PushSetup({ lang }) {
     try {
       const r = (await notificationsService.testPush(10))?.data;
       if (!r?.devices) { toast.error(T.noDevice); await enable(); }
-      else if (r.scheduled) toast.success(T.later, { duration: 8000 });
+      else if (r.scheduled) {
+        toast.success(T.later, { duration: 8000 });
+        let n = 0; const iv = setInterval(() => { readLastPush(); if (++n > 14) clearInterval(iv); }, 2500);
+      }
       else if (r.sent) toast.success(T.sent);
       else toast.error(`${T.sendFail}: ${(r.errors || []).join(" | ").slice(0, 120)}`);
     } catch { /* يعرضه المعترض */ } finally { setBusy(false); }
@@ -103,8 +123,17 @@ function PushSetup({ lang }) {
         <div style={{ fontSize: 11, color: "var(--muted-lt)", lineHeight: 1.6 }}>{T.off}</div>
         <button type="button" onClick={enable} disabled={busy} style={{ ...btn, background: "var(--accent)", color: "#0d0f14", border: "none" }}>{T.enable}</button>
       </>)}
-      {perm === "granted" && <button type="button" onClick={local} style={btn}>{T.local}</button>}
-      {perm === "granted" && <button type="button" onClick={test} disabled={busy} style={btn}>{T.test}</button>}
+      {/* أزرار الاختبار مخفية داخل قسم مطوي ومتاحة للمالك فقط */}
+      {perm === "granted" && isOwner && (
+        <details style={{ marginTop: 2 }}>
+          <summary style={{ fontSize: 11, color: "var(--muted-lt)", cursor: "pointer" }}>{T.diag}</summary>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+            <button type="button" onClick={local} style={btn}>{T.local}</button>
+            <button type="button" onClick={test} disabled={busy} style={btn}>{T.test}</button>
+            <div style={{ fontSize: 11, color: lastPush ? "var(--accent)" : "var(--muted-lt)" }}>{lastPush ? `${T.arrived} ${lastPush}` : T.noArrival}</div>
+          </div>
+        </details>
+      )}
       {err && <div dir="ltr" style={{ fontSize: 10.5, color: "var(--danger)", wordBreak: "break-word", lineHeight: 1.5, textAlign: "left" }}>⚠ {err}</div>}
     </div>
   );

@@ -13,6 +13,13 @@ firebase.initializeApp({
   appId:             "1:112881979310:web:16888301414641fafc423f",
 });
 
+// تسجيل وقت وصول أي رسالة دفع إلى الجهاز (للتشخيص: هل وصلت الرسالة أصلاً؟ تظهر في لوحة الإشعارات)
+self.addEventListener("push", (event) => {
+  event.waitUntil(
+    caches.open("sgms-push").then((c) => c.put("/__last-push", new Response(String(Date.now())))).catch(() => {})
+  );
+});
+
 const messaging = firebase.messaging();
 
 // الرسائل التي تحمل حقل notification يعرضها Firebase تلقائياً (بالأيقونة والشارة المرسلتين من الخادم).

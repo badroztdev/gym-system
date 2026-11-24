@@ -1,7 +1,59 @@
 // src/services/cron.service.js
 // تشغيل المهام التلقائية يومياً بدون مكتبات خارجية
 import { query } from "../utils/db.js";
-import { sendMulticast, NotificationTemplates } from "./fcm.service.js";
+import { sendMulticast } from "./fcm.service.js";
+
+// ══════════════ إعدادات التنبيهات (بتوقيت الجزائر) ══════════════
+const TZ = "Africa/Algiers";
+// ساعات إرسال تنبيه انتهاء الاشتراك (3 مرات يومياً: صباحاً، ظهراً، مساءً)
+const EXPIRY_SLOT_HOURS = [9, 14, 19];
+// الاشتراك الذي يتبقى له هذا العدد من الأيام أو أقل يُنبَّه 3 مرات يومياً، وما فوقه مرة واحدة (صباحاً)
+const FULL_REPEAT_WITHIN_DAYS = 2;
+// تذكير المدرب قبل الحصة بـ (دقيقة) وتذكير الرياضي قبلها بـ (دقيقة)
+const COACH_REMIND_MIN = 30;
+const ATHLETE_REMIND_MIN = 60;
+// ساعة الملخص اليومي للمالك
+const OWNER_DIGEST_HOUR = 8;
+
+// التاريخ والساعة الآن في الجزائر
+function algiersNow() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23",
+  }).formatToParts(new Date());
+  const g = (t) => parts.find(p => p.type === t)?.value;
+  return { date: `${g("year")}-${g("month")}-${g("day")}`, hour: Number(g("hour")) };
+}
+
+// ✅ أرسل لكل مستخدم مرة واحدة فقط لكل "key" (يمنع التكرار عند إعادة التشغيل أو التنفيذ كل ساعة/دقيقة)
+// يُدرج الإشعار في السجل (الجرس) ثم يرسل Push لمن أُدرج له فعلاً فقط
+async function notifyOnce({ userIds, title, body, type, key, data = {} }) {
+  const ids = [...new Set((userIds || []).filter(Boolean))];
+  if (!ids.length) return 0;
+  const ins = await query(
+    `INSERT INTO notifications (user_id, title, body, type, metadata)
+     SELECT u, $2::text, $3::text, $4::text, $5::jsonb
+       FROM unnest($1::uuid[]) AS u
+      WHERE NOT EXISTS (
+        SELECT 1 FROM notifications n
+         WHERE n.user_id = u AND n.metadata::jsonb ->> 'key' = $6::text
+      )
+     RETURNING user_id`,
+    [ids, title, body, type, JSON.stringify({ ...data, key }), key]
+  );
+  const fresh = ins.rows.map(r => r.user_id);
+  if (!fresh.length) return 0;
+  const tokens = await query(
+    `SELECT DISTINCT token FROM user_fcm_tokens WHERE user_id = ANY($1::uuid[]) AND is_active = TRUE`,
+    [fresh]
+  );
+  if (tokens.rows.length) {
+    await sendMulticast({
+      tokens: tokens.rows.map(r => r.token), title, body,
+      data: { tag: key, url: "/notifications", type },
+    });
+  }
+  return fresh.length;
+}
 
 // ── ✅ جديد: التجديد التلقائي للاشتراكات المنتهية ─────────────
 // عند وصول تاريخ انتهاء أي اشتراك نشط، يُنشأ تلقائياً اشتراك تالٍ
@@ -57,50 +109,160 @@ async function autoRenewSubscriptions() {
   }
 }
 
-// ── دالة إشعار انتهاء الاشتراكات ─────────────────────────────
+// ── إشعار انتهاء الاشتراكات للرياضي وأولياء أمره (3 مرات يومياً عند اقتراب الانتهاء) ──
 async function notifyExpiringSubscriptions() {
   try {
     console.log("🔔 [Cron] Checking expiring subscriptions...");
+    const now = algiersNow();
+    // الخانة الحالية: آخر ساعة إرسال مرّت اليوم (قبل أول خانة لا إرسال)
+    let slot = -1;
+    EXPIRY_SLOT_HOURS.forEach((h, i) => { if (now.hour >= h) slot = i; });
+    if (slot < 0) return;
 
     const subs = await query(
       `SELECT s.id, s.athlete_id, u.full_name AS athlete_name,
-              u.gym_id, (s.end_date - CURRENT_DATE) AS days_left
-       FROM subscriptions s
-       JOIN users u ON u.id = s.athlete_id
-       WHERE s.status = 'active'
-         AND s.end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '3 days'`
+              (s.end_date - $1::date) AS days_left
+         FROM subscriptions s
+         JOIN users u ON u.id = s.athlete_id
+        WHERE s.status = 'active' AND s.visitor_name IS NULL
+          AND u.is_active = TRUE
+          AND s.end_date BETWEEN $1::date AND $1::date + 3
+          AND NOT EXISTS (   -- لا تنبيه إن وُجد اشتراك لاحق (مجدَّد مسبقاً)
+            SELECT 1 FROM subscriptions s2
+             WHERE s2.athlete_id = s.athlete_id AND s2.id <> s.id
+               AND s2.status = 'active' AND s2.end_date > s.end_date)`,
+      [now.date]
     );
 
+    let sent = 0;
     for (const sub of subs.rows) {
-      const tpl = NotificationTemplates.subscriptionExpiring(sub.athlete_name, sub.days_left);
+      const days = Number(sub.days_left);
+      // بعيد الانتهاء: مرة واحدة صباحاً فقط. قريب الانتهاء: في الخانات الثلاث
+      if (days > FULL_REPEAT_WITHIN_DAYS && slot > 0) continue;
+
+      const when = days <= 0 ? "ينتهي اليوم" : days === 1 ? "ينتهي غداً" : `ينتهي خلال ${days} أيام`;
+      const title = days <= 1 ? "⚠️ اشتراك على وشك الانتهاء" : "اشتراك ينتهي قريباً ⚠️";
+      const body = `اشتراك ${sub.athlete_name} ${when}. يرجى التجديد لتفادي توقف التدريب`;
 
       const ids = await query(
         `SELECT guardian_id AS id FROM guardian_athlete WHERE athlete_id = $1
          UNION SELECT $1::uuid`,
         [sub.athlete_id]
       );
-
-      for (const { id } of ids.rows) {
-        await query(
-          `INSERT INTO notifications (user_id, title, body, type, metadata)
-           VALUES ($1,$2,$3,'subscription_expiry',$4)
-           ON CONFLICT DO NOTHING`,
-          [id, tpl.title, tpl.body, JSON.stringify({ subscriptionId: sub.id, daysLeft: sub.days_left })]
-        );
-      }
-
-      const tokens = await query(
-        `SELECT token FROM user_fcm_tokens WHERE user_id = ANY($1::uuid[]) AND is_active = TRUE`,
-        [ids.rows.map(r => r.id)]
-      );
-      if (tokens.rows.length) {
-        await sendMulticast({ tokens: tokens.rows.map(r => r.token), ...tpl });
-      }
+      sent += await notifyOnce({
+        userIds: ids.rows.map(r => r.id), title, body, type: "subscription_expiry",
+        key: `exp:${sub.id}:${now.date}:${slot}`,
+        data: { subscriptionId: sub.id, daysLeft: days },
+      });
     }
-
-    console.log(`✅ [Cron] Notified ${subs.rows.length} expiring subscriptions`);
+    console.log(`✅ [Cron] Expiry notices sent: ${sent}`);
   } catch (err) {
     console.error("❌ [Cron] notifyExpiring error:", err.message);
+  }
+}
+
+// ── ملخص يومي للمالك: الاشتراكات المنتهية اليوم وخلال 3 أيام ──
+async function notifyOwnerDigest() {
+  try {
+    const now = algiersNow();
+    if (now.hour < OWNER_DIGEST_HOUR) return;
+
+    const owners = await query(`SELECT id, gym_id FROM users WHERE role = 'owner' AND is_active = TRUE`);
+    for (const o of owners.rows) {
+      const r = await query(
+        `SELECT (s.end_date - $2::date) AS d, u.full_name
+           FROM subscriptions s JOIN users u ON u.id = s.athlete_id
+          WHERE u.gym_id = $1 AND s.status = 'active' AND s.visitor_name IS NULL
+            AND s.end_date BETWEEN $2::date AND $2::date + 3
+            AND NOT EXISTS (
+              SELECT 1 FROM subscriptions s2
+               WHERE s2.athlete_id = s.athlete_id AND s2.id <> s.id
+                 AND s2.status = 'active' AND s2.end_date > s.end_date)
+          ORDER BY s.end_date, u.full_name`,
+        [o.gym_id, now.date]
+      );
+      if (!r.rows.length) continue;
+      const today = r.rows.filter(x => Number(x.d) <= 0).length;
+      const names = r.rows.slice(0, 3).map(x => x.full_name).join("، ");
+      const more = r.rows.length > 3 ? ` و${r.rows.length - 3} آخرين` : "";
+      await notifyOnce({
+        userIds: [o.id],
+        title: "📋 ملخص الاشتراكات المنتهية",
+        body: `ينتهي اليوم: ${today} — خلال 3 أيام: ${r.rows.length}. ${names}${more}`,
+        type: "subscription_expiry",
+        key: `digest:${o.gym_id}:${now.date}`,
+        data: { total: r.rows.length, today },
+      });
+    }
+  } catch (err) {
+    console.error("❌ [Cron] ownerDigest error:", err.message);
+  }
+}
+
+// ── تذكير الحصص: المدرب قبل 30 دقيقة، والرياضي (وولي أمره) قبل ساعة ──
+let reminding = false;
+async function sendSessionReminders() {
+  if (reminding) return;
+  reminding = true;
+  try {
+    const NOW_TS = `(NOW() AT TIME ZONE '${TZ}')`;
+    const sessions = await query(
+      `SELECT s.id, s.gym_id, s.title, s.coach_id, s.age_category, s.age_groups,
+              TO_CHAR(s.start_time, 'HH24:MI') AS hhmm,
+              ROUND(EXTRACT(EPOCH FROM ((s.session_date + s.start_time) - ${NOW_TS})) / 60)::int AS mins
+         FROM sessions s
+        WHERE s.is_cancelled = FALSE
+          AND (s.session_date + s.start_time) > ${NOW_TS}
+          AND (s.session_date + s.start_time) <= ${NOW_TS} + INTERVAL '${ATHLETE_REMIND_MIN} minutes'`
+    );
+
+    for (const s of sessions.rows) {
+      // المدرب
+      if (s.coach_id && s.mins <= COACH_REMIND_MIN) {
+        await notifyOnce({
+          userIds: [s.coach_id],
+          title: "⏰ تذكير بالحصة",
+          body: `حصة "${s.title}" تبدأ الساعة ${s.hhmm} (بعد ${s.mins} دقيقة)`,
+          type: "attendance", key: `sess-coach:${s.id}`, data: { sessionId: s.id },
+        });
+      }
+      // الرياضيون المعنيّون بالحصة (فئة/مجموعة مطابقة أو مسجَّلون) باشتراك ساري، مع أولياء أمورهم
+      const ath = await query(
+        `SELECT u.id FROM users u
+          WHERE u.gym_id = $1 AND u.role = 'athlete' AND u.is_active = TRUE
+            AND (u.phone IS NULL OR u.phone <> '__visitor__')
+            AND EXISTS (SELECT 1 FROM subscriptions sb
+                         WHERE sb.athlete_id = u.id AND sb.status = 'active' AND sb.visitor_name IS NULL
+                           AND sb.start_date <= (${NOW_TS})::date AND sb.end_date >= (${NOW_TS})::date)
+            AND (
+              EXISTS (SELECT 1 FROM session_enrollments se
+                       WHERE se.session_id = $2 AND se.athlete_id = u.id AND se.status = 'enrolled')
+              OR (
+                ($3::text[] IS NULL OR cardinality($3::text[]) = 0 OR COALESCE(u.age_category::text,'') = ANY($3::text[]))
+                AND ($4::jsonb IS NULL
+                     OR NOT ($4::jsonb ? COALESCE(u.age_category::text,''))
+                     OR jsonb_array_length($4::jsonb -> COALESCE(u.age_category::text,'')) = 0
+                     OR ($4::jsonb -> COALESCE(u.age_category::text,'')) ? COALESCE(u.group_name::text,''))
+              )
+            )`,
+        [s.gym_id, s.id, s.age_category, s.age_groups ? JSON.stringify(s.age_groups) : null]
+      );
+      if (!ath.rows.length) continue;
+      const aIds = ath.rows.map(r => r.id);
+      const g = await query(
+        `SELECT DISTINCT guardian_id AS id FROM guardian_athlete WHERE athlete_id = ANY($1::uuid[])`, [aIds]
+      );
+      await notifyOnce({
+        userIds: [...aIds, ...g.rows.map(r => r.id)],
+        title: "⏰ تذكير بحصة اليوم",
+        body: `لديك حصة "${s.title}" الساعة ${s.hhmm}`,
+        type: "attendance", key: `sess-ath:${s.id}`, data: { sessionId: s.id },
+      });
+    }
+  } catch (err) {
+    console.error("❌ [Cron] sessionReminders error:", err.message);
+  } finally {
+    reminding = false;
   }
 }
 
@@ -160,21 +322,16 @@ async function notifyExpiringGymSubscriptions() {
         [gym.id]
       );
       if (!owner.rows.length) continue;
-      const ownerId = owner.rows[0].id;
-
-      await query(
-        `INSERT INTO notifications (user_id, title, body, type, metadata)
-         VALUES ($1, $2, $3, 'subscription_expiry', $4)`,
-        [ownerId, title, body, JSON.stringify({ gymId: gym.id, kind: gym.kind, daysLeft: gym.days_left })]
-      );
-
-      const tokens = await query(
-        "SELECT token FROM user_fcm_tokens WHERE user_id = $1 AND is_active = TRUE",
-        [ownerId]
-      );
-      if (tokens.rows.length) {
-        await sendMulticast({ tokens: tokens.rows.map(r => r.token), title, body });
-      }
+      const nowA = algiersNow();
+      let slot = -1;
+      EXPIRY_SLOT_HOURS.forEach((h, i) => { if (nowA.hour >= h) slot = i; });
+      if (slot < 0) continue;
+      if (Number(gym.days_left) > FULL_REPEAT_WITHIN_DAYS && slot > 0) continue;
+      await notifyOnce({
+        userIds: [owner.rows[0].id], title, body, type: "subscription_expiry",
+        key: `gymexp:${gym.id}:${gym.kind}:${nowA.date}:${slot}`,
+        data: { gymId: gym.id, kind: gym.kind, daysLeft: gym.days_left },
+      });
       notified++;
     }
 
@@ -184,28 +341,23 @@ async function notifyExpiringGymSubscriptions() {
   }
 }
 
-// ── تشغيل المهام كل 24 ساعة ───────────────────────────────────
+// ── الجدولة ───────────────────────────────────────────────────
 export function startCronJobs() {
-  // ✅ الإصلاح: كانت 24 ساعة، لكن Railway يُعيد تشغيل الخادم أحياناً قبل وصول
-  // المؤقّت لهذه المدة، فتُصفَّر العدّ الزمني من جديد ولا تُنفَّذ المهمة أبداً
-  // تلقائياً. تقليصها لساعة واحدة يضمن التنفيذ الفعلي يومياً حتى مع
-  // إعادة التشغيل المتكررة — الاستعلامات خفيفة ومحمية من التكرار أصلاً
-  const INTERVAL_MS = 60 * 60 * 1000; // ساعة واحدة
-
-  // تشغيل فوري عند بدء الخادم
-  // ✅ التجديد التلقائي يجب أن يعمل أولاً، قبل expireSubscriptions
-  autoRenewSubscriptions();
-  expireSubscriptions();
-  notifyExpiringSubscriptions();
-  notifyExpiringGymSubscriptions();
-
-  // جدولة يومية
-  setInterval(async () => {
+  // مهام ثقيلة كل ساعة (مع منع التكرار عبر notifyOnce فلا تتكرر الإشعارات)
+  const HOUR_MS = 60 * 60 * 1000;
+  const hourly = async () => {
     await autoRenewSubscriptions();
     await expireSubscriptions();
     await notifyExpiringSubscriptions();
+    await notifyOwnerDigest();
     await notifyExpiringGymSubscriptions();
-  }, INTERVAL_MS);
+  };
+  hourly();
+  setInterval(hourly, HOUR_MS);
 
-  console.log("✅ [Cron] Daily jobs scheduled (every 24h)");
+  // تذكير الحصص يُفحص كل دقيقة (خفيف، ومحمي من التكرار)
+  setTimeout(sendSessionReminders, 15 * 1000);
+  setInterval(sendSessionReminders, 60 * 1000);
+
+  console.log("✅ [Cron] Jobs scheduled (hourly + session reminders every minute)");
 }
